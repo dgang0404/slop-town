@@ -15,7 +15,7 @@ func migrate(tx *sql.Tx) error {
 		return err
 	}
 	switch version {
-	case 2:
+	case 3:
 		return nil
 	case 0:
 		// The original runner created smoke_fixture without setting a version.
@@ -48,6 +48,17 @@ func migrate(tx *sql.Tx) error {
 				request TEXT NOT NULL, receipt BLOB NOT NULL, PRIMARY KEY(world, timeline, actor, request)
 			);
 			PRAGMA user_version = 2;`)
+		if err != nil {
+			return err
+		}
+		fallthrough
+	case 2:
+		_, err := tx.Exec(`
+			CREATE TABLE timeline_checkpoint (
+				world TEXT NOT NULL, timeline TEXT NOT NULL, seq INTEGER NOT NULL CHECK(seq >= 0),
+				data BLOB NOT NULL, digest TEXT NOT NULL, PRIMARY KEY(world,timeline,seq)
+			);
+			PRAGMA user_version = 3;`)
 		return err
 	default:
 		return fmt.Errorf("unsupported save schema version %d", version)

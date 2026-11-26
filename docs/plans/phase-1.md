@@ -50,6 +50,18 @@ On 25 November 2026 the offline verification suite passed, including the origina
 
 The next checkpoint will replay recorded events from a versioned checkpoint and compare the resulting history and state with uninterrupted execution.
 
+## Checkpoint 4 results
+
+Schema 3 adds immutable bookmarks keyed by world, timeline and committed event sequence. The `checkpoint` command records the existing timeline's state at a command boundary. Repeating it at the same position verifies the existing bookmark. For older saves the migration adds the checkpoint table alongside the existing state, events and receipts.
+
+The fixture's version 1 state digest is SHA-256 over compact Go JSON in this field order: `version`, `world_id`, `timeline_id`, `sequence`, `engine_version`, `content_version`, `clock`. The embedded clock uses the checkpoint 1 encoding with sorted stream names. The format, fixture engine and fixture content versions are each 1. Event history is checked separately by comparing each recorded event with the event regenerated from the saved request.
+
+Replay starts at an explicitly saved bookmark. It reads the selected timeline through one read-only SQLite transaction and resolves each subsequent request in memory. It checks event order, metadata, causal links, payloads and recorded results, then compares the reconstructed state digest with the current head. The bookmark is the starting point for verification; events before it are outside the checked interval.
+
+On 25 November 2026, the Linux CLI replayed the two seed-42 weather steps across process restarts. Starting at sequence 2 yielded tick 2 and sequence 4 with SHA-256 `d508c6d2e9416be9d60c32bbc51cb36d2c2be7e13c146057d74dad10c525554d`, also reproduced independently from the specified JSON. The storage tests checked an empty suffix, two independent timelines, missing and reordered events, an altered draw, a missing receipt, version mismatches and a changed head. [Reproduce the CLI run](../../README.md#replay-a-timeline-from-a-checkpoint).
+
+Checkpoint 5 will exercise the full restart, replay, retry and rollback demonstration in hosted CI and collect Phase 1 handoff evidence.
+
 ## Rules to settle in implementation
 
 - Carry the [existing simulation contracts](../decisions/0002-simulation-contracts.md) into executable types. Keep SQL handles, wall-clock time and logging run IDs outside authoritative state. A failed storage attempt must never publish staged events.

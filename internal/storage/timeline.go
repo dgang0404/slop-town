@@ -4,6 +4,7 @@ package storage
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"path/filepath"
@@ -16,17 +17,7 @@ import (
 // seed initializes a new timeline; existing timelines keep their saved seed.
 func Submit(path string, scope simulation.Scope, seed int64, actor string, p simulation.Proposal) (simulation.Result, error) {
 	var empty simulation.Result
-	abs, err := filepath.Abs(path)
-	if err != nil {
-		return empty, err
-	}
-	name := filepath.ToSlash(abs)
-	if !strings.HasPrefix(name, "/") {
-		name = "/" + name // Windows drive letter in a file URI
-	}
-	// Acquire the writer lock before reading the clock or looking for a receipt.
-	uri := url.URL{Scheme: "file", Path: name, RawQuery: "_txlock=immediate&_pragma=busy_timeout(10000)"}
-	db, err := sql.Open("sqlite", uri.String())
+	db, err := openTimelineDB(path, false)
 	if err != nil {
 		return empty, err
 	}
@@ -60,17 +51,22 @@ func Submit(path string, scope simulation.Scope, seed int64, actor string, p sim
 	return result, nil
 }
 
-func loadClock(tx *sql.Tx, scope simulation.Scope, seed int64) (*simulation.Timeline, uint64, error) {
+func committedClock(tx *sql.Tx, scope simulation.Scope) (*simulation.Timeline, uint64, error) {
 	var data []byte
 	var seq uint64
-	err := tx.QueryRow("SELECT clock, last_sequence FROM timeline_state WHERE world=? AND timeline=?", scope.WorldID, scope.TimelineID).Scan(&data, &seq)
-	if err == sql.ErrNoRows {
-		return simulation.NewTimeline(seed), 0, nil
-	}
+	err := tx.QueryRow("SELECT clock,last_sequence FROM timeline_state WHERE world=? AND timeline=?", scope.WorldID, scope.TimelineID).Scan(&data, &seq)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("read committed timeline: %w", err)
 	}
 	clock, err := simulation.RestoreTimeline(data)
+	return clock, seq, err
+}
+
+func loadClock(tx *sql.Tx, scope simulation.Scope, seed int64) (*simulation.Timeline, uint64, error) {
+	clock, seq, err := committedClock(tx, scope)
+	if errors.Is(err, sql.ErrNoRows) {
+		return simulation.NewTimeline(seed), 0, nil
+	}
 	return clock, seq, err
 }
 
@@ -116,4 +112,21 @@ func writeStep(tx *sql.Tx, scope simulation.Scope, actor string, step *simulatio
 	}
 	_, err = tx.Exec("INSERT INTO request_receipt(world,timeline,actor,request,receipt) VALUES (?,?,?,?,?)", scope.WorldID, scope.TimelineID, actor, receipt.Proposal.RequestID, data)
 	return err
+}
+
+func openTimelineDB(path string, readOnly bool) (*sql.DB, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+	name := filepath.ToSlash(abs)
+	if !strings.HasPrefix(name, "/") {
+		name = "/" + name // Windows drive letter in a file URI
+	}
+	// Acquire the writer lock before reading the clock or looking for a receipt.
+	uri := url.URL{Scheme: "file", Path: name, RawQuery: "_txlock=immediate&_pragma=busy_timeout(10000)"}
+	if readOnly {
+		uri.RawQuery = "mode=ro&_pragma=busy_timeout(10000)"
+	}
+	return sql.Open("sqlite", uri.String())
 }

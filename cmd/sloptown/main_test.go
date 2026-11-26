@@ -152,8 +152,8 @@ func TestLegacyMigrationRunsTwice(t *testing.T) {
 		if hash != original {
 			t.Fatalf("run %d changed fixture hash to %s", run, hash)
 		}
-		if version := readInt(t, db, "PRAGMA user_version"); version != 2 {
-			t.Fatalf("run %d stored schema version %d, want 2", run, version)
+		if version := readInt(t, db, "PRAGMA user_version"); version != 3 {
+			t.Fatalf("run %d stored schema version %d, want 3", run, version)
 		}
 		if n := readInt(t, db, "SELECT count(*) FROM fixture_metadata WHERE world_id = 'smoke' AND timeline_id = 'main'"); n != 1 {
 			t.Fatalf("run %d found %d matching metadata rows, want 1", run, n)
@@ -199,4 +199,35 @@ func TestFailedSaveRollsBack(t *testing.T) {
 	if _, err := smoke(path, 43, quiet); err != nil {
 		t.Fatalf("retry failed: %v", err)
 	}
+}
+
+func TestReplayCommand(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "save.sqlite")
+	call := func(want int, args ...string) string {
+		t.Helper()
+		var out, diagnostic bytes.Buffer
+		if code := run(append(args, "-db", path), &out, &diagnostic); code != want {
+			t.Fatalf("%v exited %d: %s", args, code, diagnostic.String())
+		}
+		return out.String()
+	}
+	call(2, "replay")
+	call(0, "step", "-seed", "42", "-request", "r1")
+	first := call(0, "checkpoint")
+	if got := call(0, "replay", "-from", "2"); got != first {
+		t.Fatal("empty replay differs from saved state")
+	}
+	call(0, "step", "-request", "r2")
+	var report struct {
+		Sequence uint64
+		Tick     int64
+		Hash     string `json:"sha256"`
+	}
+	if err := json.Unmarshal([]byte(call(0, "replay", "-from", "2")), &report); err != nil {
+		t.Fatal(err)
+	}
+	if report.Tick != 2 || report.Sequence != 4 || report.Hash != "d508c6d2e9416be9d60c32bbc51cb36d2c2be7e13c146057d74dad10c525554d" {
+		t.Fatalf("unexpected replay report %+v", report)
+	}
+	call(1, "replay", "-from", "3")
 }

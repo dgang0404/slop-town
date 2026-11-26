@@ -43,8 +43,13 @@ func verifyFixture(path string, seed int64) (string, error) {
 }
 
 func run(args []string, stdout, stderr io.Writer) int {
-	if len(args) > 0 && args[0] == "step" {
-		return runStep(args[1:], stdout, stderr)
+	if len(args) > 0 {
+		switch args[0] {
+		case "step":
+			return runStep(args[1:], stdout, stderr)
+		case "checkpoint", "replay":
+			return runCheckpoint(args[0], args[1:], stdout, stderr)
+		}
 	}
 	flags := flag.NewFlagSet("sloptown", flag.ContinueOnError)
 	flags.SetOutput(stderr)
@@ -108,6 +113,42 @@ func runStep(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	if result.Status != "accepted" {
+		return 1
+	}
+	return 0
+}
+
+func runCheckpoint(command string, args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("sloptown "+command, flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	path := flags.String("db", "slop-town-smoke.sqlite", "local SQLite save")
+	var from uint64
+	if command == "replay" {
+		flags.Uint64Var(&from, "from", 0, "required saved checkpoint sequence")
+	}
+	if err := flags.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		return 2
+	}
+	if flags.NArg() != 0 || *path == "" || command == "replay" && from == 0 {
+		flags.Usage()
+		return 2
+	}
+	scope := simulation.Scope{WorldID: "smoke", TimelineID: "main"}
+	var report storage.ReplayReport
+	var err error
+	if command == "replay" {
+		report, err = storage.Replay(*path, scope, from)
+	} else {
+		report, err = storage.SaveCheckpoint(*path, scope)
+	}
+	if err == nil {
+		err = json.NewEncoder(stdout).Encode(report)
+	}
+	if err != nil {
+		fmt.Fprintln(stderr, err)
 		return 1
 	}
 	return 0

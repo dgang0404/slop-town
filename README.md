@@ -42,6 +42,20 @@ After building the runner, run the following commands against the same save. Eac
 
 This example assumes a fresh timeline. The step command uses actor `player` in world `smoke`, timeline `main`. Use `-db PATH` to select another save. The seed initializes a new timeline. Later invocations use its saved clock and streams. Changing `-stream` on a committed request ID returns `request_conflict` and exits 1.
 
+## Replay a timeline from a checkpoint
+
+With the runner built, try a fresh save on Linux. The first step ends at event sequence 2. Bookmark it, take a second step, then replay from the bookmark:
+
+```sh
+save_dir=$(mktemp -d)
+./sloptown step -db "$save_dir/town.sqlite" -seed 42 -request r1
+./sloptown checkpoint -db "$save_dir/town.sqlite"
+./sloptown step -db "$save_dir/town.sqlite" -request r2
+./sloptown replay -db "$save_dir/town.sqlite" -from 2
+```
+
+Use the sequence printed by `checkpoint` when trying an existing timeline. Replay opens the save read-only, checks each subsequent event, and compares the reconstructed state with the committed head. The example ends at tick 2 and sequence 4 with SHA-256 `d508c6d2e9416be9d60c32bbc51cb36d2c2be7e13c146057d74dad10c525554d`.
+
 ## Run the Linux CI checks locally
 
 From the repository root, restore the pinned Go modules once, then run the same verification script used for pushes and pull requests.
