@@ -15,6 +15,31 @@ import (
 
 var quiet = slog.New(slog.DiscardHandler)
 
+func TestStepCommand(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "timeline.sqlite")
+	args := []string{"step", "-db", path, "-request", "r1"}
+	for _, tc := range []struct {
+		stream string
+		exit   int
+		status string
+		code   string
+	}{
+		{"weather", 0, "accepted", ""},
+		{"weather", 0, "accepted", ""},
+		{"movement", 1, "rejected", "request_conflict"},
+	} {
+		var stdout, stderr bytes.Buffer
+		exit := run(append(args, "-stream", tc.stream), &stdout, &stderr)
+		var result simulation.Result
+		if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+			t.Fatalf("step returned invalid JSON: %v (stderr %q)", err, stderr.String())
+		}
+		if exit != tc.exit || result.RequestID != "r1" || result.Status != tc.status || result.Code != tc.code {
+			t.Fatalf("unexpected step response: exit %d, %+v", exit, result)
+		}
+	}
+}
+
 func TestTraceOutput(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "private-save.sqlite")
 	args := []string{"-db", path, "-seed", "42"}
@@ -127,8 +152,8 @@ func TestLegacyMigrationRunsTwice(t *testing.T) {
 		if hash != original {
 			t.Fatalf("run %d changed fixture hash to %s", run, hash)
 		}
-		if version := readInt(t, db, "PRAGMA user_version"); version != 1 {
-			t.Fatalf("run %d stored schema version %d, want 1", run, version)
+		if version := readInt(t, db, "PRAGMA user_version"); version != 2 {
+			t.Fatalf("run %d stored schema version %d, want 2", run, version)
 		}
 		if n := readInt(t, db, "SELECT count(*) FROM fixture_metadata WHERE world_id = 'smoke' AND timeline_id = 'main'"); n != 1 {
 			t.Fatalf("run %d found %d matching metadata rows, want 1", run, n)

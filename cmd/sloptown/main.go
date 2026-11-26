@@ -3,6 +3,7 @@ package main
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -42,6 +43,9 @@ func verifyFixture(path string, seed int64) (string, error) {
 }
 
 func run(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "step" {
+		return runStep(args[1:], stdout, stderr)
+	}
 	flags := flag.NewFlagSet("sloptown", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	path := flags.String("db", "slop-town-smoke.sqlite", "local SQLite fixture file")
@@ -71,6 +75,41 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	fmt.Fprintf(stdout, "seed=%d sha256=%s\n", *seed, hash)
+	return 0
+}
+
+// runStep exercises durable command resolution on the synthetic smoke/main timeline.
+func runStep(args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("sloptown step", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	path := flags.String("db", "slop-town-smoke.sqlite", "local SQLite save")
+	seed := flags.Int64("seed", 1, "seed for a new timeline")
+	request := flags.String("request", "", "required request ID")
+	stream := flags.String("stream", "weather", "fixture random stream")
+	if err := flags.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		return 2
+	}
+	if flags.NArg() != 0 || *path == "" || *request == "" {
+		flags.Usage()
+		return 2
+	}
+	scope := simulation.Scope{WorldID: "smoke", TimelineID: "main"}
+	proposal := simulation.Proposal{Scope: scope, Version: 1, RequestID: *request, Action: "fixture_step", Args: simulation.FixtureArgs{Stream: *stream}}
+	result, err := storage.Submit(*path, scope, *seed, "player", proposal)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	if err := json.NewEncoder(stdout).Encode(result); err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	if result.Status != "accepted" {
+		return 1
+	}
 	return 0
 }
 

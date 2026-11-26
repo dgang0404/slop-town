@@ -40,6 +40,16 @@ On 25 November 2026, `sh scripts/check-phase-0.sh` passed offline and both SQLit
 go test -race -count=5 -run 'Test(Command|ScopedCommand|ConcurrentCommand)' ./internal/simulation
 ```
 
+## Checkpoint 3 results
+
+Schema version 2 preserves the Phase 0 seed/value rows and adds three tables. `timeline_state` stores each scope's versioned clock snapshot, stream counters and last event sequence. `timeline_event` stores the ordered event records. `request_receipt` keys the original proposal and result by world, timeline, actor and request ID.
+
+The SQLite adapter acquires a write transaction before it reads the timeline or checks for a receipt. It uses the same resolution function as the in-memory coordinator. For a fresh accepted request, it writes the clock, events and receipt together and returns the result after commit. A competing writer reads the committed receipt when it obtains the lock. The runner can exercise this path across process restarts through the [step command](../../README.md#try-a-persistent-phase-1-step).
+
+On 25 November 2026 the offline verification suite passed, including the original seed-42 hash. The storage tests upgraded a version 1 fixture and injected a receipt failure after writing state and events. A fresh connection saw exactly the previous clock, stream positions, events and receipts. Retrying produced the same records as a clean two-step run. In a separate Linux CLI check, 12 processes submitted one request to a new save. A second unique request, a late retry and a conflicting retry left the save at tick 2 with two draws, four events and two receipts.
+
+The next checkpoint will replay recorded events from a versioned checkpoint and compare the resulting history and state with uninterrupted execution.
+
 ## Rules to settle in implementation
 
 - Carry the [existing simulation contracts](../decisions/0002-simulation-contracts.md) into executable types. Keep SQL handles, wall-clock time and logging run IDs outside authoritative state. A failed storage attempt must never publish staged events.

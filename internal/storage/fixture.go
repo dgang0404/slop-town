@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Package storage persists the Phase 0 fixture in SQLite.
+// Package storage persists smoke fixtures and simulation transitions in SQLite.
 package storage
 
 import (
@@ -15,7 +15,7 @@ func migrate(tx *sql.Tx) error {
 		return err
 	}
 	switch version {
-	case 1:
+	case 2:
 		return nil
 	case 0:
 		// The original runner created smoke_fixture without setting a version.
@@ -28,6 +28,26 @@ func migrate(tx *sql.Tx) error {
 			);
 			INSERT INTO fixture_metadata (id, world_id, timeline_id) VALUES (1, 'smoke', 'main');
 			PRAGMA user_version = 1;`)
+		if err != nil {
+			return err
+		}
+		fallthrough
+	case 1:
+		_, err := tx.Exec(`
+			CREATE TABLE timeline_state (
+				world TEXT NOT NULL, timeline TEXT NOT NULL, clock BLOB NOT NULL,
+				last_sequence INTEGER NOT NULL CHECK(last_sequence >= 0),
+				PRIMARY KEY(world, timeline)
+			);
+			CREATE TABLE timeline_event (
+				world TEXT NOT NULL, timeline TEXT NOT NULL, seq INTEGER NOT NULL CHECK(seq > 0),
+				event BLOB NOT NULL, PRIMARY KEY(world, timeline, seq)
+			);
+			CREATE TABLE request_receipt (
+				world TEXT NOT NULL, timeline TEXT NOT NULL, actor TEXT NOT NULL,
+				request TEXT NOT NULL, receipt BLOB NOT NULL, PRIMARY KEY(world, timeline, actor, request)
+			);
+			PRAGMA user_version = 2;`)
 		return err
 	default:
 		return fmt.Errorf("unsupported save schema version %d", version)

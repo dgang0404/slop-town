@@ -30,6 +30,18 @@ The runner writes a fixture to `slop-town-smoke.sqlite`, closes the database, re
 
 Use `./sloptown -trace -seed 42` to print a JSON record to standard error after each successful step or when a step fails. Standard output carries the usual seed and hash on success. Exit codes are 0 for success or help, 1 for a save or verification failure, and 2 for invalid arguments.
 
+## Try a persistent Phase 1 step
+
+After building the runner, run the following commands against the same save. Each invocation opens and closes SQLite. The first two request IDs advance the timeline to tick 2. The third invocation returns the original receipt for `r1` and leaves the clock at tick 2.
+
+```sh
+./sloptown step -seed 42 -request r1
+./sloptown step -seed 42 -request r2
+./sloptown step -seed 42 -request r1
+```
+
+This example assumes a fresh timeline. The step command uses actor `player` in world `smoke`, timeline `main`. Use `-db PATH` to select another save. The seed initializes a new timeline. Later invocations use its saved clock and streams. Changing `-stream` on a committed request ID returns `request_conflict` and exits 1.
+
 ## Run the Linux CI checks locally
 
 From the repository root, restore the pinned Go modules once, then run the same verification script used for pushes and pull requests.

@@ -72,9 +72,9 @@ type EventPayload struct {
 
 type requestKey struct{ actorID, requestID string }
 
-type receipt struct {
-	proposal Proposal
-	result   Result
+type Receipt struct {
+	Proposal Proposal
+	Result   Result
 }
 
 // Coordinator serializes submissions and owns a timeline's in-memory state.
@@ -83,7 +83,7 @@ type Coordinator struct {
 	scope    Scope
 	clock    *Timeline
 	events   []Event
-	receipts map[requestKey]receipt
+	receipts map[requestKey]*Receipt
 }
 
 func validID(id string) bool { return id != "" && utf8.ValidString(id) }
@@ -92,7 +92,7 @@ func NewCoordinator(scope Scope, seed int64) (*Coordinator, error) {
 	if !validID(scope.WorldID) || !validID(scope.TimelineID) {
 		return nil, fmt.Errorf("world and timeline IDs must be nonempty UTF-8")
 	}
-	return &Coordinator{scope: scope, clock: NewTimeline(seed), receipts: make(map[requestKey]receipt)}, nil
+	return &Coordinator{scope: scope, clock: NewTimeline(seed), receipts: make(map[requestKey]*Receipt)}, nil
 }
 
 // History returns a detached copy for diagnostics.
@@ -108,51 +108,66 @@ func (c *Coordinator) Submit(actorID string, p Proposal) Result {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	key := requestKey{actorID, p.RequestID}
+	result, step := Resolve(c.scope, c.clock, uint64(len(c.events)), actorID, p, c.receipts[key])
+	if step != nil {
+		c.clock = step.Clock
+		c.events = append(c.events, step.Events...)
+		c.receipts[key] = &Receipt{p, result}
+	}
+	return result
+}
+
+// Transition contains the next clock and newly generated events for a single commit.
+type Transition struct {
+	Clock  *Timeline
+	Events []Event
+}
+
+// Resolve stages a command against committed state. A nil transition denotes
+// a rejection or an identical retry. Callers publish only after commit.
+func Resolve(scope Scope, clock *Timeline, lastSequence uint64, actorID string, p Proposal, saved *Receipt) (Result, *Transition) {
 	result := Result{Version: contractVersion, RequestID: p.RequestID}
 	reject := func(code, message string) Result {
 		result.Status, result.Code, result.Message = "rejected", code, message
 		return result
 	}
 	if p.Version != contractVersion {
-		return reject("unsupported_version", "Unsupported action version.")
+		return reject("unsupported_version", "Unsupported action version."), nil
 	}
-	if p.Scope != c.scope || !validID(actorID) || !validID(p.RequestID) {
-		return reject("invalid_request", "Invalid request context.")
+	if !validID(scope.WorldID) || !validID(scope.TimelineID) || p.Scope != scope || !validID(actorID) || !validID(p.RequestID) {
+		return reject("invalid_request", "Invalid request context."), nil
 	}
-	key := requestKey{actorID, p.RequestID}
-	if saved, ok := c.receipts[key]; ok {
-		if saved.proposal != p {
-			return reject("request_conflict", "That request ID was already used for a different action.")
+	if saved != nil {
+		if saved.Proposal != p {
+			return reject("request_conflict", "That request ID was already used for a different action."), nil
 		}
-		return saved.result
+		return saved.Result, nil
 	}
 	if p.Action != "fixture_step" || !validID(p.Args.Stream) {
-		return reject("invalid_request", "Expected a fixture step with a named stream.")
+		return reject("invalid_request", "Expected a fixture step with a named stream."), nil
 	}
 
-	next := *c.clock
-	next.draws = maps.Clone(c.clock.draws)
+	next := *clock
+	next.draws = maps.Clone(clock.draws)
 	if err := next.Advance(1); err != nil {
-		return reject("resolution_failed", "The fixture could not advance.")
+		return reject("resolution_failed", "The fixture could not advance."), nil
 	}
 	value, err := next.Draw(p.Args.Stream)
 	if err != nil {
-		return reject("resolution_failed", "The fixture could not draw a value.")
+		return reject("resolution_failed", "The fixture could not draw a value."), nil
 	}
 
 	event := func(seq uint64, kind string, payload EventPayload) Event {
-		id := fmt.Sprintf("%s/%s/%d", url.PathEscape(c.scope.WorldID), url.PathEscape(c.scope.TimelineID), seq)
-		return Event{Scope: c.scope, ID: id, Sequence: seq, Tick: next.Tick(), Version: contractVersion,
+		id := fmt.Sprintf("%s/%s/%d", url.PathEscape(scope.WorldID), url.PathEscape(scope.TimelineID), seq)
+		return Event{Scope: scope, ID: id, Sequence: seq, Tick: next.Tick(), Version: contractVersion,
 			RequestID: p.RequestID, ActorID: actorID, Engine: "fixture", Kind: kind, PayloadVersion: 1, Payload: payload}
 	}
-	advanced := event(uint64(len(c.events))+1, "tick_advanced", EventPayload{Delta: 1})
+	advanced := event(lastSequence+1, "tick_advanced", EventPayload{Delta: 1})
 	drawn := event(advanced.Sequence+1, "stream_drawn", EventPayload{Stream: p.Args.Stream, Value: value})
 	drawn.ParentID = advanced.ID
 	result.Status = "accepted"
-	result.Observation = Observation{Scope: c.scope, Version: contractVersion, ObserverID: actorID, Text: "The fixture advanced."}
+	result.Observation = Observation{Scope: scope, Version: contractVersion, ObserverID: actorID, Text: "The fixture advanced."}
 
-	c.clock = &next
-	c.events = append(c.events, advanced, drawn)
-	c.receipts[key] = receipt{p, result}
-	return result
+	return result, &Transition{Clock: &next, Events: []Event{advanced, drawn}}
 }
