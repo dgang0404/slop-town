@@ -49,7 +49,7 @@ func (b *Bakery) AvailableActions(scope Scope, actorID string) ([]ActionOption, 
 		switch b.Entities[target.Ref].Kind {
 		case Actor:
 			offer(ActionIntroduce, args)
-			if lines := b.dialogueChoices(view, target.Ref); len(lines) > 0 {
+			if lines := b.dialogueChoices(view, target.Ref, false); len(lines) > 0 {
 				add(ActionSpeak, ActionArgs{Target: target.Ref, Speech: lines[0].Line})
 			}
 		case Door, Container:

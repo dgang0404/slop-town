@@ -115,8 +115,18 @@ The seed-42 porter saw the player sit down on turn one, then told the baker at t
 
 Interrupting the SQLite write at either conversation rolled back that turn. Retrying after reopening preserved one copy of each account. Replay from sequences 0, 12 and 19 reached tick 7, sequence 25, with SHA-256 `1e33ef756f4c08e5d5030fb8171d7ae1eecc493f0d4d07bfb0d8f8d8cfe693bc`. A save made by checkpoint 6 at `a169e8f` kept its original journal and replay hash. [Restart and replay test](../../internal/storage/report_test.go)
 
-## Later narrative work
+## Checkpoint 8 — ask the named eyewitness
 
-The next conversation checkpoint is to ask the named eyewitness about a particular report. The question should become available after the player hears the account, and the witness should answer from their own memory.
+After hearing a secondhand account, the player can take it to the person named as its witness. Their question identifies the teller and the particular act. The witness answers from the notebook entry for that event. The journal keeps the teller's account alongside the later answer from the witness. Once the player has heard directly from the witness about that report, the menu can use its slot for another topic. [Try the witness question](../../README.md#find-out-who-saw-you)
+
+This also works when the player heard the account in a version-ten save created at checkpoint 7. A remembered sighting remains available through its original event reference. A dialogue menu offers at most eleven lines. Previously recorded choices still replay if a new eyewitness question now occupies a menu slot.
+
+### Checkpoint 8 results
+
+In a save written by `a236e25`, the player had heard and confirmed the baker's secondhand account on turn seven. Reopening the save and retrying those seven commands preserved the journal and replay hash. In a Linux terminal, Down and Enter selected “The baker said you saw me sit down. Is that right?” The porter replied, “I saw you sit down.” Replay from sequences 0 and 25 reached tick 8, sequence 27, with SHA-256 `cead21908106706c6e4c0d95f3e0486e077d18110cd040ca94dde50b14f0ae75`.
+
+In the miller test scene, the porter remembered the miller opening the crate even though it had since closed. Choosing the wrong person, guessing the original event number, or resubmitting the question after hearing the direct answer spent no turn. Interrupting the SQLite write left the earlier account intact and the question available on retry. The journal retained one direct answer. [Simulation checks](../../internal/simulation/report_test.go) · [SQLite walkthrough](../../internal/storage/report_test.go)
+
+## Later narrative work
 
 A world calendar can supply day and season boundaries for longer chronicles. Illustrated export follows the plain-text edition.

@@ -133,3 +133,41 @@ func (b *Bakery) residentReport(scope Scope, speaker, listener string) spatialEf
 	}
 	return spatialEffect{}
 }
+
+// Follow the particular account the asker heard through its teller to the
+// named witness. Another observer of the same event cannot answer for them.
+func (b *Bakery) originalWitness(account NotebookEntry, witness string) (NotebookEntry, bool) {
+	if account.Reported == 0 || account.Subject == witness {
+		return NotebookEntry{}, false
+	}
+	telling, ok := b.entryAt(account.Subject, account.Reported)
+	if !ok || telling.Subject != witness {
+		return NotebookEntry{}, false
+	}
+	return b.reportedObservation(telling)
+}
+
+func (b *Bakery) witnessQuestions(speaker, listener string, limit int) []DialogueChoice {
+	var choices []DialogueChoice
+	settled := make(map[uint64]bool)
+	seen := make(map[string]bool)
+	entries := b.Notebooks[speaker]
+	for i := len(entries) - 1; i >= 0 && len(choices) < limit; i-- {
+		e := entries[i]
+		if e.Subject == listener && e.Reported != 0 {
+			// A later answer from this witness already covers that sighting.
+			settled[e.Reported] = true
+			continue
+		}
+		fact, ok := b.originalWitness(e, listener)
+		if !ok || settled[fact.SourceSequence] {
+			continue
+		}
+		words := "The " + b.Entities[e.Subject].Name + " said you saw " + b.observedAct(fact, speaker, listener) + ". Is that right?"
+		if !seen[words] {
+			choices = append(choices, DialogueChoice{Line: e.speechLine("ask_witness", "careful"), Words: words})
+			seen[words] = true
+		}
+	}
+	return choices
+}

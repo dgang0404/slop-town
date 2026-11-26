@@ -134,7 +134,9 @@ This routine runs in newly created practice bakeries. To try it alongside an exi
 
 Start a fresh practice bakery with `go run ./cmd/sloptown bakery -practice -play -seed 42`. Enter `rest`, `east`, `east`, `south`, then `north`. The porter saw you sit down at the start of the visit. While you were around the corner, the porter told the baker.
 
-Enter `talk to baker` and choose **“What have you heard from other people?”** The baker answers, “The porter told me they saw you sit down.” Choose **“Did the porter tell you they saw me sit down?”** to confirm the source. Type `journal` to read the baker's account. On another fresh visit, use `wait` in place of `rest` and ask the same question to see how the answer changes.
+Enter `talk to baker` and choose **“What have you heard from other people?”** The baker answers, “The porter told me they saw you sit down.” Choose **“Did the porter tell you they saw me sit down?”** to confirm the source. Type `journal` to read the baker's account. To check the story yourself, type `cancel`, then `talk to porter`. Choose **“The baker said you saw me sit down. Is that right?”** The porter answers, “I saw you sit down.” Your journal keeps both accounts. You can also do this after reopening a save where you already heard the baker’s story.
+
+On another fresh visit, use `wait` in place of `rest` and ask the baker what they heard to see how the answer changes.
 
 ### Read your journal
 

@@ -85,4 +85,28 @@ func TestEyewitnessReportAcrossRestart(t *testing.T) {
 		}
 	}
 	t.Logf("replay from %d, %d and %d reached tick %d, sequence %d, sha256 %s", initial.Sequence, first.Sequence, second.Sequence, head.Tick, head.Sequence, head.Hash)
+	// Reopen the town and take the account to the named witness. A failed
+	// write must leave the report available for the same question on retry.
+	const witnessVisit = ask + "4\ncancel\ntalk to porter\n4\ncancel\njournal\n"
+	beforeQuestion := interrupt(route, witnessVisit)
+	witnessOut := play(path, witnessVisit, "")
+	_, witnessBook, _ := strings.Cut(witnessOut, "My journal\n")
+	const direct = "The porter replied, “I saw you sit down.”"
+	if !strings.Contains(witnessBook, account) || strings.Count(witnessBook, direct) != 1 {
+		t.Fatal(witnessOut)
+	}
+	final := checkpointAtHead(t, path, scope)
+	for _, from := range []uint64{initial.Sequence, beforeQuestion.Sequence} {
+		replayed, err := storage.Replay(path, scope, from)
+		if err != nil || replayed != final || final.Tick != 8 {
+			t.Fatal(replayed, err)
+		}
+	}
+	retry = play(path, witnessVisit, "")
+	_, again, _ = strings.Cut(retry, "My journal\n")
+	if strings.Count(retry, "already completed") != 8 || again != witnessBook {
+		t.Fatal(retry)
+	}
+	t.Logf("witness reply replayed to tick %d, sequence %d, sha256 %s", final.Tick, final.Sequence, final.Hash)
+
 }

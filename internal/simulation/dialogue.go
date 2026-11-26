@@ -38,7 +38,7 @@ func (b *Bakery) DialogueChoices(scope Scope, actor, listener string) ([]Dialogu
 	if err != nil {
 		return nil, err
 	}
-	return b.dialogueChoices(view, listener), nil
+	return b.dialogueChoices(view, listener, true), nil
 }
 
 func (b *Bakery) canTalk(view Observation, listener string) bool {
@@ -46,7 +46,7 @@ func (b *Bakery) canTalk(view Observation, listener string) bool {
 		b.Entities[listener].Kind == Actor && inReach(b.Entities[view.ObserverID].Placement.Cell, b.Entities[listener].Placement.Cell)
 }
 
-func (b *Bakery) dialogueChoices(view Observation, listener string) []DialogueChoice {
+func (b *Bakery) dialogueChoices(view Observation, listener string, includeWitnessQuestions bool) []DialogueChoice {
 	if !b.canTalk(view, listener) {
 		return nil
 	}
@@ -69,6 +69,11 @@ func (b *Bakery) dialogueChoices(view Observation, listener string) []DialogueCh
 	memoryLimit := limit
 	if b.ContentVersion >= reportContentVersion {
 		memoryLimit -= 2 // Keep the questions about conversations and secondhand news available.
+		if includeWitnessQuestions {
+			for _, choice := range b.witnessQuestions(view.ObserverID, listener, memoryLimit-len(choices)) {
+				add(choice.Line, choice.Words)
+			}
+		}
 	}
 	for i := len(entries) - 1; i >= 0 && len(choices) < memoryLimit; i-- {
 		add(b.memoryLine(entries[i], view.ObserverID, listener))
@@ -126,7 +131,9 @@ func (b *Bakery) speak(view Observation, listener string, line SpeechLine) (spat
 		}
 		return effect, failure
 	}
-	choices := b.dialogueChoices(view, listener)
+	// Check older proposals against the choices available before witness
+	// questions existed. A new menu slot must not invalidate a saved turn.
+	choices := b.dialogueChoices(view, listener, line.Intent == "ask_witness")
 	if len(choices) == 0 {
 		return spatialEffect{}, targetUnavailable()
 	}
@@ -160,6 +167,15 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 	line := choice.Line
 	x := Exchange{Words: choice.Words}
 	switch line.Intent {
+	case "ask_witness":
+		account, _ := b.entryAt(speaker, line.Source)
+		fact, ok := b.originalWitness(account, listener)
+		if !ok {
+			x.Reply = "I don't remember seeing that."
+			break
+		}
+		x.Reply = b.sightingWords(fact, speaker, false)
+		x.ReplySource = fact.SourceSequence
 	case "confirm_source":
 		x.Reply = "Yes. That's who told me."
 	case "confirm":

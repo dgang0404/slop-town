@@ -68,6 +68,10 @@ func TestEyewitnessReportAndRetelling(t *testing.T) {
 	if _, ok := find(baker, player, attributed); ok {
 		t.Fatal("private observation appeared before anyone spoke")
 	}
+	const askWitness = "The baker said you saw the miller open the crate. Is that right?"
+	if _, ok := find(player, porter, askWitness); ok {
+		t.Fatal("witness question appeared before the account reached the player")
+	}
 	say(porter, baker, sight.speechLine("share", "plain"))
 	b = c.bakery
 	if effect := b.residentReport(c.scope, porter, baker); effect.payload.Dialogue.SpeakerSource == sight.SourceSequence {
@@ -112,6 +116,50 @@ func TestEyewitnessReportAndRetelling(t *testing.T) {
 	if err != nil || slices.ContainsFunc(choices, func(o DialogueChoice) bool { return o.Line.Intent == "relay" && o.Line.Source == report.SourceSequence }) {
 		t.Fatal(choices, err)
 	}
+	query, ok := find(player, porter, askWitness)
+	if !ok || query.Source != report.SourceSequence {
+		t.Fatal("witness question missed the player's specific account", query)
+	}
+	bad := spatialProposal(c, "wrong-person", ActionSpeak, ActionArgs{Target: baker, Speech: query})
+	if r := submitUnchanged(t, c, player, bad); r.Code != "line_unavailable" {
+		t.Fatal(r)
+	}
+	bad.Args.Target, bad.Args.Speech.Source = porter, sight.SourceSequence
+	if r := submitUnchanged(t, c, player, bad); r.Code != "line_unavailable" {
+		t.Fatal("raw event guessed as a report", r)
+	}
+	// A saved selection from a full checkpoint-seven menu remains executable
+	// even if the new witness question now occupies one of those eleven slots.
+	for i := range 12 {
+		name := fmt.Sprintf("parcel %02d", i)
+		b.Entities["bakery/"+name] = SpatialEntity{Name: name, Kind: Item, Portable: true, Placement: b.Entities[player].Placement}
+	}
+	view, err := c.Observe(player)
+	if err != nil {
+		t.Fatal(err)
+	}
+	previous, now := b.dialogueChoices(view, porter, false), b.dialogueChoices(view, porter, true)
+	if len(previous) != 11 || len(now) != 11 || slices.Contains(now, previous[10]) {
+		t.Fatal(previous, now)
+	}
+	old := spatialProposal(c, "saved-choice", ActionSpeak, ActionArgs{Target: porter, Speech: previous[10].Line})
+	if _, failure := b.resolveSpatial(player, old); failure != nil {
+		t.Fatal(failure)
+	}
+
+	answerFromWitness := say(player, porter, query)
+	if !strings.Contains(answerFromWitness.Message, "The porter replies, “I saw the miller open the crate.”") ||
+		strings.Contains(answerFromWitness.Message, "spoon") {
+		t.Fatal(answerFromWitness.Message)
+	}
+	if _, ok := find(player, porter, askWitness); ok {
+		t.Fatal("offered the same source check after the direct answer")
+	}
+	bad.Args.Speech = query
+	if r := submitUnchanged(t, c, player, bad); r.Code != "line_unavailable" {
+		t.Fatal("accepted a stale question", r)
+	}
+
 }
 
 func TestReportSourcesAcrossSave(t *testing.T) {
