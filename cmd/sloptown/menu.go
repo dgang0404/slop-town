@@ -43,5 +43,10 @@ func (s bakerySession) menu(cmd bakeryCommand) ([]menuChoice, *simulation.Scene,
 		}
 	}
 	choices = append(choices, directions...)
-	return append(choices, menuChoice{"look", "look"}, menuChoice{"quit", "quit"}), &scene, nil
+	choices = append(choices, menuChoice{"look", "look"})
+	setting := "narration story"
+	if s.narrator.style == "story" {
+		setting = "narration brief"
+	}
+	return append(choices, menuChoice{setting, setting}, menuChoice{"quit", "quit"}), &scene, nil
 }

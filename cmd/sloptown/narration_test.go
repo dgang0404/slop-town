@@ -4,11 +4,14 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/dgang0404/slop-town/internal/simulation"
+	"github.com/dgang0404/slop-town/internal/storage"
 )
 
 func TestReadableBakeryTranscript(t *testing.T) {
@@ -39,11 +42,19 @@ func TestReadableBakeryTranscript(t *testing.T) {
 	if strings.Count(retry, "already completed") != 6 || strings.Contains(retry, "Inside lies") {
 		t.Fatal(retry)
 	}
-	lost := play("wait\nwait\nwait\nwest\nnorth\nwalk to baker\nlook\n", "-practice")
+	const loseResidents = "wait\nwait\nwait\nwest\nnorth\nwalk to baker\nlook\n"
+	lost := play(loseResidents, "-practice")
 	_, last, ok := strings.Cut(lost, "You walk toward the baker.")
 	if !ok || strings.Count(last, "baker.") != 1 || !strings.Contains(last, "You lose sight of the baker.") ||
 		strings.Contains(last, "destination") || strings.Count(last, "@") != 1 {
 		t.Fatal(lost)
+	}
+	story := play(loseResidents, "-practice", "-narration", "story")
+	_, storyEnd, _ := strings.Cut(story, "You walk toward the baker.")
+	notice, fullScene, _ := strings.Cut(storyEnd, "\n")
+	if notice != " You lose sight of the baker and the porter, last seen to the southeast before your last step." ||
+		strings.Contains(fullScene, "the baker ") || strings.Contains(fullScene, "the porter") {
+		t.Fatal(storyEnd)
 	}
 }
 
@@ -85,7 +96,8 @@ func TestWalkNarrationKeepsWitnessedInterruption(t *testing.T) {
 		t.Fatal(err)
 	}
 	plain, bold := turnNarrator{previous: initial}, turnNarrator{previous: initial, bold: true}
-	var transcript, styled bytes.Buffer
+	story := turnNarrator{previous: initial, style: "story"}
+	var transcript, styled, passage bytes.Buffer
 	var sequence uint64
 	move := simulation.Proposal{Action: simulation.ActionMove, Args: simulation.ActionArgs{Direction: simulation.South}}
 	walk := simulation.Proposal{Action: simulation.ActionApproach, Args: simulation.ActionArgs{Target: crate}}
@@ -99,16 +111,123 @@ func TestWalkNarrationKeepsWitnessedInterruption(t *testing.T) {
 		turn := simulation.Turn{Result: r, Scene: step.Scene}
 		plain.write(&transcript, cmd, turn)
 		bold.write(&styled, cmd, turn)
+		story.write(&passage, cmd, turn)
 		state, sequence = step.State, sequence+uint64(len(step.Events))
 	}
-	out := transcript.String()
-	if strings.Count(out, "You walk toward the crate.") != 1 || !strings.Contains(out, "introduces themselves to you. You pause your walk.") ||
-		strings.Contains(out, "within reach") || state.Clock.Tick() != 4 {
-		t.Fatal(out)
+	for _, out := range []string{transcript.String(), passage.String()} {
+		if strings.Count(out, "You walk toward the crate.") != 1 || !strings.Contains(out, "introduces themselves to you. You pause your walk.") ||
+			strings.Contains(out, "within reach") || state.Clock.Tick() != 4 {
+			t.Fatal(out)
+		}
 	}
 	unstyle := strings.NewReplacer("\x1b[1m", "", "\x1b[0m", "")
-	if !strings.Contains(styled.String(), "\x1b[1mYou pause your walk.\x1b[0m") || unstyle.Replace(styled.String()) != out {
+	if !strings.Contains(styled.String(), "\x1b[1mYou pause your walk.\x1b[0m") || unstyle.Replace(styled.String()) != transcript.String() {
 		t.Fatal(styled.String())
+	}
+}
+
+func TestNarrationChoiceAcrossReplay(t *testing.T) {
+	scope := simulation.Scope{WorldID: "bakery", TimelineID: "main"}
+	const route = "open door\ne\ne\nopen crate\ntake spoon\nput it in crate\nwait\nlook\n"
+	play := func(path, input string, flags ...string) string {
+		t.Helper()
+		var out, diag bytes.Buffer
+		args := append([]string{"-play", "-batch", "visit", "-db", path}, flags...)
+		if code := runBakery(args, strings.NewReader(input), &out, &diag); code != 0 {
+			t.Fatalf("exit %d: %s", code, &diag)
+		}
+		return out.String()
+	}
+	var baseline storage.ReplayReport
+	var receipts []*simulation.Receipt
+	for _, mode := range []string{"brief", "story", "switch"} {
+		path := filepath.Join(t.TempDir(), "town.sqlite")
+		play(path, "quit\n")
+		if _, err := storage.SaveCheckpoint(path, scope); err != nil {
+			t.Fatal(err)
+		}
+		input := route
+		var flags []string
+		switch mode {
+		case "story":
+			flags = []string{"-narration", "story"}
+		case "switch":
+			input = strings.Replace(input, "open crate", "narration story\nnarration typo\nnarration\nopen crate", 1)
+			input = strings.Replace(input, "put it", "narration brief\nput it", 1)
+		}
+		out := play(path, input, flags...)
+		if strings.Count(out, "@") != 2 || strings.ContainsRune(out, '\x1b') || !strings.Contains(out, "\nYou wait.\n") {
+			t.Fatal(out)
+		}
+		if mode == "brief" && !strings.Contains(out, "Inside lies a wooden spoon.") ||
+			mode != "brief" && !strings.Contains(out, "You open the crate and find a wooden spoon inside.\n\nYou pick up the wooden spoon you saw in the crate.") ||
+			mode == "story" && !strings.Contains(out, "You step east into the bakery. The closed crate is beside you now.") ||
+			mode == "switch" && !strings.Contains(out, "Narration is story. Choose narration brief or narration story.") {
+			t.Fatal(out)
+		}
+		if retry := play(path, "narration\n"+route); strings.Count(retry, "already completed") != 7 ||
+			!strings.Contains(retry, "Narration is brief.") || strings.Contains(retry, "Inside lies") {
+			t.Fatal(retry)
+		}
+		head, err := storage.Replay(path, scope, 0)
+		if err != nil || head.Tick != 7 || head.Sequence != 14 {
+			t.Fatalf("%s: %+v, %v", mode, head, err)
+		}
+		var saved []*simulation.Receipt
+		for i := 1; i <= 7; i++ {
+			r, err := storage.BakeryReceipt(path, scope, "bakery/player", fmt.Sprintf("visit/%d", i))
+			if err != nil || r == nil {
+				t.Fatalf("receipt %d: %v", i, err)
+			}
+			saved = append(saved, r)
+		}
+		if mode == "brief" {
+			baseline, receipts = head, saved
+		} else if head != baseline || !reflect.DeepEqual(saved, receipts) {
+			t.Fatalf("%s changed the saved visit: %+v, want %+v", mode, head, baseline)
+		}
+	}
+}
+
+func TestInvalidNarrationFlag(t *testing.T) {
+	for _, args := range [][]string{{"-play", "-narration", "typo"}, {"-narration", "story", "wait"}} {
+		path := filepath.Join(t.TempDir(), "town.sqlite")
+		var out, diag bytes.Buffer
+		if code := runBakery(append([]string{"-db", path}, args...), strings.NewReader(""), &out, &diag); code != 2 || out.Len() != 0 || diag.Len() == 0 {
+			t.Fatalf("%v: exit %d, %s, %s", args, code, &out, &diag)
+		}
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatalf("invalid flags touched the save: %v", err)
+		}
+	}
+}
+
+func TestStoryGroupsVisibleContentsOfSelectedCrate(t *testing.T) {
+	// A second crate with the same name can become visible on this turn too.
+	// Only the selected crate's newly visible contents belong in the opening sentence.
+	objects := []simulation.ObservedTarget{
+		{Ref: "first", Name: "crate"}, {Ref: "second", Name: "crate"},
+		{Ref: "apple", Name: "apple"}, {Ref: "spoon", Name: "wooden spoon"}, {Ref: "cup", Name: "cup"},
+	}
+	prior := simulation.Scene{
+		Observation: simulation.Observation{ObserverID: "player", Targets: objects[:1]},
+		Details:     map[string]simulation.VisibleDetail{"first": {Label: "closed crate", State: "closed"}},
+	}
+	current := simulation.Scene{
+		Observation: simulation.Observation{ObserverID: "player", Targets: objects},
+		Details: map[string]simulation.VisibleDetail{
+			"first": {Label: "open crate", State: "open"}, "second": {Label: "open crate", Location: "here"},
+			"apple": {Label: "apple", Holder: "first"}, "spoon": {Label: "wooden spoon", Holder: "first"},
+			"cup": {Label: "cup", Holder: "second", Location: "in the crate"},
+		},
+	}
+	var out bytes.Buffer
+	n := turnNarrator{style: "story", previous: prior, bold: true}
+	turn := simulation.Turn{Result: simulation.Result{Message: "You open the crate.", SelectedTarget: "first"}, Scene: current}
+	n.write(&out, bakeryCommand{Proposal: simulation.Proposal{Action: simulation.ActionOpen}}, turn)
+	if !strings.HasPrefix(out.String(), "\nYou open the crate and find \x1b[1man apple\x1b[0m and \x1b[1ma wooden spoon\x1b[0m inside.") ||
+		!strings.Contains(out.String(), "You see \x1b[1mthe cup\x1b[0m in the crate.") {
+		t.Fatal(&out)
 	}
 }
 

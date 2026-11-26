@@ -21,7 +21,7 @@ In Phase 4 the baker and porter follow work routines, choose where to rest and k
 
 In Phase 5, the player and residents build endurance, feel relief after a tiring walk, and recognize people who have introduced themselves. [Phase 5 plan](docs/plans/phase-5.md) · [Acceptance results](docs/plans/phase-5-results.md)
 
-The first Phase 7 checkpoint is playable in the bakery. Each turn describes what your character notices, with new details in bold on supported terminals. [Phase 7 presentation plan](docs/plans/phase-7.md)
+The Phase 7 bakery narrator offers brief and story settings. Both describe what your character notices, with new details in bold on supported terminals. [Phase 7 presentation plan](docs/plans/phase-7.md)
 
 To validate a local content pack, run `go run ./cmd/packcheck PACK_DIRECTORY`. The [manifest guide](docs/content-packs.md) includes a bundled example.
 
@@ -92,6 +92,8 @@ Ask `What can I do here?` or type `actions` for commands you can use from where 
 You can use a short name such as `door` or `spoon`. If several visible objects match, the game lists them by name and location. Enter a number to choose one or type `cancel`. Asking and cancelling take no game time. In `put it in the crate`, `it` refers to the spoon you just picked up. The terminal remembers the primary object of your last successful interaction for the rest of that session.
 
 Opening the crate gives you “You open the crate. Inside lies **a wooden spoon**.” If you wait there and nothing changes, you get “You wait.” Type `look` whenever you want the full description and grid. To turn off bold, start the game with `NO_COLOR=1`. Redirected output is always plain text.
+
+For a fuller passage, type `narration story` or select it with the arrows and Enter. As you step into the bakery, you’ll read “You step east **into the bakery**. The closed crate is **beside you now**.” Type `narration` to check the setting or `narration brief` to switch back. Changing the setting takes no game time. Each session starts in brief unless you launch it with `-narration story`.
 
 Type `help` for the command forms or `quit` to leave. Add `-db bakery.sqlite` to resume the same town on your next visit. Each visit opens with the full current scene.
 

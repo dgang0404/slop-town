@@ -78,10 +78,10 @@ func TestBakeryClarification(t *testing.T) {
 	if out := play(strings.NewReader("walk to spoon\n1\n")); !strings.Contains(out, choices) || !strings.Contains(out, "already within reach") || strings.Contains(out, "3. wooden spoon") || replay() != initial {
 		t.Fatalf("walk selected an unknown spoon or spent time: %s", out)
 	}
-	s := play(strings.NewReader("actions\ntake it\ntake spoon\n0\nlook\ncancel\ntake spoon\nquit\n"))
+	s := play(strings.NewReader("actions\ntake it\ntake spoon\n0\nnarration story\nlook\ncancel\ntake spoon\nquit\n"))
 	if !strings.Contains(s, "Name the object") || strings.Count(s, choices) != 2 ||
 		strings.Count(s, "  take the wooden spoon\n") != 1 || strings.Contains(s, "3. wooden spoon") ||
-		strings.Contains(s, "bakery/") || !strings.Contains(s, "Cancelled.") ||
+		strings.Contains(s, "bakery/") || !strings.Contains(s, "Narration is story.") || !strings.Contains(s, "Cancelled.") ||
 		replay() != initial {
 		t.Fatalf("unexpected clarification or changed save: %s", s)
 	}

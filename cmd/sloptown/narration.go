@@ -14,8 +14,13 @@ import (
 
 type turnNarrator struct {
 	previous simulation.Scene
+	style    string
 	bold     bool
 	walking  bool // A live step of this command has already been narrated.
+}
+
+func validNarration(style string) bool {
+	return style == "brief" || style == "story"
 }
 
 func terminalBold(out io.Writer) bool {
@@ -46,15 +51,26 @@ func (n *turnNarrator) write(out io.Writer, cmd bakeryCommand, turn simulation.T
 	prior := n.previous
 	message, news, _ := strings.Cut(turn.Message, "\n")
 	continuing := cmd.continuation && n.walking
+	var place string
+	if current.Self.Place != prior.Self.Place {
+		place = current.Self.Place
+	}
 	var lines []string
 	if !continuing {
-		lines = append(lines, message)
+		opening := message
+		if n.style == "story" {
+			opening, place = n.storyAction(cmd, target, current, message, place)
+		}
+		lines = append(lines, opening)
 	}
 	for line := range strings.SplitSeq(news, "\n") {
 		// Name a lost destination once below, using its last visible description.
 		if line != "" && !(line == "You lose sight of your destination." && prior.Details[target].Label != "") {
 			lines = append(lines, n.mark(line))
 		}
+	}
+	if place != "" {
+		lines = append(lines, n.mark(place))
 	}
 	lines = append(lines, n.describeSelf(prior.Self, current.Self)...)
 
@@ -83,10 +99,18 @@ func (n *turnNarrator) write(out io.Writer, cmd bakeryCommand, turn simulation.T
 	if cmd.Action == simulation.ActionOpen {
 		opened = target
 	}
+	var revealed []string
 	for _, obj := range current.Targets {
 		now := current.Details[obj.Ref]
-		was := prior.Details[obj.Ref]
-		if detail := n.describeTarget(obj, current, opened, explained[obj.Ref]); detail != "" {
+		was, seen := prior.Details[obj.Ref]
+		if !seen && opened != "" && now.Holder == opened {
+			item := n.mark(indefiniteName(obj.Name))
+			if n.style == "story" {
+				revealed = append(revealed, item)
+			} else {
+				lines = append(lines, "Inside lies "+item+".")
+			}
+		} else if detail := n.describeTarget(obj, current, explained[obj.Ref]); detail != "" {
 			lines = append(lines, detail)
 		}
 		if now.Recognition != "" && now.Recognition != was.Recognition && !introduced[obj.Ref] {
@@ -96,21 +120,16 @@ func (n *turnNarrator) write(out io.Writer, cmd bakeryCommand, turn simulation.T
 			lines = append(lines, n.mark(now.Expression))
 		}
 	}
-	for _, obj := range prior.Targets {
-		if _, visible := current.Details[obj.Ref]; visible {
-			continue
-		}
-		description := "the " + obj.Name
-		if len(prior.MatchingTargets(obj.Name)) > 1 || len(current.MatchingTargets(obj.Name)) != 0 {
-			description += " " + prior.Details[obj.Ref].Location
-		}
-		lines = append(lines, "You lose sight of "+n.mark(description)+".")
+	if len(revealed) > 0 {
+		// Opening a container is a single action. Keep the discovery beside its cause.
+		lines[0] = strings.TrimSuffix(message, ".") + " and find " + proseList(revealed) + " inside."
 	}
+	lines = append(lines, n.lostFromView(current)...)
 	if len(lines) != 0 {
 		if !continuing {
 			fmt.Fprintln(out)
 		}
-		if len(lines) == 1 && !continuing && cmd.Action != simulation.ActionWait && cmd.Action != simulation.ActionRest {
+		if len(lines) == 1 && lines[0] == message && !continuing && cmd.Action != simulation.ActionWait && cmd.Action != simulation.ActionRest {
 			// On an otherwise quiet turn the action itself can be the only change.
 			if words, ok := strings.CutPrefix(message, "You "); ok {
 				verb, rest, _ := strings.Cut(words, " ")
@@ -124,9 +143,6 @@ func (n *turnNarrator) write(out io.Writer, cmd bakeryCommand, turn simulation.T
 
 func (n *turnNarrator) describeSelf(was, now simulation.ObserverDetail) []string {
 	var lines []string
-	if now.Place != was.Place {
-		lines = append(lines, n.mark(now.Place))
-	}
 	if was.Seated && !now.Seated {
 		lines = append(lines, n.mark("You get back on your feet."))
 	}
@@ -143,18 +159,11 @@ func (n *turnNarrator) describeSelf(was, now simulation.ObserverDetail) []string
 	return lines
 }
 
-func (n *turnNarrator) describeTarget(obj simulation.ObservedTarget, scene simulation.Scene, opened string, explained bool) string {
+func (n *turnNarrator) describeTarget(obj simulation.ObservedTarget, scene simulation.Scene, explained bool) string {
 	now := scene.Details[obj.Ref]
 	was, seen := n.previous.Details[obj.Ref]
 	subject := "The " + obj.Name
 	switch {
-	case !seen && opened != "" && now.Holder == opened:
-		article := "a "
-		first, _ := utf8.DecodeRuneInString(obj.Name)
-		if strings.ContainsRune("aeiou", unicode.ToLower(first)) {
-			article = "an "
-		}
-		return "Inside lies " + n.mark(article+obj.Name) + "."
 	case !seen && now.Holder == scene.ObserverID:
 		return "You carry " + n.mark("the "+obj.Name) + "."
 	case !seen:
@@ -168,6 +177,9 @@ func (n *turnNarrator) describeTarget(obj simulation.ObservedTarget, scene simul
 			return subject + " is now " + n.mark(now.Location) + "."
 		}
 		// A resident can move closer while staying in the same compass direction.
+		if direction, ok := strings.CutPrefix(now.Location, "to the "); n.style == "story" && ok {
+			subject = "To the " + direction + ", the " + obj.Name
+		}
 		before := squaredDistance(n.previous.Self.Cell, was.Cell)
 		after := squaredDistance(scene.Self.Cell, now.Cell)
 		switch {
@@ -178,8 +190,97 @@ func (n *turnNarrator) describeTarget(obj simulation.ObservedTarget, scene simul
 		default:
 			return subject + " " + n.mark("takes a step") + "."
 		}
+	case n.style == "story" && now.Holder == "" && was.Holder == "" &&
+		squaredDistance(n.previous.Self.Cell, was.Cell) > 1 && squaredDistance(scene.Self.Cell, now.Cell) == 1:
+		// The observer has stepped alongside something they could already see.
+		return "The " + now.Label + " is " + n.mark("beside you now") + "."
 	}
 	return ""
+}
+
+func (n *turnNarrator) lostFromView(scene simulation.Scene) []string {
+	var lines []string
+	var names []string
+	var lastPlace string
+	flush := func() {
+		if len(names) > 0 {
+			lines = append(lines, "You lose sight of "+proseList(names)+", last seen "+lastPlace+".")
+			names = names[:0]
+		}
+	}
+	for _, obj := range n.previous.Targets {
+		if _, visible := scene.Details[obj.Ref]; visible {
+			continue
+		}
+		name := "the " + obj.Name
+		where := n.previous.Details[obj.Ref].Location
+		ambiguous := len(n.previous.MatchingTargets(obj.Name)) > 1 || len(scene.MatchingTargets(obj.Name)) > 0
+		if n.style == "story" && scene.Self.Cell != n.previous.Self.Cell {
+			switch {
+			case where == "here":
+				where = "where you stood before your last step"
+			case strings.HasPrefix(where, "to the "):
+				where += " before your last step"
+			}
+		}
+		if n.style == "story" && !ambiguous {
+			if where != lastPlace {
+				flush()
+				lastPlace = where
+			}
+			names = append(names, n.mark(name))
+			continue
+		}
+		flush()
+		if ambiguous {
+			name += " " + where
+		}
+		lines = append(lines, "You lose sight of "+n.mark(name)+".")
+	}
+	flush()
+	return lines
+}
+
+func indefiniteName(name string) string {
+	first, _ := utf8.DecodeRuneInString(name)
+	if strings.ContainsRune("aeiou", unicode.ToLower(first)) {
+		return "an " + name
+	}
+	return "a " + name
+}
+
+func proseList(items []string) string {
+	switch len(items) {
+	case 0:
+		return ""
+	case 1:
+		return items[0]
+	case 2:
+		return items[0] + " and " + items[1]
+	default:
+		return strings.Join(items[:len(items)-1], ", ") + ", and " + items[len(items)-1]
+	}
+}
+
+// Use the actor's last view for recollections and the current view for arrivals.
+func (n *turnNarrator) storyAction(cmd bakeryCommand, target string, scene simulation.Scene, outcome, place string) (string, string) {
+	switch cmd.Action {
+	case simulation.ActionMove:
+		for _, entry := range []struct{ prefix, destination string }{
+			{"You are in ", "into "}, {"You are on ", "onto "},
+		} {
+			if where, ok := strings.CutPrefix(place, entry.prefix); ok {
+				return "You step " + string(cmd.Args.Direction) + " " + n.mark(entry.destination+strings.TrimSuffix(where, ".")) + ".", ""
+			}
+		}
+	case simulation.ActionTake:
+		was := n.previous.Details[target]
+		now := scene.Details[target]
+		if now.Holder == scene.ObserverID && was.Holder != "" && was.Holder != scene.ObserverID {
+			return "You " + n.mark("pick up") + " the " + now.Label + " you saw " + was.Location + ".", place
+		}
+	}
+	return outcome, place
 }
 
 func squaredDistance(a, b simulation.CellPosition) int {

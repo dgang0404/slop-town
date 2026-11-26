@@ -32,6 +32,25 @@ The same commands ran with terminal bold, with `NO_COLOR=1`, with `TERM=dumb`, a
 
 A three-step walk to the crate mentioned the approach once and arrived on the same tick as the three directional moves. A worker’s introduction on the second step of a separate walk paused the passage at tick 4. A player who lost sight of the baker learned only that the baker had passed out of view. A test with two spoons distinguished them by their visible locations. The offline build, test suite, both fixture smoke runs, and three race-detector runs passed. [Transcript tests](../../cmd/sloptown/narration_test.go) · [Interrupted walk and replay test](../../cmd/sloptown/walk_test.go)
 
+## Checkpoint 2 — adjustable narration
+
+The bakery starts with brief turn descriptions. Choose `narration story` at the prompt for fuller passages, or launch the demo with `go run ./cmd/sloptown bakery -play -narration story`. The arrow menu offers the other style. The choice applies to this session, including when playing from a SQLite save. [Play the bakery](../../README.md#look-inside-the-bakery)
+
+| Seed-42 command | Brief | Story |
+| --- | --- | --- |
+| Step east from the bakery doorway | You move east. **You are in the bakery.** | You step east **into the bakery**. The closed crate is **beside you now**. |
+| Open the crate | You open the crate. Inside lies **a wooden spoon**. | You open the crate and find **a wooden spoon** inside. |
+| Take the spoon | You **take** the wooden spoon. | You **pick up** the wooden spoon you saw in the crate. |
+| Wait when nothing else changes | You wait. | You wait. |
+
+The story templates use the player’s current and previous observations. They can recall where the player saw an object, or describe two residents disappearing together from the same part of the street. A spoken introduction still interrupts a walk. Asking about the setting or changing it during a numbered choice preserves that choice.
+
+### Checkpoint 2 results
+
+A seed-42 visit opened the door, stepped east twice, opened the crate, took the spoon, put it back, waited, and used `look`. Brief, story and a mid-visit switch produced identical receipts for all seven actions. Retrying each visit from the beginning acknowledged those seven actions. Replay from sequence zero reached tick 7, sequence 14, with SHA-256 `600f08f071d98edc8191e6aaacd48ede82254884a5c491c723b6490efe985d17`.
+
+In an interactive Linux terminal, selecting `narration story` with the arrows and Enter left the opening save at tick zero. The walkthrough then showed the new spoon in bold and reached the same replay hash as both plain-text runs. The full offline build and test suite, both seed-42 smoke runs, and three race-detector runs passed. [Walkthrough and interruption tests](../../cmd/sloptown/narration_test.go)
+
 ## Later narrative work
 
-Use deterministic prose templates to give connected actions a consistent voice offline. A player who prefers brief narration can get a sentence, while a player who wants more description can read a fuller passage grounded in the same facts. The chronicle can group witnessed events into chapters by day, season, or a significant occurrence. Dialogue and journal entries draw on each participant’s knowledge, so a missed meeting can become a later discovery.
+Build a player journal from what the character saw, heard and did. The chronicle can group witnessed events into chapters by day, season, or a significant occurrence. Dialogue and journal entries draw on each participant’s knowledge, so a missed meeting can become a later discovery.

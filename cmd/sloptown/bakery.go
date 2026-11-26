@@ -22,10 +22,18 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	timeline := flags.String("timeline", "main", "bakery timeline")
 	batch := flags.String("batch", "", "repeat the same batch ID to retry its ordered requests")
 	play := flags.Bool("play", false, "read one player command per line")
+	var style string
+	flags.Func("narration", "choose brief or story narration in play", func(value string) error {
+		if !validNarration(value) {
+			return errors.New("choose brief or story")
+		}
+		style = value
+		return nil
+	})
 	resident := flags.Bool("resident", false, "include the baker's work routine when creating a new timeline")
 	practice := flags.Bool("practice", false, "create a resident bakery with use-based endurance")
 	flags.Usage = func() {
-		fmt.Fprintln(stderr, "Usage: sloptown bakery [-seed N] [-resident] [-practice] [-db PATH] [-timeline NAME] [-batch ID] [-play | ACTION ...]")
+		fmt.Fprintln(stderr, "Usage: sloptown bakery [-seed N] [-resident] [-practice] [-db PATH] [-timeline NAME] [-batch ID] [-play [-narration brief|story] | ACTION ...]")
 		fmt.Fprintln(stderr, "Actions: wait | rest | move DIRECTION | open NAME | close NAME | take NAME | drop NAME | put ITEM CONTAINER | introduce PERSON | approach NAME")
 	}
 	if err := flags.Parse(args); err != nil {
@@ -38,12 +46,19 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		flags.Usage()
 		return 2
 	}
+	if style != "" && !*play {
+		fmt.Fprintln(stderr, "-narration requires -play")
+		return 2
+	}
+	if style == "" {
+		style = "brief"
+	}
 	scope := simulation.Scope{WorldID: "bakery", TimelineID: *timeline}
 	setup := simulation.BakerySetup{Resident: *resident, Practice: *practice}
 	const player = "bakery/player"
 	var session bakerySession
 	if *play {
-		session.narrator = &turnNarrator{bold: terminalBold(stdout)}
+		session.narrator = &turnNarrator{bold: terminalBold(stdout), style: style}
 	}
 	var submit func(simulation.Proposal, *simulation.CommandInput) (simulation.Turn, error)
 	request := 1
