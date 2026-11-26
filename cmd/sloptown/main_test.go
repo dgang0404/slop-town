@@ -2,7 +2,10 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/json"
+	"log/slog"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -10,11 +13,55 @@ import (
 	"github.com/dgang0404/slop-town/internal/simulation"
 )
 
+var quiet = slog.New(slog.DiscardHandler)
+
+func TestTraceOutput(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "private-save.sqlite")
+	args := []string{"-db", path, "-seed", "42"}
+	var plain, traced, diagnostic bytes.Buffer
+	if code := run(args, &plain, &diagnostic); code != 0 || diagnostic.Len() != 0 {
+		t.Fatalf("plain run exited %d: %s", code, diagnostic.String())
+	}
+	if code := run(append(args, "-trace"), &traced, &diagnostic); code != 0 || traced.String() != plain.String() {
+		t.Fatalf("traced run exited %d with stdout %q", code, traced.String())
+	}
+	lines := strings.Split(strings.TrimSpace(diagnostic.String()), "\n")
+	if len(lines) != 2 || strings.Contains(diagnostic.String(), path) {
+		t.Fatalf("unexpected trace: %s", diagnostic.String())
+	}
+	var runID string
+	for i, msg := range []string{"fixture_committed", "fixture_verified"} {
+		var record map[string]any
+		if err := json.Unmarshal([]byte(lines[i]), &record); err != nil {
+			t.Fatal(err)
+		}
+		if i == 0 {
+			runID, _ = record["run_id"].(string)
+		}
+		if runID == "" || record["run_id"] != runID || record["msg"] != msg || record["seed"] != float64(42) || record["world_id"] != "smoke" || record["timeline_id"] != "main" {
+			t.Fatalf("unexpected %s record: %v", msg, record)
+		}
+	}
+}
+
+func TestTraceSaveFailure(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	path := filepath.Join(t.TempDir(), "missing", "private-save.sqlite")
+	code := run([]string{"-trace", "-db", path}, &stdout, &stderr)
+	var record map[string]any
+	if err := json.Unmarshal(stderr.Bytes(), &record); err != nil {
+		t.Fatal(err)
+	}
+	if code != 1 || stdout.Len() != 0 || record["msg"] != "fixture_failed" || record["stage"] != "save" || strings.Contains(stderr.String(), path) {
+		t.Fatalf("unexpected failure report: exit %d, stdout %q, stderr %q", code, stdout.String(), stderr.String())
+	}
+}
+
 func TestSmokePersistence(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "fixture.sqlite")
 	run := func(seed int64) string {
 		t.Helper()
-		hash, err := smoke(path, seed)
+		hash, err := smoke(path, seed, quiet)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -34,7 +81,7 @@ func TestSmokePersistence(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := smoke(path, 17); err == nil {
+	if _, err := smoke(path, 17, quiet); err == nil {
 		t.Fatal("failed to detect modified saved fixture")
 	}
 }
@@ -73,7 +120,7 @@ func TestLegacyMigrationRunsTwice(t *testing.T) {
 	path, db, original := legacyFixture(t)
 	var firstSchema int
 	for run := 1; run <= 2; run++ {
-		hash, err := smoke(path, 42)
+		hash, err := smoke(path, 42, quiet)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -105,7 +152,7 @@ func TestFailedSaveRollsBack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := smoke(path, 43); err == nil || !strings.Contains(err.Error(), "injected save failure") {
+	if _, err := smoke(path, 43, quiet); err == nil || !strings.Contains(err.Error(), "injected save failure") {
 		t.Fatalf("expected injected save failure, got %v", err)
 	}
 	hash, err := verifyFixture(path, 42)
@@ -124,7 +171,7 @@ func TestFailedSaveRollsBack(t *testing.T) {
 	if _, err := db.Exec("DROP TRIGGER fail_save"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := smoke(path, 43); err != nil {
+	if _, err := smoke(path, 43, quiet); err != nil {
 		t.Fatalf("retry failed: %v", err)
 	}
 }

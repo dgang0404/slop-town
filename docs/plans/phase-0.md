@@ -61,3 +61,21 @@ The runner saves a seeded fixture, reopens the SQLite file, and verifies the val
 Schema version 1 uses SQLite's `PRAGMA user_version`. The runner upgrades an unversioned save in the same transaction as the fixture insert. It keeps existing fixture rows and adds a single `fixture_metadata` row identifying the smoke world (`smoke`) and its timeline (`main`). Later runs skip the migration.
 
 With dependencies cached, run `GOPROXY=off go test -count=1 -v ./...` to reproduce the persistence checks. The tests run the upgrade twice and force an insert to fail after changing an existing fixture. They reopen the save to verify its original hash, check that the new row and schema changes rolled back, and retry the save.
+
+## Runner diagnostics
+
+Use `./sloptown -trace -seed 42` to follow one fixture run. The terminal writes newline-delimited JSON to stderr. A developer observatory can group records by `run_id` and read them in emission order. Each record includes the seed and the smoke fixture's world and timeline IDs. The run ID and timestamp are diagnostic fields and play no part in the state hash.
+
+| Trace message | Meaning |
+| --- | --- |
+| `fixture_committed` | The save transaction committed. An existing row for the seed is preserved. |
+| `fixture_verified` | The runner reopened the database, read the expected value and computed the reported SHA-256 hash. |
+| `fixture_failed` | The `stage` field identifies either `save` or `verify`. Trace mode omits database paths and raw driver error text. |
+
+On 25 November 2026 all seven tests passed offline on Linux. Plain and traced runs printed the same result:
+
+```text
+seed=42 sha256=60261db115f851c52ad8e47ec6c6b787992eab8518bf7656591bd22b923e96b5
+```
+
+After a saved value was deliberately changed, the next traced run reported `fixture_failed` at `verify` and exited 1. Invalid seed text, an empty database path and a stray positional argument each exited 2. Help exited 0.
