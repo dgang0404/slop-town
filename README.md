@@ -21,6 +21,8 @@ In Phase 4 the baker and porter follow work routines, choose where to rest and k
 
 In Phase 5, the player and residents build endurance, feel relief after a tiring walk, and recognize people who have introduced themselves. [Phase 5 plan](docs/plans/phase-5.md) · [Acceptance results](docs/plans/phase-5-results.md)
 
+Phase 7 covers narrative and dialogue. Its planned terminal readability checkpoint will shorten routine turn descriptions, bold newly observed changes, and keep the full scene available through `look`. [Phase 7 presentation plan](docs/plans/phase-7.md)
+
 To validate a local content pack, run `go run ./cmd/packcheck PACK_DIRECTORY`. The [manifest guide](docs/content-packs.md) includes a bundled example.
 
 ## Run the Phase 0 fixture
