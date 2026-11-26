@@ -121,6 +121,12 @@ func (b *Bakery) observe(scope Scope, actorID string, locations map[string]strin
 	} else if b.ContentVersion >= practiceContentVersion && actor.Fatigue == fatigueLimit {
 		lines = append(lines, "Your legs feel tired.")
 	}
+	switch actor.ReliefTurns {
+	case reliefDuration:
+		lines = append(lines, "You feel relieved.")
+	case 1, 2:
+		lines = append(lines, "A little of that relief lingers.")
+	}
 	for _, id := range slices.Sorted(maps.Keys(b.Entities)) {
 		if id == actorID {
 			continue
@@ -150,6 +156,9 @@ func (b *Bakery) observe(scope Scope, actorID string, locations map[string]strin
 			locations[id] = location
 		}
 		lines = append(lines, "You see the "+label+" "+location+".")
+		if e.ReliefTurns == reliefDuration {
+			lines = append(lines, "The "+e.Name+"'s shoulders look relaxed.")
+		}
 		tile := &tiles[pos.Y][pos.X]
 		*tile = strings.TrimPrefix(*tile, ".") + glyph
 	}

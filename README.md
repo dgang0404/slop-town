@@ -138,6 +138,8 @@ north
 rest
 ```
 
+When you sit after a tiring walk, you feel relieved. The feeling lingers for two more turns. To see how it looks from the outside, start a fresh practice bakery and wait at the shopfront. On turn 10 you can see the porter’s shoulders relax, and on turn 12 you can see the same change in the baker. Walk two steps south at the start and you’ll miss the baker’s break.
+
 To keep the visit, add `-db practice.sqlite` when creating the timeline and use the same path when returning.
 
 ### Inspect the residents' notebooks

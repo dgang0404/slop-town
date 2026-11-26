@@ -120,6 +120,7 @@ type EventPayload struct {
 	Target            string       `json:",omitempty"`
 	HolderID          string       `json:",omitempty"`
 	EndurancePractice bool         `json:",omitempty"`
+	ReliefStarted     bool         `json:",omitempty"`
 }
 
 type requestKey struct{ actorID, requestID string }
@@ -277,6 +278,9 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 			return reject("resolution_failed", "The resident could not finish the turn."), nil
 		}
 		events = append(events, residents...)
+		if nextBakery.ContentVersion >= emotionContentVersion {
+			nextBakery.advanceRelief(events)
+		}
 		view, err := nextBakery.Observe(scope, actorID)
 		if err != nil {
 			return reject("resolution_failed", "You cannot observe your surroundings."), nil

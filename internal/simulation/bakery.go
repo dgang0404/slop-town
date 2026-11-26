@@ -55,6 +55,7 @@ type SpatialEntity struct {
 	SeekingRestSpot    bool   `json:",omitempty"`
 	WalkedCells        uint32 `json:",omitempty"`
 	EnduranceBouts     int    `json:",omitempty"`
+	ReliefTurns        int    `json:",omitempty"`
 }
 
 // Bakery is authoritative fixture state. Cells are in row-major order and
@@ -85,6 +86,7 @@ const (
 	notebookContentVersion    = 4
 	personalityContentVersion = 5
 	practiceContentVersion    = 6
+	emotionContentVersion     = 7
 	fatigueLimit              = 5 // Steps since the last rest, capped during a break.
 )
 
@@ -111,7 +113,7 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 	}
 	b.ContentVersion = personalityContentVersion
 	if setup.Practice {
-		b.ContentVersion = practiceContentVersion
+		b.ContentVersion = emotionContentVersion
 	}
 	*clock = staged
 	return b, nil
@@ -229,6 +231,9 @@ func (b *Bakery) Validate() error {
 		}
 		if _, err := b.PositionOf(id); err != nil {
 			return err
+		}
+		if e.ReliefTurns != 0 && (e.Kind != Actor || b.ContentVersion < emotionContentVersion || e.ReliefTurns < 0 || e.ReliefTurns > reliefDuration) {
+			return fmt.Errorf("invalid relief for %q", id)
 		}
 		if err := b.validatePractice(id, e); err != nil {
 			return err
