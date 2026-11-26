@@ -17,7 +17,7 @@ Phase 2 follows a wooden spoon from a bakery crate to the street. The runner can
 
 Phase 3 adds a playable text-command session, contextual actions and numbered choices for ambiguous names. Its acceptance test compares a typed walkthrough with explicit commands across restarts. [Phase 3 plan](docs/plans/phase-3.md) · [Acceptance results](docs/plans/phase-3-results.md)
 
-Phase 4 starts with a baker who opens the shop and walks between the street and the prep area as game time passes. [Phase 4 plan](docs/plans/phase-4.md)
+In Phase 4 the baker and porter follow work routines, choose where to rest and keep private notebooks. The acceptance walkthrough follows a break the porter witnesses while the player is down the street. [Phase 4 plan](docs/plans/phase-4.md) · [Acceptance results](docs/plans/phase-4-results.md)
 
 To validate a local content pack, run `go run ./cmd/packcheck PACK_DIRECTORY`. The [manifest guide](docs/content-packs.md) includes a bundled example.
 
