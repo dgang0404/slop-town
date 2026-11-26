@@ -16,7 +16,7 @@ func (s bakerySession) menu(cmd bakeryCommand) ([]menuChoice, *simulation.Scene,
 	if question := cmd.question(); question != nil {
 		for i, option := range question.options {
 			n := strconv.Itoa(i + 1)
-			choices = append(choices, menuChoice{n + ". " + option.Name + " " + cmd.details[option.Ref].Location, n})
+			choices = append(choices, menuChoice{n + ". " + option.label, n})
 		}
 		return append(choices, menuChoice{"cancel", "cancel"}), nil, nil
 	}

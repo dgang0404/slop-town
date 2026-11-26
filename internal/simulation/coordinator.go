@@ -31,13 +31,15 @@ const (
 	ActionDrop      ActionKind = "drop"
 	ActionIntroduce ActionKind = "introduce"
 	ActionApproach  ActionKind = "approach"
+	ActionSpeak     ActionKind = "speak"
 )
 
 type ActionArgs struct {
-	Stream    string    `json:"stream,omitempty"`
-	Direction Direction `json:"direction,omitempty"`
-	Target    string    `json:"target,omitempty"`
-	Container string    `json:"container,omitempty"` // Destination of a put.
+	Stream    string     `json:"stream,omitempty"`
+	Direction Direction  `json:"direction,omitempty"`
+	Target    string     `json:"target,omitempty"`
+	Container string     `json:"container,omitempty"` // Destination of a put.
+	Speech    SpeechLine `json:"speech,omitzero"`
 }
 
 type FixtureArgs = ActionArgs
@@ -124,6 +126,7 @@ type EventPayload struct {
 	HolderID          string       `json:",omitempty"`
 	EndurancePractice bool         `json:",omitempty"`
 	ReliefStarted     bool         `json:",omitempty"`
+	Dialogue          Exchange     `json:",omitzero"`
 }
 
 type requestKey struct{ actorID, requestID string }
@@ -135,6 +138,7 @@ type CommandInput struct {
 	Container       string `json:"container,omitempty"`
 	TargetChoice    int    `json:"target_choice,omitempty"`
 	ContainerChoice int    `json:"container_choice,omitempty"`
+	LineChoice      int    `json:"line_choice,omitempty"`
 }
 
 type Receipt struct {
@@ -319,7 +323,9 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 		// The notebook records visibility at the instant of each effect, even
 		// if a later effect moves its subject out of the final scene.
 		for _, entry := range nextBakery.Notebooks[actorID][len(bakery.Notebooks[actorID]):] {
-			scene.Witnessed = append(scene.Witnessed, nextBakery.witnessedAction(entry))
+			if entry.Action != ActionSpeak {
+				scene.Witnessed = append(scene.Witnessed, nextBakery.witnessedAction(entry))
+			}
 		}
 		result.Message = message
 		interrupted := false

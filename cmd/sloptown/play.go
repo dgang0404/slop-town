@@ -13,10 +13,11 @@ import (
 	"github.com/dgang0404/slop-town/internal/simulation"
 )
 
-const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use walk to NAME to approach a visible destination. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. Use introduce yourself to NAME when available. Short names work. Use it for the last object you acted on. Type actions for choices here, look for the current scene, journal to read your memories or quit to leave. Use export journal to save a text copy. Choose narration brief or narration story to change how turns read."
+const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use walk to NAME to approach a visible destination. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. Use introduce yourself to NAME or talk to NAME when someone is nearby. Short names work. Use it for the last object you acted on. Type actions for choices here, look for the current scene, journal to read your memories or quit to leave. Use export journal to save a text copy. Choose narration brief or narration story to change how turns read."
 
 type bakerySession struct {
 	narrator  *turnNarrator
+	dialogue  func(string) ([]simulation.DialogueChoice, error)
 	journal   func() ([]simulation.JournalEntry, error)
 	observe   func() (simulation.Scene, error)
 	available func() ([]simulation.ActionOption, error)
@@ -69,6 +70,11 @@ func (s bakerySession) play(in io.Reader, out io.Writer) error {
 		switch line {
 		case "":
 			continue
+		case "cancel":
+			// A retried batch may already have reached the end of this prompt.
+			cmd = bakeryCommand{}
+			fmt.Fprintln(out, "Cancelled.")
+			continue
 		case "quit", "exit":
 			return nil
 		case "help", "?":
@@ -113,11 +119,6 @@ func (s bakerySession) play(in io.Reader, out io.Writer) error {
 			continue
 		}
 		if n := cmd.question(); n != nil {
-			if line == "cancel" {
-				cmd = bakeryCommand{}
-				fmt.Fprintln(out, "Cancelled.")
-				continue
-			}
 			i, err := strconv.Atoi(line)
 			if n.repeatNumber > 0 {
 				if err != nil || i < 1 {
@@ -133,7 +134,11 @@ func (s bakerySession) play(in io.Reader, out io.Writer) error {
 				fmt.Fprintf(out, "Enter a number from 1 to %d or type cancel.\n", len(n.options))
 				continue
 			} else {
-				n.ref = n.options[i-1].Ref
+				selected := n.options[i-1]
+				n.ref = selected.ref
+				if n == &cmd.speech {
+					cmd.Args.Speech = selected.line
+				}
 			}
 			n.number = i
 		} else {
@@ -153,6 +158,16 @@ func (s bakerySession) play(in io.Reader, out io.Writer) error {
 			}
 			if rejection != "" {
 				fmt.Fprintln(out, rejection)
+				continue
+			}
+		}
+		if cmd.Action == simulation.ActionSpeak && cmd.question() == nil && cmd.Args.Speech == (simulation.SpeechLine{}) {
+			if err := s.loadLines(&cmd); err != nil {
+				return err
+			}
+			if len(cmd.speech.options) == 0 {
+				fmt.Fprintln(out, "There is nobody you can talk to by that name here.")
+				cmd = bakeryCommand{}
 				continue
 			}
 		}
@@ -180,7 +195,20 @@ func (s bakerySession) play(in io.Reader, out io.Writer) error {
 				}
 			}
 		}
-		cmd = bakeryCommand{}
+		if result.Status == "accepted" && cmd.Action == simulation.ActionSpeak {
+			next, err := s.nextExchange(cmd)
+			if err != nil {
+				return err
+			}
+			cmd = next
+			if n := cmd.question(); n != nil {
+				cmd.prompt(out, n)
+			} else {
+				fmt.Fprintln(out, "The conversation ends.")
+			}
+		} else {
+			cmd = bakeryCommand{}
+		}
 	}
 }
 
@@ -199,6 +227,8 @@ func actionCommand(option simulation.ActionOption) string {
 		return "go " + string(option.Args.Direction)
 	case simulation.ActionApproach:
 		return "walk to the " + option.Args.Target
+	case simulation.ActionSpeak:
+		return "talk to the " + option.Args.Target
 	case simulation.ActionIntroduce:
 		return "introduce yourself to the " + option.Args.Target
 	case simulation.ActionPut:
@@ -259,6 +289,11 @@ func parseBakeryAction(words []string) (simulation.ActionKind, simulation.Action
 			return "", args, errors.New("Choose north, south, east or west.")
 		}
 		return simulation.ActionMove, simulation.ActionArgs{Direction: direction(rest[0])}, nil
+	case "talk":
+		if len(rest) < 2 || rest[0] != "to" || noun(rest[1:]) == "" {
+			return "", args, errors.New("Use talk to NAME.")
+		}
+		return simulation.ActionSpeak, simulation.ActionArgs{Target: noun(rest[1:])}, nil
 	case "introduce":
 		if len(rest) < 3 || rest[0] != "yourself" || rest[1] != "to" || noun(rest[2:]) == "" {
 			return "", args, errors.New("Use introduce yourself to NAME.")

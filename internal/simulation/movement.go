@@ -82,6 +82,10 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 			return spatialEffect{}, &actionFailure{"invalid_request", "Movement takes one direction."}
 		}
 		return b.move(view.ObserverID, actor, args.Direction)
+	case ActionSpeak:
+		if !validID(args.Target) || args != (ActionArgs{Target: args.Target, Speech: args.Speech}) {
+			return spatialEffect{}, &actionFailure{"invalid_request", "Choose a listener and a line to say."}
+		}
 	case ActionPut:
 		if !validID(args.Target) || !validID(args.Container) || args != (ActionArgs{Target: args.Target, Container: args.Container}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Choose an item and a destination container."}
@@ -103,6 +107,9 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 		if failure != nil {
 			return spatialEffect{}, failure
 		}
+	}
+	if action == ActionSpeak {
+		return b.speak(view, args.Target, args.Speech)
 	}
 	if action == ActionApproach {
 		return b.approach(view.ObserverID, args.Target)

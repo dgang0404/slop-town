@@ -70,6 +70,7 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			return 1
 		}
 		session.observe = func() (simulation.Scene, error) { return c.Scene(player) }
+		session.dialogue = func(listener string) ([]simulation.DialogueChoice, error) { return c.DialogueChoices(player, listener) }
 		session.journal = func() ([]simulation.JournalEntry, error) { return c.Journal(player) }
 		session.available = func() ([]simulation.ActionOption, error) { return c.AvailableActions(player) }
 		submit = func(p simulation.Proposal, _ *simulation.CommandInput) (simulation.Turn, error) {
@@ -78,6 +79,9 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	} else {
 		session.observe = func() (simulation.Scene, error) {
 			return storage.OpenBakerySceneWithSetup(*path, scope, *seed, player, setup)
+		}
+		session.dialogue = func(listener string) ([]simulation.DialogueChoice, error) {
+			return storage.BakeryDialogueChoices(*path, scope, player, listener)
 		}
 		session.journal = func() ([]simulation.JournalEntry, error) { return storage.BakeryJournal(*path, scope, player) }
 		session.available = func() ([]simulation.ActionOption, error) { return storage.BakeryActions(*path, scope, player) }

@@ -21,7 +21,7 @@ In Phase 4 the baker and porter follow work routines, choose where to rest and k
 
 In Phase 5, the player and residents build endurance, feel relief after a tiring walk, and recognize people who have introduced themselves. [Phase 5 plan](docs/plans/phase-5.md) · [Acceptance results](docs/plans/phase-5-results.md)
 
-The Phase 7 bakery narrator offers brief and story settings. Both describe what your character notices, with new details in bold on supported terminals. The player journal recalls the visit in chapters and can be exported as plain text. [Phase 7 presentation plan](docs/plans/phase-7.md)
+The Phase 7 bakery narrator offers brief and story settings. Both describe what your character notices, with new details in bold on supported terminals. In the practice bakery, you can ask a worker what they have seen. The player journal recalls the visit and its conversations in chapters and can be exported as plain text. [Phase 7 presentation plan](docs/plans/phase-7.md)
 
 To validate a local content pack, run `go run ./cmd/packcheck PACK_DIRECTORY`. The [manifest guide](docs/content-packs.md) includes a bundled example.
 
@@ -105,6 +105,12 @@ go run ./cmd/sloptown bakery -seed 42 open "bakery door" move east move east ope
 ```
 
 This command-line walkthrough prints the full player view after each action. On the grid, `@` marks the player, `?` a square out of sight, and `#` a wall. Opening the lid changes the crate's square from `C` to `c*` as the spoon comes into view. Omit `-db` for a fresh in-memory session.
+
+### Talk to a worker
+
+Start a fresh practice bakery with `go run ./cmd/sloptown bakery -practice -play -seed 42`. Enter `wait` three times at the shopfront, then `talk to baker`. Choose **“What have you seen around here?”** with the arrows and Enter, or type its number. The baker can tell you about a meeting you missed. Look for **“So the porter introduced themselves to you?”** in the refreshed choices.
+
+Each exchange takes one turn. The workers keep their routines and can walk out of reach. Browsing the lines and typing `cancel` to leave cost no time. Type `journal` to read who said what.
 
 ### Read your journal
 

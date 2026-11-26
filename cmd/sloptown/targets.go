@@ -8,10 +8,15 @@ import (
 	"github.com/dgang0404/slop-town/internal/simulation"
 )
 
-type nounChoice struct {
+type promptOption struct {
+	label, ref string
+	line       simulation.SpeechLine
+}
+
+type promptChoice struct {
 	phrase       string
 	ref          string
-	options      []simulation.ObservedTarget
+	options      []promptOption
 	number       int
 	repeatNumber int
 }
@@ -20,10 +25,9 @@ type nounChoice struct {
 // that was displayed even if another session has since moved an object.
 type bakeryCommand struct {
 	simulation.Proposal
-	target, container nounChoice
-	details           map[string]simulation.VisibleDetail
-	receipt           *simulation.Receipt
-	continuation      bool
+	target, container, speech promptChoice
+	receipt                   *simulation.Receipt
+	continuation              bool
 }
 
 func (s bakerySession) command(action simulation.ActionKind, args simulation.ActionArgs, last string) (bakeryCommand, string, error) {
@@ -61,8 +65,9 @@ func recordedCommand(r *simulation.Receipt, action simulation.ActionKind, args s
 			(args.Target == "it" && last != p.Args.Target) || (args.Container == "it" && last != p.Args.Container) {
 			return bakeryCommand{}, false
 		}
-		cmd.target = nounChoice{phrase: args.Target, ref: p.Args.Target, repeatNumber: input.TargetChoice}
-		cmd.container = nounChoice{phrase: args.Container, ref: p.Args.Container, repeatNumber: input.ContainerChoice}
+		cmd.target = promptChoice{phrase: args.Target, ref: p.Args.Target, repeatNumber: input.TargetChoice}
+		cmd.container = promptChoice{phrase: args.Container, ref: p.Args.Container, repeatNumber: input.ContainerChoice}
+		cmd.speech = promptChoice{phrase: "what to say", repeatNumber: input.LineChoice}
 		return cmd, true
 	}
 	// Older reference receipts only record the resolved objects. Leave them
@@ -75,25 +80,27 @@ func (cmd *bakeryCommand) input() *simulation.CommandInput {
 		return nil
 	}
 	return &simulation.CommandInput{Target: cmd.target.phrase, Container: cmd.container.phrase,
-		TargetChoice: cmd.target.number, ContainerChoice: cmd.container.number}
+		TargetChoice: cmd.target.number, ContainerChoice: cmd.container.number, LineChoice: cmd.speech.number}
 }
 
 func prepareCommand(action simulation.ActionKind, args simulation.ActionArgs, scene simulation.Scene, last string) (bakeryCommand, string) {
-	cmd := bakeryCommand{Proposal: simulation.Proposal{Action: action, Args: args, ByName: args.Target != ""}, details: scene.Details}
-	match := func(phrase string) nounChoice {
-		n := nounChoice{phrase: phrase}
+	cmd := bakeryCommand{Proposal: simulation.Proposal{Action: action, Args: args, ByName: args.Target != "" && action != simulation.ActionSpeak}}
+	match := func(phrase string) promptChoice {
+		n := promptChoice{phrase: phrase}
 		if phrase == "it" {
 			n.ref = last
 		} else {
-			n.options = scene.MatchingTargets(phrase)
+			for _, t := range scene.MatchingTargets(phrase) {
+				n.options = append(n.options, promptOption{ref: t.Ref, label: t.Name + " " + scene.Details[t.Ref].Location})
+			}
 			if len(n.options) == 1 {
-				n.ref = n.options[0].Ref
+				n.ref = n.options[0].ref
 			}
 		}
 		return n
 	}
 	cmd.target, cmd.container = match(args.Target), match(args.Container)
-	for _, n := range []nounChoice{cmd.target, cmd.container} {
+	for _, n := range []promptChoice{cmd.target, cmd.container} {
 		if n.phrase == "it" {
 			if n.ref == "" {
 				return bakeryCommand{}, "Name the object you mean by “it”."
@@ -105,7 +112,7 @@ func prepareCommand(action simulation.ActionKind, args simulation.ActionArgs, sc
 		}
 	}
 	if !cmd.ByName {
-		for _, n := range []nounChoice{cmd.target, cmd.container} {
+		for _, n := range []promptChoice{cmd.target, cmd.container} {
 			if n.phrase != "" && n.ref == "" && len(n.options) == 0 {
 				return bakeryCommand{}, "You can't reach that target."
 			}
@@ -114,8 +121,8 @@ func prepareCommand(action simulation.ActionKind, args simulation.ActionArgs, sc
 	return cmd, ""
 }
 
-func (cmd *bakeryCommand) question() *nounChoice {
-	for _, n := range []*nounChoice{&cmd.target, &cmd.container} {
+func (cmd *bakeryCommand) question() *promptChoice {
+	for _, n := range []*promptChoice{&cmd.target, &cmd.container, &cmd.speech} {
 		if n.number == 0 && (len(n.options) > 1 || n.repeatNumber > 0) {
 			return n
 		}
@@ -123,14 +130,18 @@ func (cmd *bakeryCommand) question() *nounChoice {
 	return nil
 }
 
-func (cmd *bakeryCommand) prompt(out io.Writer, n *nounChoice) {
+func (cmd *bakeryCommand) prompt(out io.Writer, n *promptChoice) {
 	if n.repeatNumber > 0 {
 		fmt.Fprintf(out, "Repeat your original choice number for %s, or type cancel.\n", n.phrase)
 		return
 	}
-	fmt.Fprintf(out, "Which %s do you mean? Enter a number or type cancel.\n", n.phrase)
+	if n == &cmd.speech {
+		fmt.Fprintln(out, "What do you say? Enter a number or type cancel.")
+	} else {
+		fmt.Fprintf(out, "Which %s do you mean? Enter a number or type cancel.\n", n.phrase)
+	}
 	for i, t := range n.options {
-		fmt.Fprintf(out, "  %d. %s %s\n", i+1, t.Name, cmd.details[t.Ref].Location)
+		fmt.Fprintf(out, "  %d. %s\n", i+1, t.label)
 	}
 }
 
@@ -158,4 +169,44 @@ func (s bakerySession) execute(cmd bakeryCommand) (simulation.Result, error) {
 		cmd.ByName = false
 		cmd.target.ref = r.SelectedTarget
 	}
+}
+
+func (s bakerySession) loadLines(cmd *bakeryCommand) error {
+	choices, err := s.dialogue(cmd.target.ref)
+	if err != nil {
+		return err
+	}
+	cmd.speech = promptChoice{phrase: "what to say"}
+	for _, choice := range choices {
+		cmd.speech.options = append(cmd.speech.options, promptOption{label: choice.Words, line: choice.Line})
+	}
+	return nil
+}
+
+// Continue with the same person, even when a namesake has moved closer.
+// A batch retry asks for the recorded number without redisplaying an old scene.
+func (s bakerySession) nextExchange(last bakeryCommand) (bakeryCommand, error) {
+	args := simulation.ActionArgs{Target: last.target.phrase}
+	if s.recall != nil {
+		r, err := s.recall()
+		if err != nil {
+			return bakeryCommand{}, err
+		}
+		if r != nil {
+			if next, ok := recordedCommand(r, simulation.ActionSpeak, args, last.target.ref); ok && next.target.ref == last.target.ref {
+				next.target.repeatNumber = 0
+				return next, nil
+			}
+			return bakeryCommand{}, nil
+		}
+	}
+	next := bakeryCommand{Proposal: simulation.Proposal{Action: simulation.ActionSpeak, Args: args},
+		target: promptChoice{phrase: last.target.phrase, ref: last.target.ref}}
+	if err := s.loadLines(&next); err != nil {
+		return bakeryCommand{}, err
+	}
+	if len(next.speech.options) == 0 {
+		return bakeryCommand{}, nil
+	}
+	return next, nil
 }

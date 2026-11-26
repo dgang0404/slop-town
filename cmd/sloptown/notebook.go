@@ -49,6 +49,10 @@ func runActorInspection(command string, args []string, stdout, stderr io.Writer)
 		fmt.Fprintln(stdout, "No firsthand sightings.")
 	}
 	for _, e := range entries {
+		if e.Action == simulation.ActionSpeak {
+			fmt.Fprintf(stdout, "Tick %d, event %d — %s told you about event %d.\n", e.Tick, e.SourceSequence, e.Subject, e.Reported)
+			continue
+		}
 		saw := "sit down"
 		if e.Action == simulation.ActionIntroduce {
 			fmt.Fprintf(stdout, "Tick %d, event %d — %s introduced themselves to you.\n", e.Tick, e.SourceSequence, e.Subject)

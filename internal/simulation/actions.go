@@ -22,10 +22,7 @@ func (b *Bakery) AvailableActions(scope Scope, actorID string) ([]ActionOption, 
 	}
 	var options []ActionOption
 	seen := make(map[ActionOption]bool)
-	offer := func(action ActionKind, args ActionArgs) {
-		if _, failure := b.planSpatial(view, Proposal{Action: action, Args: args}); failure != nil {
-			return
-		}
+	add := func(action ActionKind, args ActionArgs) {
 		if args.Target != "" {
 			args.Target = b.Entities[args.Target].Name
 		}
@@ -38,6 +35,11 @@ func (b *Bakery) AvailableActions(scope Scope, actorID string) ([]ActionOption, 
 			seen[option] = true
 		}
 	}
+	offer := func(action ActionKind, args ActionArgs) {
+		if _, failure := b.planSpatial(view, Proposal{Action: action, Args: args}); failure == nil {
+			add(action, args)
+		}
+	}
 	for _, d := range []Direction{North, East, South, West} {
 		offer(ActionMove, ActionArgs{Direction: d})
 	}
@@ -47,6 +49,9 @@ func (b *Bakery) AvailableActions(scope Scope, actorID string) ([]ActionOption, 
 		switch b.Entities[target.Ref].Kind {
 		case Actor:
 			offer(ActionIntroduce, args)
+			if lines := b.dialogueChoices(view, target.Ref); len(lines) > 0 {
+				add(ActionSpeak, ActionArgs{Target: target.Ref, Speech: lines[0].Line})
+			}
 		case Door, Container:
 			offer(ActionOpen, args)
 			offer(ActionClose, args)

@@ -77,8 +77,22 @@ A save created with the previous executable at `42c51f3` produced byte-identical
 
 The CLI also cross-built for Windows amd64 and macOS arm64. Interactive export was exercised on Linux.
 
+## Checkpoint 5 — conversations in the practice bakery
+
+Use `talk to NAME` within reach of a worker. The menu offers up to eleven distinct lines drawn from the speaker’s observations, firsthand memories and reports they heard from this listener. The player sees the words they will say. After each exchange, nearby residents take their usual turns. If the listener is still within reach, the menu refreshes. [Try the seed-42 conversation](../../README.md#talk-to-a-worker)
+
+Players and residents can submit the same speech action with a listener, topic, intent and tone. A question about a spoon in someone else’s pocket gets an answer from the listener’s own view. A worker seeking a seat can say they need one. A report preserves the person who told it and which event they witnessed. Both participants can read their exchange in their journal.
+
+### Checkpoint 5 results
+
+Three waits brought the seed-42 baker to the shopfront. The player asked what the baker had seen and learned that the porter had introduced themselves to the baker. A new line let the player confirm what they had heard. The journal quoted the baker. A separate simulation test had the baker volunteer the news to the player. The porter was nearby and received no journal entry for that exchange. A scene stocked with extra visible objects offered eleven distinct lines. Hiding the selected object before submission invalidated its question without spending a turn. [Simulation checks](../../internal/simulation/dialogue_test.go)
+
+An interrupted SQLite receipt write preserved the pre-conversation checkpoint. Reopening the save restored the follow-up question. Retrying both lines by number preserved the journal, and substituting a different number produced a request conflict. [Saved conversation walkthrough](../../cmd/sloptown/dialogue_test.go)
+
+A save made by checkpoint 4 at `4a1d626` replayed to the same tick-three hash in both executables. Continuing that save with typed choices and making the same choices in a fresh Linux terminal using Down and Enter both reached tick 5, sequence 20, with SHA-256 `5e58b9675cdff165c41eef113171ed6e4e21c8317483782b28280899294ffc66`. The full offline build and tests, both smoke runs and three race-detector runs passed.
+
 ## Later narrative work
 
-The next narrative checkpoint is deterministic dialogue grounded in each participant’s knowledge. Players and residents use the same conversation rules. Aim for about eleven player choices when enough topics fit the encounter. What the listener learns can enter their journal, so a missed meeting can become a later discovery.
+The next conversation checkpoint is for residents to start exchanges during their own routines. Two residents can meet while the player is elsewhere. A later conversation can bring news of that meeting back to the player. [Master design, section 14.9](../design/Slop_Town_Master_Design_Revised_v7.docx)
 
 A world calendar can supply day and season boundaries for longer chronicles. Illustrated export follows the plain-text edition.

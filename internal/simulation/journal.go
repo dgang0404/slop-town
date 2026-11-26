@@ -7,9 +7,17 @@ import (
 	"strings"
 )
 
-// JournalEntry holds only an actor's own action, personally witnessed interactions,
-// and discoveries in that action's saved observation. Entries are in turn order.
+// JournalSpeech preserves the words heard by a participant.
+type JournalSpeech struct {
+	With         string
+	IStarted     bool
+	Words, Reply string
+}
+
+// JournalEntry holds an actor's own action, audible dialogue, firsthand sightings
+// and discoveries in the action's saved observation. Entries are in turn order.
 type JournalEntry struct {
+	Conversation JournalSpeech
 	Action       ActionKind
 	Outcome      string
 	WalkEnd      string
@@ -62,6 +70,18 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 			page.Observations = memory.observe(r.Result.Observation)
 		}
 
+		if e.Kind == "actors_conversed" && (e.ActorID == actor || e.Payload.Target == actor) {
+			page := entryAt(e.Tick)
+			other := e.ActorID
+			started := e.ActorID == actor
+			if started {
+				other = e.Payload.Target
+				page.Outcome = "" // The exchange includes the actor's own words.
+			}
+			page.Conversation = JournalSpeech{With: b.Entities[other].Name, IStarted: started,
+				Words: e.Payload.Dialogue.Words, Reply: e.Payload.Dialogue.Reply}
+		}
+
 		// The notebook retains the first introduction for familiarity. Every
 		// introduction addressed to this actor, including a repeat, was audible.
 		if e.Kind == "actor_introduced" {
@@ -79,7 +99,7 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 		if len(sightings) > 0 && sightings[0].SourceSequence == e.Sequence {
 			s := sightings[0]
 			sightings = sightings[1:]
-			if s.Action != ActionIntroduce {
+			if s.Action != ActionIntroduce && s.Action != ActionSpeak {
 				page := entryAt(e.Tick)
 				page.Witnessed = append(page.Witnessed, b.witnessedAction(s))
 			}

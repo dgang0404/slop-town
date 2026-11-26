@@ -51,6 +51,13 @@ func writeJournal(dst io.Writer, entries []simulation.JournalEntry) error {
 		if entry.Outcome != "" && !continuation {
 			lines = append(lines, remembered(entry.Outcome))
 		}
+		if speech := entry.Conversation; speech.With != "" {
+			if speech.IStarted {
+				lines = append(lines, "I said to the "+speech.With+", “"+speech.Words+"”", "The "+speech.With+" replied, “"+speech.Reply+"”")
+			} else {
+				lines = append(lines, "The "+speech.With+" said to me, “"+speech.Words+"”", "I replied, “"+speech.Reply+"”")
+			}
+		}
 		for _, sight := range entry.Witnessed {
 			who := "the " + sight.Actor.Name
 			switch sight.Action {

@@ -2,18 +2,20 @@
 package simulation
 
 import (
+	"cmp"
 	"fmt"
 	"slices"
 )
 
-// NotebookEntry is a firsthand sighting of another actor. SourceSequence
-// identifies the causing event within the notebook owner's timeline.
+// NotebookEntry records an act the owner witnessed or a report they heard.
+// SourceSequence identifies that sighting or exchange on the owner's timeline.
 type NotebookEntry struct {
 	Tick           int64      `json:"tick"`
 	SourceSequence uint64     `json:"source_sequence"`
 	Subject        string     `json:"subject"`
 	Action         ActionKind `json:"action"`
 	Target         string     `json:"target,omitempty"`
+	Reported       uint64     `json:"reported,omitempty"` // Firsthand entry the speaker described.
 }
 
 // applySpatial records witnesses before applying this individual effect. A
@@ -28,6 +30,16 @@ func (b *Bakery) applySpatial(event Event, effect spatialEffect) {
 func (b *Bakery) recordWitnesses(event Event) {
 	entry := NotebookEntry{Tick: event.Tick, SourceSequence: event.Sequence, Subject: event.ActorID, Target: event.Payload.Target}
 	switch event.Kind {
+	case "actors_conversed":
+		x := event.Payload.Dialogue
+		heard := func(owner, speaker string, source uint64) {
+			if source != 0 {
+				b.appendSighting(owner, NotebookEntry{Tick: event.Tick, SourceSequence: event.Sequence, Subject: speaker, Action: ActionSpeak, Reported: source})
+			}
+		}
+		heard(entry.Target, entry.Subject, x.SpeakerSource)
+		heard(entry.Subject, entry.Target, x.ReplySource)
+		return
 	case "actor_introduced":
 		// Familiarity starts with the person addressed. Keep the source of
 		// their first introduction even if the speaker repeats it later.
@@ -68,6 +80,18 @@ func (b *Bakery) appendSighting(owner string, entry NotebookEntry) {
 	b.Notebooks[owner] = append(slices.Clip(b.Notebooks[owner]), entry)
 }
 
+// reportedSighting retrieves only the specific firsthand memory shared aloud.
+func (b *Bakery) reportedSighting(reporter string, sequence uint64) (NotebookEntry, bool) {
+	entries := b.Notebooks[reporter]
+	i, found := slices.BinarySearchFunc(entries, sequence, func(entry NotebookEntry, seq uint64) int {
+		return cmp.Compare(entry.SourceSequence, seq)
+	})
+	if !found || entries[i].Action == ActionSpeak {
+		return NotebookEntry{}, false
+	}
+	return entries[i], true
+}
+
 // The listener's first introduction is the durable source of familiarity.
 func (b *Bakery) recognizes(listener, speaker string) bool {
 	return slices.ContainsFunc(b.Notebooks[listener], func(e NotebookEntry) bool {
@@ -95,10 +119,15 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 		var prev NotebookEntry
 		for _, e := range entries {
 			if e.Tick <= 0 || e.Tick < prev.Tick || e.Tick > tick || e.SourceSequence <= prev.SourceSequence ||
-				e.Subject == owner || b.Entities[e.Subject].Kind != Actor {
+				(e.Action != ActionSpeak && e.Reported != 0) || e.Subject == owner || b.Entities[e.Subject].Kind != Actor {
 				return fmt.Errorf("invalid notebook sighting for %q at sequence %d", owner, e.SourceSequence)
 			}
 			switch e.Action {
+			case ActionSpeak:
+				fact, ok := b.reportedSighting(e.Subject, e.Reported)
+				if !ok || fact.Tick > e.Tick || e.Reported >= e.SourceSequence || e.Target != "" || b.ContentVersion < relationshipContentVersion {
+					return fmt.Errorf("invalid reported sighting for %q at sequence %d", owner, e.SourceSequence)
+				}
 			case ActionIntroduce:
 				if b.ContentVersion < relationshipContentVersion || e.Target != owner || introduced[e.Subject] {
 					return fmt.Errorf("invalid introduction for %q at sequence %d", owner, e.SourceSequence)

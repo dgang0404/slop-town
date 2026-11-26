@@ -176,6 +176,15 @@ func BakeryNotebook(path string, scope simulation.Scope, actor string) ([]simula
 	return bakery.Notebook(actor)
 }
 
+// BakeryDialogueChoices projects one speaker's lines at the committed head.
+func BakeryDialogueChoices(path string, scope simulation.Scope, actor, listener string) ([]simulation.DialogueChoice, error) {
+	bakery, err := readBakery(path, scope)
+	if err != nil {
+		return nil, err
+	}
+	return bakery.DialogueChoices(scope, actor, listener)
+}
+
 // BakeryRestPreference exposes one saved tendency to the developer inspector.
 func BakeryRestPreference(path string, scope simulation.Scope, actor string) (int, error) {
 	bakery, err := readBakery(path, scope)
