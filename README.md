@@ -21,7 +21,7 @@ In Phase 4 the baker and porter follow work routines, choose where to rest and k
 
 In Phase 5, the player and residents build endurance, feel relief after a tiring walk, and recognize people who have introduced themselves. [Phase 5 plan](docs/plans/phase-5.md) · [Acceptance results](docs/plans/phase-5-results.md)
 
-The Phase 7 bakery narrator offers brief and story settings. Both describe what your character notices, with new details in bold on supported terminals. The player journal recalls the visit in the character’s own words. [Phase 7 presentation plan](docs/plans/phase-7.md)
+The Phase 7 bakery narrator offers brief and story settings. Both describe what your character notices, with new details in bold on supported terminals. The player journal recalls the visit in chapters and can be exported as plain text. [Phase 7 presentation plan](docs/plans/phase-7.md)
 
 To validate a local content pack, run `go run ./cmd/packcheck PACK_DIRECTORY`. The [manifest guide](docs/content-packs.md) includes a bundled example.
 
@@ -111,6 +111,16 @@ This command-line walkthrough prints the full player view after each action. On 
 Type `journal` or choose it with the arrows and Enter. After the spoon walkthrough, the journal remembers where you saw the spoon, when you took it and where you put it. In a practice bakery it can also recall a greeting you heard or a resident you saw sit down. Reading costs no game time.
 
 Start with `go run ./cmd/sloptown bakery -practice -play -db bakery.sqlite` to keep a journal across visits. Reopen the same save and type `journal` to read earlier turns. A fresh timeline starts with an empty journal.
+
+In a fresh seed-42 practice bakery, wait four turns at the shopfront and open the journal. “Meeting the baker and the porter” begins on the turn they introduce themselves. Entering the bakery for the first time can also start a chapter.
+
+Type `export journal` or select it with the arrows and Enter to save the chaptered text in the directory where you started the game. The first available name is `slop-town-journal.txt`, followed by `slop-town-journal-2.txt`, `slop-town-journal-3.txt` and so on. This also works during an in-memory visit.
+
+To export directly from an existing save, give the shell a destination filename. Add `-timeline NAME` to select another timeline in that save.
+
+```sh
+go run ./cmd/sloptown journal -db bakery.sqlite > my-bakery-visit.txt
+```
 
 ### Browse actions and walk to a destination
 

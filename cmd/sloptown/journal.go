@@ -2,19 +2,24 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 
 	"github.com/dgang0404/slop-town/internal/simulation"
 )
 
-func showJournal(out io.Writer, entries []simulation.JournalEntry) {
+// Use one plain-text edition for the prompt, the exported file and stdout.
+func writeJournal(dst io.Writer, entries []simulation.JournalEntry) error {
+	out := bufio.NewWriter(dst)
 	fmt.Fprintln(out, "My journal")
 	if len(entries) == 0 {
 		fmt.Fprintln(out, "I haven't recorded anything yet.")
-		return
+		return out.Flush()
 	}
+	chapters := journalChapters{met: make(map[string]bool)}
 	var continuingTo string
 	quietWaits := 0
 	flushWaits := func() {
@@ -28,6 +33,10 @@ func showJournal(out io.Writer, entries []simulation.JournalEntry) {
 		quietWaits = 0
 	}
 	for _, entry := range entries {
+		if title := chapters.begin(entry); title != "" {
+			flushWaits()
+			fmt.Fprintf(out, "\nChapter %d — %s\n\n", chapters.number, title)
+		}
 		continuation := entry.Action == simulation.ActionApproach && continuingTo != "" && entry.WalkTarget == continuingTo
 		continuingTo = ""
 		if entry.ContinueWalk {
@@ -64,6 +73,51 @@ func showJournal(out io.Writer, entries []simulation.JournalEntry) {
 		}
 	}
 	flushWaits()
+	return out.Flush()
+}
+
+type journalChapters struct {
+	number int
+	inside bool
+	met    map[string]bool
+}
+
+// A chapter starts on the event itself. Later visits and greetings can
+// extend the account without moving an earlier chapter boundary.
+func (c *journalChapters) begin(entry simulation.JournalEntry) string {
+	var title string
+	if c.number == 0 {
+		title = "The visit begins"
+	}
+	if !c.inside && slices.Contains(entry.Observations, "You are in the bakery.") {
+		c.inside = true
+		title = "Inside the bakery"
+	}
+	var names []string
+	var sameName bool
+	firstIntroduction := func(person simulation.ObservedTarget) {
+		if person.Ref != "" && !c.met[person.Ref] {
+			c.met[person.Ref] = true
+			name := "the " + person.Name
+			sameName = sameName || slices.Contains(names, name)
+			names = append(names, name)
+		}
+	}
+	firstIntroduction(entry.IntroducedTo)
+	for _, sight := range entry.Witnessed {
+		if sight.Action == simulation.ActionIntroduce {
+			firstIntroduction(sight.Actor)
+		}
+	}
+	if sameName {
+		title = "Introductions"
+	} else if len(names) > 0 {
+		title = "Meeting " + proseList(names)
+	}
+	if title != "" {
+		c.number++
+	}
+	return title
 }
 
 // These are the sentences in a saved action outcome or observation. Change

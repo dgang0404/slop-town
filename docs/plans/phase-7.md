@@ -63,6 +63,22 @@ A seed-42 save created by the checkpoint 2 executable at `3ac9947` yielded the o
 
 In the practice bakery, the player who waited at the shopfront remembered both workers’ greetings. The player who walked down the street missed those greetings and the baker’s break. A separate visit verified that hearing the porter introduce themselves twice produced two memories, even though the player learned to recognize the porter only once. Up and Enter opened the journal in a Linux terminal without advancing the save. The offline build, test suite, both seed-42 smoke runs and three race-detector runs passed. [Journal walkthroughs](../../cmd/sloptown/journal_test.go)
 
+## Checkpoint 4 — chapters and plain-text export
+
+The bakery clock counts turns. This prototype uses significant firsthand events for chapter boundaries. The first recorded visit opens the book. The first observed turn inside the bakery and a first personal introduction can each start a chapter. A player can introduce themselves or hear the other person speak first. A later greeting between the same two people stays in the account within the current chapter. When several introductions happen on the same turn, they share a heading. A meeting on the first turn inside also gets a single heading.
+
+The journal on screen, the in-game `export journal` command and the standalone `sloptown journal -db PATH` command use the same plain-text rendering. The in-game command creates a new file for each copy. The standalone command reads the selected timeline from an existing save and writes the story to standard output. Both use the player’s journal projection. [Play and export a visit](../../README.md#read-your-journal)
+
+### Checkpoint 4 results
+
+Four waits at the seed-42 shopfront produced “The visit begins” followed by “Meeting the baker and the porter.” The player who went down the street missed the greetings and kept one chapter. On another visit, the player introduced themselves to the porter twice. The journal recorded both greetings under one heading. Returning through the bakery doorway also preserved the earlier chapter breaks. [Chapter and export tests](../../cmd/sloptown/journal_export_test.go)
+
+A save created with the previous executable at `42c51f3` produced byte-identical text through shell export, Up and Enter in a Linux terminal, and a second export after retrying the original visit. Both executables replayed to tick 4, sequence 16, with SHA-256 `dad6bae76d36397648b43387efa41ff743efd54a3b42cfcc05eaacc6c223fe97`. A save deliberately named `slop-town-journal.txt` kept its replay hash while two exports took the next available names. The full offline build and test suite, both seed-42 smoke runs and three race-detector runs passed.
+
+The CLI also cross-built for Windows amd64 and macOS arm64. Interactive export was exercised on Linux.
+
 ## Later narrative work
 
-Group the chronicle into chapters by day, season or a significant occurrence, and support exporting it as a readable story. Dialogue and journal entries draw on each participant’s knowledge, so a missed meeting can become a later discovery.
+The next narrative checkpoint is deterministic dialogue grounded in each participant’s knowledge. Players and residents use the same conversation rules. Aim for about eleven player choices when enough topics fit the encounter. What the listener learns can enter their journal, so a missed meeting can become a later discovery.
+
+A world calendar can supply day and season boundaries for longer chronicles. Illustrated export follows the plain-text edition.

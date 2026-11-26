@@ -15,6 +15,7 @@ type JournalEntry struct {
 	WalkEnd      string
 	WalkTarget   string
 	ContinueWalk bool
+	IntroducedTo ObservedTarget
 	Witnessed    []WitnessedAction
 	Observations []string
 }
@@ -63,11 +64,17 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 
 		// The notebook retains the first introduction for familiarity. Every
 		// introduction addressed to this actor, including a repeat, was audible.
-		if e.Kind == "actor_introduced" && e.Payload.Target == actor {
-			page := entryAt(e.Tick)
-			page.Witnessed = append(page.Witnessed, WitnessedAction{
-				Action: ActionIntroduce, Actor: ObservedTarget{Ref: e.ActorID, Name: b.Entities[e.ActorID].Name},
-			})
+		if e.Kind == "actor_introduced" {
+			switch {
+			case e.Payload.Target == actor:
+				page := entryAt(e.Tick)
+				page.Witnessed = append(page.Witnessed, WitnessedAction{
+					Action: ActionIntroduce, Actor: ObservedTarget{Ref: e.ActorID, Name: b.Entities[e.ActorID].Name},
+				})
+			case e.ActorID == actor && e.Tick == lastTick && len(entries) > 0 && entries[len(entries)-1].Action == ActionIntroduce:
+				target := e.Payload.Target
+				entries[len(entries)-1].IntroducedTo = ObservedTarget{Ref: target, Name: b.Entities[target].Name}
+			}
 		}
 		if len(sightings) > 0 && sightings[0].SourceSequence == e.Sequence {
 			s := sightings[0]
