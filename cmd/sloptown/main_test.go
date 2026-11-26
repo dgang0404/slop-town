@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/dgang0404/slop-town/internal/simulation"
 )
 
 func TestSmokePersistence(t *testing.T) {
@@ -48,7 +50,7 @@ func legacyFixture(t *testing.T) (string, *sql.DB, string) {
 	if _, err := db.Exec("CREATE TABLE smoke_fixture (seed INTEGER PRIMARY KEY, value INTEGER NOT NULL)"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Exec("INSERT INTO smoke_fixture VALUES (42, ?)", fixture(42)); err != nil {
+	if _, err := db.Exec("INSERT INTO smoke_fixture VALUES (42, ?)", simulation.FixtureValue(42)); err != nil {
 		t.Fatal(err)
 	}
 	hash, err := verifyFixture(path, 42)

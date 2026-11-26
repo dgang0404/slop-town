@@ -14,6 +14,18 @@ Use this plan for the implementation stack alongside the [original workstreams](
 | 07 Verification | Run Go tests and the offline smoke command locally, then add Linux CI. |
 | 08 Handoff | Review Phase 0 acceptance evidence and draft the Phase 1 specification. |
 
+## Go package boundaries
+
+| Package | Responsibility | Production dependencies |
+| --- | --- | --- |
+| `cmd/sloptown` | Parse flags, save and reopen the fixture, compare values, print the hash or error. | Simulation and storage |
+| `internal/simulation` | Generate the seeded fixture and encode its canonical state for hashing. | Go standard library |
+| `internal/storage` | Open SQLite files, run migrations, and commit or roll back fixture writes. | `database/sql` and `modernc.org/sqlite` |
+
+Run `go test -count=1 ./internal/simulation` to check the seed-42 reference hash and the production dependency graph. The Phase 0 boundary test rejects SQL and packages outside the standard library or simulation tree, including transitive imports from adapters. See the [repository instructions](../../AGENTS.md) for ownership and contribution guidelines.
+
+On 25 November 2026, the offline build and all five tests passed. Two successive runs against one save produced the original seed-42 hash, `60261db115f851c52ad8e47ec6c6b787992eab8518bf7656591bd22b923e96b5`. In a separate check, injecting a `database/sql` import into the simulation with a temporary Go source overlay caused the dependency test to fail as expected.
+
 ## Persistence checkpoints
 
 The runner saves a seeded fixture, reopens the SQLite file, and verifies the value before reporting its hash.
