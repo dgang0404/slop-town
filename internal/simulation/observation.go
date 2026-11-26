@@ -15,6 +15,24 @@ func (c *Coordinator) Observe(actorID string) (Observation, error) {
 	return c.bakery.Observe(c.scope, actorID)
 }
 
+// Scene carries live presentation details separately from the versioned observation in a receipt.
+type Scene struct {
+	Observation
+	Locations map[string]string
+}
+
+func (c *Coordinator) Scene(actorID string) (Scene, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.bakery.Scene(c.scope, actorID)
+}
+
+func (b *Bakery) Scene(scope Scope, actorID string) (Scene, error) {
+	locations := make(map[string]string)
+	view, err := b.observe(scope, actorID, locations)
+	return Scene{Observation: view, Locations: locations}, err
+}
+
 type cellMask [bakeryHeight][bakeryWidth]bool
 
 func sign(n int) int {
@@ -54,6 +72,10 @@ func (opaque *cellMask) canSee(x, y, destX, destY int) bool {
 }
 
 func (b *Bakery) Observe(scope Scope, actorID string) (Observation, error) {
+	return b.observe(scope, actorID, nil)
+}
+
+func (b *Bakery) observe(scope Scope, actorID string, locations map[string]string) (Observation, error) {
 	if b == nil || !scope.Valid() || scope.WorldID != b.WorldID {
 		return Observation{}, errors.New("there is no spatial scene")
 	}
@@ -108,6 +130,9 @@ func (b *Bakery) Observe(scope Scope, actorID string) (Observation, error) {
 		}
 		view.Targets = append(view.Targets, ObservedTarget{Ref: id, Name: e.Name})
 		if e.Placement.HolderID == actorID {
+			if locations != nil {
+				locations[id] = "in your inventory"
+			}
 			lines = append(lines, "You carry the "+e.Name+".")
 			continue
 		}
@@ -115,6 +140,9 @@ func (b *Bakery) Observe(scope Scope, actorID string) (Observation, error) {
 		location := relativeLocation(at, pos)
 		if holder := e.Placement.HolderID; holder != "" {
 			location = "in the " + b.Entities[holder].Name
+		}
+		if locations != nil {
+			locations[id] = location
 		}
 		lines = append(lines, "You see the "+label+" "+location+".")
 		tile := &tiles[pos.Y][pos.X]
@@ -194,25 +222,57 @@ func (v Observation) hasTarget(ref string) bool {
 	return slices.ContainsFunc(v.Targets, func(t ObservedTarget) bool { return t.Ref == ref })
 }
 
+// MatchingTargets prefers a complete name to a sequence of whole words in a name.
+// Targets retain the stable order of this actor's observation.
+func (v Observation) MatchingTargets(query string) []ObservedTarget {
+	if query == "" {
+		return nil
+	}
+	folded := strings.ToLower(query)
+	var exact, foldedExact, short []ObservedTarget
+	for _, target := range v.Targets {
+		name := strings.ToLower(target.Name)
+		switch {
+		case target.Name == query:
+			exact = append(exact, target)
+		case name == folded:
+			foldedExact = append(foldedExact, target)
+		case strings.Contains(" "+name+" ", " "+folded+" "):
+			short = append(short, target)
+		}
+	}
+	if len(exact) > 0 {
+		return exact
+	}
+	if len(foldedExact) > 0 {
+		return foldedExact
+	}
+	return short
+}
+
 // selectTarget accepts one visible reference, or one unambiguous visible name.
-func (v Observation) selectTarget(query string, byName bool) (string, *actionFailure) {
+func (v Observation) selectTarget(query string, byName bool, observed string) (string, *actionFailure) {
 	if !byName {
 		if v.hasTarget(query) {
 			return query, nil
 		}
 		return "", targetUnavailable()
 	}
-	var ref string
-	for _, target := range v.Targets {
-		if target.Name == query {
-			if ref != "" {
-				return "", &actionFailure{"ambiguous_target", "That name matches more than one visible target."}
+	matches := v.MatchingTargets(query)
+	if observed != "" {
+		for _, t := range matches {
+			if t.Ref == observed {
+				return observed, nil
 			}
-			ref = target.Ref
 		}
-	}
-	if ref == "" {
 		return "", targetUnavailable()
 	}
-	return ref, nil
+	switch len(matches) {
+	case 0:
+		return "", targetUnavailable()
+	case 1:
+		return matches[0].Ref, nil
+	default:
+		return "", &actionFailure{"ambiguous_target", "That name matches more than one visible target."}
+	}
 }

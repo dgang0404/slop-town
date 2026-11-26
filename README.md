@@ -72,18 +72,20 @@ Try these commands when the street appears.
 
 ```text
 What can I do here?
-open the bakery door
+open door
 go east
 e
 open the crate
 actions
-pick up the wooden spoon
-put the wooden spoon in the crate
+pick up the spoon
+put it in the crate
 ```
 
 Ask `What can I do here?` or type `actions` for commands you can use from where you stand. On the street, the list offers to open the bakery door. Beside the open crate, it offers to take the wooden spoon. Asking takes no game time.
 
-Type `look` to see the current scene, `help` for the command forms, or `quit` to leave. Use the full names in the description. Add `-db bakery.sqlite` to the launch command to resume the same town on your next visit.
+You can use a short name such as `door` or `spoon`. If several visible objects match, the game lists them by name and location. Enter a number to choose one or type `cancel`. Asking and cancelling take no game time. In `put it in the crate`, `it` refers to the spoon you just picked up. The terminal remembers the primary object of your last successful interaction for the rest of that session.
+
+Type `look` to see the current scene, `help` for the command forms, or `quit` to leave. Add `-db bakery.sqlite` to the launch command to resume the same town on your next visit.
 
 From the repository root, run the street-to-crate walkthrough in a fresh, in-memory session.
 

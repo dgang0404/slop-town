@@ -46,7 +46,7 @@ func (b *Bakery) applySpatial(actorID string, p Proposal) (spatialEffect, *actio
 	if err != nil {
 		return spatialEffect{}, &actionFailure{"invalid_request", "Invalid acting character."}
 	}
-	effect, failure := b.planSpatial(view, p.Action, p.Args, p.ByName)
+	effect, failure := b.planSpatial(view, p)
 	if failure == nil {
 		b.Entities[effect.entityID] = effect.entity
 	}
@@ -55,11 +55,12 @@ func (b *Bakery) applySpatial(actorID string, p Proposal) (spatialEffect, *actio
 
 // planSpatial computes the effect without applying it. Discovery and submission
 // use the same target selection, movement and interaction rules.
-func (b *Bakery) planSpatial(view Observation, action ActionKind, args ActionArgs, byName bool) (spatialEffect, *actionFailure) {
+func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *actionFailure) {
 	actor := b.Entities[view.ObserverID]
+	action, args := p.Action, p.Args
 	switch action {
 	case ActionMove:
-		if byName || args != (ActionArgs{Direction: args.Direction}) {
+		if p.ByName || args != (ActionArgs{Direction: args.Direction}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Movement takes one direction."}
 		}
 		return b.move(view.ObserverID, actor, args.Direction)
@@ -75,12 +76,12 @@ func (b *Bakery) planSpatial(view Observation, action ActionKind, args ActionArg
 		return spatialEffect{}, &actionFailure{"invalid_request", "Unknown spatial action."}
 	}
 	var failure *actionFailure
-	args.Target, failure = view.selectTarget(args.Target, byName)
+	args.Target, failure = view.selectTarget(args.Target, p.ByName, p.Observed.Target)
 	if failure != nil {
 		return spatialEffect{}, failure
 	}
 	if action == ActionPut {
-		args.Container, failure = view.selectTarget(args.Container, byName)
+		args.Container, failure = view.selectTarget(args.Container, p.ByName, p.Observed.Container)
 		if failure != nil {
 			return spatialEffect{}, failure
 		}

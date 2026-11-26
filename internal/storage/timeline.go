@@ -96,7 +96,12 @@ func committedState(tx *sql.Tx, scope simulation.Scope, schema int) (timelineSta
 // OpenBakery initializes a fresh timeline once. Each later open restores its
 // saved layout and geography stream before projecting the current actor view.
 func OpenBakery(path string, scope simulation.Scope, seed int64, actor string) (simulation.Observation, error) {
-	var empty simulation.Observation
+	scene, err := OpenBakeryScene(path, scope, seed, actor)
+	return scene.Observation, err
+}
+
+func OpenBakeryScene(path string, scope simulation.Scope, seed int64, actor string) (simulation.Scene, error) {
+	var empty simulation.Scene
 	if !scope.Valid() {
 		return empty, fmt.Errorf("invalid world or timeline ID")
 	}
@@ -127,7 +132,7 @@ func OpenBakery(path string, scope simulation.Scope, seed int64, actor string) (
 	if state.Bakery == nil {
 		return empty, fmt.Errorf("timeline contains a different fixture")
 	}
-	view, err := state.Bakery.Observe(scope, actor)
+	view, err := state.Bakery.Scene(scope, actor)
 	if err != nil {
 		return empty, err
 	}

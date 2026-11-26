@@ -24,6 +24,58 @@ func currentView(t *testing.T, c *Coordinator, actor string) Observation {
 	return view
 }
 
+func TestMatchingTargets(t *testing.T) {
+	wood := ObservedTarget{Ref: "wood", Name: "polished Wooden Spoon"}
+	metal := ObservedTarget{Ref: "metal", Name: "metal spoon"}
+	plain := ObservedTarget{Ref: "plain", Name: "spoon"}
+	view := Observation{Targets: []ObservedTarget{wood, metal}}
+	for query, want := range map[string][]ObservedTarget{
+		"wooden spoon": {wood}, "spoon": {wood, metal}, "woo": nil, "oo": nil, "": nil,
+	} {
+		if got := view.MatchingTargets(query); !slices.Equal(got, want) {
+			t.Errorf("%q matched %v, want %v", query, got, want)
+		}
+	}
+	view.Targets = append(view.Targets, plain)
+	if got := view.MatchingTargets("spoon"); !slices.Equal(got, []ObservedTarget{plain}) {
+		t.Fatalf("exact name did not take priority: %v", got)
+	}
+}
+
+func TestNamedActionKeepsObservedReference(t *testing.T) {
+	c := bakeryCoordinator(t, 42)
+	const other = "town/other-spoon"
+	spoon := c.bakery.Entities[spoonID]
+	spoon.Name = "metal spoon"
+	spoon.Placement = c.bakery.Entities[playerID].Placement
+	c.bakery.Entities[other] = spoon
+	p := spatialProposal(c, "pickup", ActionTake, ActionArgs{Target: "spoon"})
+	p.ByName = true
+	// The originally observed spoon is now inside a closed crate. Only the
+	// other spoon matches the name at submission.
+	p.Observed = NameBindings{Target: spoonID}
+	if r := submitUnchanged(t, c, playerID, p); r.Code != "target_unavailable" {
+		t.Fatalf("named action switched targets: %+v", r)
+	}
+	p.Observed.Target = other
+	r := c.Submit(playerID, p)
+	if r.Status != "accepted" || r.SelectedTarget != other {
+		t.Fatalf("unexpected selected target: %+v", r)
+	}
+	p.Observed = NameBindings{}
+	if retry := submitUnchanged(t, c, playerID, p); !reflect.DeepEqual(retry, r) {
+		t.Fatalf("retry lost the original selection: %+v", retry)
+	}
+	enterBakery(t, c, playerID)
+	commitBakeryAction(t, c, playerID, ActionOpen, ActionArgs{Target: crateID})
+	put := spatialProposal(c, "put", ActionPut, ActionArgs{Target: "metal spoon", Container: "crate"})
+	put.ByName = true
+	put.Observed = NameBindings{Target: other, Container: "town/old-crate"}
+	if r := submitUnchanged(t, c, playerID, put); r.Code != "target_unavailable" {
+		t.Fatalf("named action switched containers: %+v", r)
+	}
+}
+
 func TestBakeryObservationWalkthrough(t *testing.T) {
 	for _, tc := range []struct {
 		seed int64

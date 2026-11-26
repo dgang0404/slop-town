@@ -38,13 +38,21 @@ type ActionArgs struct {
 
 type FixtureArgs = ActionArgs
 
+// A named command may carry the references it matched in the caller's view.
+// These guard its first execution. The name remains the request's retry identity.
+type NameBindings struct {
+	Target    string `json:"target,omitempty"`
+	Container string `json:"container,omitempty"`
+}
+
 type Proposal struct {
 	Scope
-	Version   int        `json:"version"`
-	RequestID string     `json:"request_id"`
-	ByName    bool       `json:"by_name,omitempty"` // Resolve target names against the acting character's view.
-	Action    ActionKind `json:"action"`
-	Args      ActionArgs `json:"args"`
+	Version   int          `json:"version"`
+	RequestID string       `json:"request_id"`
+	ByName    bool         `json:"by_name,omitempty"` // Resolve target names against the acting character's view.
+	Action    ActionKind   `json:"action"`
+	Args      ActionArgs   `json:"args"`
+	Observed  NameBindings `json:"observed,omitzero"`
 }
 
 type Observation struct {
@@ -63,12 +71,13 @@ type ObservedTarget struct {
 }
 
 type Result struct {
-	Version     int         `json:"version"`
-	RequestID   string      `json:"request_id"`
-	Status      string      `json:"status"`
-	Code        string      `json:"code,omitempty"`
-	Message     string      `json:"message,omitempty"`
-	Observation Observation `json:"observation,omitzero"`
+	Version        int         `json:"version"`
+	RequestID      string      `json:"request_id"`
+	Status         string      `json:"status"`
+	Code           string      `json:"code,omitempty"`
+	Message        string      `json:"message,omitempty"`
+	Observation    Observation `json:"observation,omitzero"`
+	SelectedTarget string      `json:"selected_target,omitempty"`
 }
 
 // Event is a developer-facing record. ParentID points to an earlier event
@@ -183,8 +192,16 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 		clock == nil || (bakery != nil && bakery.WorldID != scope.WorldID) {
 		return reject("invalid_request", "Invalid request context."), nil
 	}
+	if p.Observed != (NameBindings{}) && (!p.ByName || p.Observed.Target == "" || p.Args.Target == "" ||
+		(p.Observed.Container != "" && p.Action != ActionPut)) {
+		return reject("invalid_request", "Invalid observed targets."), nil
+	}
 	if saved != nil {
-		if saved.Proposal != p {
+		original := saved.Proposal
+		// A retry can arrive from a later view. Explicit numbered selections
+		// are reference proposals, whose arguments must still match exactly.
+		original.Observed, p.Observed = NameBindings{}, NameBindings{}
+		if original != p {
 			return reject("request_conflict", "That request ID was already used for a different action."), nil
 		}
 		return saved.Result, nil
@@ -235,6 +252,7 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 		}
 		result.Observation = view
 		result.Message = message
+		result.SelectedTarget = p.Observed.Target
 	}
 
 	return result, &Transition{State: State{Clock: &next, Bakery: nextBakery}, Events: []Event{advanced, action}}

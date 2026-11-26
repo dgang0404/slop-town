@@ -21,16 +21,28 @@ func (b *Bakery) AvailableActions(scope Scope, actorID string) ([]ActionOption, 
 		return nil, err
 	}
 	var options []ActionOption
+	seen := make(map[ActionOption]bool)
 	offer := func(action ActionKind, args ActionArgs) {
-		if _, failure := b.planSpatial(view, action, args, action != ActionMove); failure == nil {
-			options = append(options, ActionOption{Action: action, Args: args})
+		if _, failure := b.planSpatial(view, Proposal{Action: action, Args: args}); failure != nil {
+			return
+		}
+		if args.Target != "" {
+			args.Target = b.Entities[args.Target].Name
+		}
+		if args.Container != "" {
+			args.Container = b.Entities[args.Container].Name
+		}
+		option := ActionOption{Action: action, Args: args}
+		if !seen[option] {
+			options = append(options, option)
+			seen[option] = true
 		}
 	}
 	for _, d := range []Direction{North, East, South, West} {
 		offer(ActionMove, ActionArgs{Direction: d})
 	}
 	for _, target := range view.Targets {
-		args := ActionArgs{Target: target.Name}
+		args := ActionArgs{Target: target.Ref}
 		switch b.Entities[target.Ref].Kind {
 		case Door, Container:
 			offer(ActionOpen, args)
@@ -40,7 +52,7 @@ func (b *Bakery) AvailableActions(scope Scope, actorID string) ([]ActionOption, 
 			offer(ActionDrop, args)
 			for _, dest := range view.Targets {
 				if b.Entities[dest.Ref].Kind == Container {
-					offer(ActionPut, ActionArgs{Target: target.Name, Container: dest.Name})
+					offer(ActionPut, ActionArgs{Target: target.Ref, Container: dest.Ref})
 				}
 			}
 		}

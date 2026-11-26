@@ -68,7 +68,7 @@ func TestBakeryPlaySession(t *testing.T) {
 	if strings.Count(retry, "already completed") != 5 {
 		t.Fatalf("retry did not reuse all five receipts: %s", retry)
 	}
-	out := play("return", "close the crate\nwest\nw\nclose the bakery door\ndrop the wooden spoon\nlook\n")
+	out := play("return", "close the crate\nwest\nw\nclose door\ndrop spoon\nlook\n")
 	if !strings.Contains(out, "You see the wooden spoon here.") {
 		t.Fatalf("unexpected final scene: %s", out)
 	}

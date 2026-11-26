@@ -7,15 +7,18 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/dgang0404/slop-town/internal/simulation"
 )
 
-const bakeryHelp = "Type a direction, or use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. Use the names in your view. Type actions for choices here, look to see the scene again or quit to leave."
+const bakeryHelp = "Type a direction, or use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. Short names work. Use it for the last object you acted on. Type actions for choices here, look to see the scene again or quit to leave."
 
-func playBakery(in io.Reader, out io.Writer, look func() error, available func() ([]simulation.ActionOption, error), act func(simulation.ActionKind, simulation.ActionArgs) (string, error)) error {
+func playBakery(in io.Reader, out io.Writer, observe func() (simulation.Scene, error), available func() ([]simulation.ActionOption, error), act func(simulation.Proposal) (simulation.Result, error)) error {
 	fmt.Fprintln(out, "Enter one command per line. Ask “What can I do here?” for choices, type help for commands or quit to leave.")
+	var cmd bakeryCommand
+	var last string
 	lines := bufio.NewScanner(in)
 	for lines.Scan() {
 		line := strings.TrimSuffix(strings.Join(strings.Fields(strings.ToLower(lines.Text())), " "), ".")
@@ -42,23 +45,67 @@ func playBakery(in io.Reader, out io.Writer, look func() error, available func()
 			}
 			continue
 		case "look", "l":
-			if err := look(); err != nil {
+			scene, err := observe()
+			if err != nil {
 				return err
 			}
+			fmt.Fprintln(out, scene.Text+"\n"+scene.Grid)
 			continue
 		}
-		action, args, err := parseBakeryAction(strings.Fields(line))
-		if err != nil {
-			fmt.Fprintln(out, err)
+		if n := cmd.question(); n != nil {
+			if line == "cancel" {
+				cmd = bakeryCommand{}
+				fmt.Fprintln(out, "Cancelled.")
+				continue
+			}
+			i, err := strconv.Atoi(line)
+			if err != nil || i < 1 || i > len(n.options) {
+				fmt.Fprintf(out, "Enter a number from 1 to %d or type cancel.\n", len(n.options))
+				continue
+			}
+			n.ref = n.options[i-1].Ref
+		} else {
+			action, args, err := parseBakeryAction(strings.Fields(line))
+			if err != nil {
+				fmt.Fprintln(out, err)
+				continue
+			}
+			var scene simulation.Scene
+			if args.Target != "" {
+				scene, err = observe()
+				if err != nil {
+					return err
+				}
+			}
+			cmd, err = prepareCommand(action, args, scene, last)
+			if err != nil {
+				fmt.Fprintln(out, err)
+				cmd = bakeryCommand{}
+				continue
+			}
+		}
+		if n := cmd.question(); n != nil {
+			cmd.prompt(out, n)
 			continue
 		}
-		rejection, err := act(action, args)
+		result, err := act(cmd.proposal())
 		if err != nil {
 			return err
 		}
-		if rejection != "" {
-			fmt.Fprintln(out, rejection)
+		if result.Status != "accepted" {
+			fmt.Fprintln(out, result.Message)
+		} else if cmd.Args.Target != "" {
+			last = cmd.target.ref
+			if result.SelectedTarget != "" {
+				last = result.SelectedTarget
+			} else if cmd.ByName {
+				// Older receipts identify their subject through the recorded view.
+				if matches := result.Observation.MatchingTargets(cmd.Args.Target); len(matches) == 1 {
+					last = matches[0].Ref
+				}
+			}
 		}
+		cmd = bakeryCommand{}
 	}
 	return lines.Err()
 }
@@ -95,8 +142,7 @@ func noun(words []string) string {
 	return strings.Join(words, " ")
 }
 
-// Parse syntax only. The proposal retains the player's noun phrases so the
-// simulation resolves both targets against the acting character's current view.
+// Parse syntax before resolving noun phrases against the actor's view.
 func parseBakeryAction(words []string) (simulation.ActionKind, simulation.ActionArgs, error) {
 	var args simulation.ActionArgs
 	if len(words) == 0 {

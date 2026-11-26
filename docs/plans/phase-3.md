@@ -34,3 +34,15 @@ The offline Linux verification script passed, as did three race-detector runs of
 ```sh
 go test -v -count=1 -run '^(TestBakeryActionDiscovery|TestBakeryActionsAreActorScoped|TestBakeryPlaySession)$' ./cmd/sloptown ./internal/simulation
 ```
+
+## Checkpoint 3 results
+
+On 26 November 2026 the terminal accepted short names such as `open door` and `take spoon`. A complete visible name takes priority over a shorter match. After a successful interaction, `it` refers to the primary object for the rest of the session. For example, after `put it in the crate`, `take it` picks the same spoon back up.
+
+A SQLite test scene placed two wooden spoons on the street and kept a third behind the bakery door. The prompt listed the two visible spoons by location. Asking, entering an invalid number, cancelling and leaving the prompt kept the tick-zero replay hash. The player could choose both a spoon and a destination for `put spoon in box`. When the baker took the selected spoon before the player answered, the simulation rejected the stale choice even though the other spoon was still within reach. Swapping two spoons also left `it` pointing to the original object.
+
+The seed-42 walkthrough reached the Phase 2 tick-10 digest using short names. The current runner reopened a save written by checkpoint 2, reused five receipts, and replayed a new `put it in crate` at tick 6. The offline Linux checks and three race-detector runs of the simulation and terminal packages passed. Repeat the focused checks with
+
+```sh
+go test -v -count=1 -run '^(TestMatchingTargets|TestNamedActionKeepsObservedReference|TestBakeryClarification|TestBakeryPlaySession)$' ./internal/simulation ./cmd/sloptown
+```

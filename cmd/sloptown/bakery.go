@@ -38,7 +38,7 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	}
 	scope := simulation.Scope{WorldID: "bakery", TimelineID: *timeline}
 	const player = "bakery/player"
-	var observe func() (simulation.Observation, error)
+	var observe func() (simulation.Scene, error)
 	var available func() ([]simulation.ActionOption, error)
 	var submit func(simulation.Proposal) (simulation.Result, bool, error)
 	if *path == "" {
@@ -47,12 +47,12 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, err)
 			return 1
 		}
-		observe = func() (simulation.Observation, error) { return c.Observe(player) }
+		observe = func() (simulation.Scene, error) { return c.Scene(player) }
 		available = func() ([]simulation.ActionOption, error) { return c.AvailableActions(player) }
 		submit = func(p simulation.Proposal) (simulation.Result, bool, error) { return c.Submit(player, p), false, nil }
 	} else {
-		observe = func() (simulation.Observation, error) {
-			return storage.OpenBakery(*path, scope, *seed, player)
+		observe = func() (simulation.Scene, error) {
+			return storage.OpenBakeryScene(*path, scope, *seed, player)
 		}
 		available = func() ([]simulation.ActionOption, error) { return storage.BakeryActions(*path, scope, player) }
 		submit = func(p simulation.Proposal) (simulation.Result, bool, error) {
@@ -62,28 +62,18 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if *batch == "" {
 		*batch = rand.Text()
 	}
-	look := func() error {
-		view, err := observe()
-		if err == nil {
-			fmt.Fprintln(stdout, view.Text+"\n"+view.Grid)
-		}
-		return err
-	}
-	if err := look(); err != nil {
+	scene, err := observe()
+	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
 	}
+	fmt.Fprintln(stdout, scene.Text+"\n"+scene.Grid)
 	request := 1
-	act := func(action simulation.ActionKind, args simulation.ActionArgs) (rejection string, err error) {
-		result, repeated, err := submit(simulation.Proposal{
-			Scope: scope, Version: 1, RequestID: *batch + "/" + strconv.Itoa(request),
-			Action: action, ByName: action != simulation.ActionMove, Args: args,
-		})
-		if err != nil {
-			return "", err
-		}
-		if result.Status != "accepted" {
-			return result.Message, nil
+	act := func(p simulation.Proposal) (simulation.Result, error) {
+		p.Scope, p.Version, p.RequestID = scope, 1, *batch+"/"+strconv.Itoa(request)
+		result, repeated, err := submit(p)
+		if err != nil || result.Status != "accepted" {
+			return result, err
 		}
 		// A rejected action has no receipt. Its correction takes the same slot
 		// so retrying the transcript cannot insert an extra action before it.
@@ -93,10 +83,10 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		} else {
 			fmt.Fprintf(stdout, "\n%s\n%s\n%s\n", result.Message, result.Observation.Text, result.Observation.Grid)
 		}
-		return "", nil
+		return result, nil
 	}
 	if *play {
-		if err := playBakery(stdin, stdout, look, available, act); err != nil {
+		if err := playBakery(stdin, stdout, observe, available, act); err != nil {
 			fmt.Fprintln(stderr, err)
 			return 1
 		}
@@ -127,13 +117,13 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 				args.Container = words[2]
 			}
 		}
-		rejection, err := act(action, args)
+		result, err := act(simulation.Proposal{Action: action, Args: args, ByName: action != simulation.ActionMove})
 		if err != nil {
 			fmt.Fprintln(stderr, err)
 			return 1
 		}
-		if rejection != "" {
-			fmt.Fprintln(stderr, rejection)
+		if result.Status != "accepted" {
+			fmt.Fprintln(stderr, result.Message)
 			return 1
 		}
 		words = words[count:]
