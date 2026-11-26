@@ -92,4 +92,4 @@ The [GitHub Actions workflow](../../.github/workflows/phase-0.yml) runs on pushe
 
 On 25 November 2026 the script exited 0 in a fresh local checkout on Linux x86-64 with Go 1.27.4. Dependencies were restored from the local module archive. With Go downloads disabled, vet, tests and both builds passed. The pack checker printed `valid manifest: smoke version 1 (content API 1)`. Both CLI runs reported the seed-42 reference hash above. Substituting an incorrect expected result in a temporary copy of the script made it exit 1.
 
-The first GitHub-hosted result is pending publication of the workflow. Look for **Phase 0 verification** in the repository's Actions tab after pushing.
+The first [GitHub-hosted run](https://github.com/dgang0404/slop-town/actions/runs/45752309419) passed for commit `b076d5c`. The [Phase 0 acceptance report](phase-0-results.md) records the final checks and the [Phase 1 proposal](phase-1.md) defines the next milestone for owner review.

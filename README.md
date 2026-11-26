@@ -11,6 +11,8 @@ For tested devices, hardware targets and offline play, see the [player system re
 
 See the [current Phase 0 plan](docs/plans/phase-0.md) for the Go implementation milestones.
 
+The [Phase 0 acceptance report](docs/plans/phase-0-results.md) collects the test evidence. The [Phase 1 proposal](docs/plans/phase-1.md) covers time, events, saves and replay.
+
 To validate a local content pack, run `go run ./cmd/packcheck PACK_DIRECTORY`. The [manifest guide](docs/content-packs.md) includes a bundled example.
 
 ## Run the Phase 0 fixture
