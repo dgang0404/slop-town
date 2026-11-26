@@ -7,7 +7,7 @@ Slop Town is a design for a text-first simulation game set in a persistent, proc
 - [Master Design and Architecture, revision 7](docs/design/Slop_Town_Master_Design_Revised_v7.docx) describes the town, its residents, player commands, and how the simulation resolves actions.
 - [Phase 0 Development Foundation](docs/design/Slop_Town_Phase_0_Development_Foundation.docx) outlines the first development milestone, including the headless runner, persistence, and tests.
 
-This initial release contains the two original Word specifications. Implementation is pending.
+See the [current Phase 0 plan](docs/plans/phase-0.md) for the Go implementation milestones.
 
 ## License
 
