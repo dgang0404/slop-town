@@ -18,6 +18,31 @@ func fixture(seed int64) int64 {
 	return rng.Int64()
 }
 
+func migrate(tx *sql.Tx) error {
+	var version int
+	if err := tx.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
+		return err
+	}
+	switch version {
+	case 1:
+		return nil
+	case 0:
+		// The original runner created smoke_fixture without setting a version.
+		_, err := tx.Exec(`
+			CREATE TABLE IF NOT EXISTS smoke_fixture (seed INTEGER PRIMARY KEY, value INTEGER NOT NULL);
+			CREATE TABLE fixture_metadata (
+				id INTEGER PRIMARY KEY CHECK (id = 1),
+				world_id TEXT NOT NULL,
+				timeline_id TEXT NOT NULL
+			);
+			INSERT INTO fixture_metadata (id, world_id, timeline_id) VALUES (1, 'smoke', 'main');
+			PRAGMA user_version = 1;`)
+		return err
+	default:
+		return fmt.Errorf("unsupported save schema version %d", version)
+	}
+}
+
 func save(path string, seed, value int64) error {
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
@@ -29,8 +54,8 @@ func save(path string, seed, value int64) error {
 		return err
 	}
 	defer tx.Rollback()
-	if _, err = tx.Exec("CREATE TABLE IF NOT EXISTS smoke_fixture (seed INTEGER PRIMARY KEY, value INTEGER NOT NULL)"); err != nil {
-		return err
+	if err := migrate(tx); err != nil {
+		return fmt.Errorf("migrate save: %w", err)
 	}
 	if _, err = tx.Exec("INSERT INTO smoke_fixture(seed, value) VALUES (?, ?) ON CONFLICT(seed) DO NOTHING", seed, value); err != nil {
 		return err
@@ -43,6 +68,10 @@ func smoke(path string, seed int64) (string, error) {
 	if err := save(path, seed, want); err != nil {
 		return "", err
 	}
+	return verifyFixture(path, seed)
+}
+
+func verifyFixture(path string, seed int64) (string, error) {
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		return "", err
@@ -52,7 +81,7 @@ func smoke(path string, seed int64) (string, error) {
 	if err := db.QueryRow("SELECT value FROM smoke_fixture WHERE seed = ?", seed).Scan(&got); err != nil {
 		return "", err
 	}
-	if got != want {
+	if want := fixture(seed); got != want {
 		return "", fmt.Errorf("saved fixture for seed %d differs: got %d, expected %d", seed, got, want)
 	}
 	state := fmt.Sprintf("fixture-v1/%d/%d", seed, got)

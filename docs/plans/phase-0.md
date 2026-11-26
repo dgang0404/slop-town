@@ -14,4 +14,10 @@ Use this plan for the implementation stack alongside the [original workstreams](
 | 07 Verification | Run Go tests and the offline smoke command locally, then add Linux CI. |
 | 08 Handoff | Review Phase 0 acceptance evidence and draft the Phase 1 specification. |
 
-The first implementation checkpoint covers a seeded fixture persisted across database connections. Remaining workstreams and final Phase 0 acceptance require separate verification.
+## Persistence checkpoints
+
+The runner saves a seeded fixture, reopens the SQLite file, and verifies the value before reporting its hash.
+
+Schema version 1 uses SQLite's `PRAGMA user_version`. The runner upgrades an unversioned save in the same transaction as the fixture insert. It keeps existing fixture rows and adds a single `fixture_metadata` row identifying the smoke world (`smoke`) and its timeline (`main`). Later runs skip the migration.
+
+With dependencies cached, run `GOPROXY=off go test -count=1 -v ./...` to reproduce the persistence checks. The tests run the upgrade twice and force an insert to fail after changing an existing fixture. They reopen the save to verify its original hash, check that the new row and schema changes rolled back, and retry the save.
