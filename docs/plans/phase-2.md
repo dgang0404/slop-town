@@ -1,6 +1,6 @@
-# Phase 2 proposal — a street, a bakery and a closed crate
+# Phase 2 — a street, a bakery and a closed crate
 
-**Planning handoff, 25 November 2026.** A player starts outside a bakery. They open the door, walk inside, find a closed crate, take a wooden spoon from it and carry it outside. After quitting and reopening the town, the spoon is exactly where they left it. This is a proposed headless fixture for procedural space, movement, containers and visibility. The fixture size and action durations are test values. [Master design, sections 6, 7, 47 and 50](../design/Slop_Town_Master_Design_Revised_v7.docx) · [Phase 1 acceptance](phase-1-results.md)
+**Approved walkthrough, 25 November 2026.** A player starts outside a bakery. They open the door, walk inside, find a closed crate, take a wooden spoon from it and carry it outside. After quitting and reopening the town, the spoon is exactly where they left it. The fixture size and action durations are test values. [Master design, sections 6, 7, 47 and 50](../design/Slop_Town_Master_Design_Revised_v7.docx) · [Phase 1 acceptance](phase-1-results.md)
 
 ## First checkpoint — generate a place
 
@@ -44,4 +44,10 @@ Give spaces and objects stable, world-scoped IDs at generation. A cell is addres
 | 4. Actor observations | Use one actor-scoped projection for terminal text, the text grid and target selection. In this lit fixture, trace sight across cells. Walls and closed doors block sight beyond them; a closed lid conceals its contents. Block diagonal sight through touching opaque corners. | Ordinary visible objects appear automatically. Hidden and nonexistent targets produce the same player-facing failure. After returning outside, previously seen interior objects are absent from the current view. Inspect internal positions and event IDs only through developer diagnostics. |
 | 5. Persistence, replay and handoff | Stage spatial mutations alongside time, stream positions, events and receipts in one SQLite transaction. Version the spatial state and its canonical encoding, with stable ordering by entity ID and cell coordinates. | Run the walkthrough across CLI process restarts in Linux CI. Inject a failure during the item transfer, verify the original placement survives, then retry exactly once. Verify separate timelines can diverge from the same initial layout. Keep the Phase 0 fixture and Phase 1 saves, replay contracts and reference hashes passing. Record actual results and the CI run. |
 
-Dependencies follow table order. Checkpoints 2 and 3 can use developer state inspection until the actor projection lands. The CLI supplies explicit actions in this phase. Free-text parsing belongs to Phase 3, and resident routines and conversations have later milestones. Review the fixture and its acceptance conditions before implementing checkpoint 1.
+Dependencies follow table order. Checkpoints 2 and 3 can use developer state inspection until the actor projection lands. The CLI supplies explicit actions in this phase. Free-text parsing belongs to Phase 3, and resident routines and conversations have later milestones.
+
+## Checkpoint 1 results
+
+On 25 November 2026, two generations per seed produced identical cells, entity IDs, placements and stream counters. Seed 42 placed the door at `(2,1)` and seed 43 at `(2,2)`. Each town started at tick zero with one geography draw. An extra weather draw left the layout identical. The spoon started inside the closed crate. When the test placed it in the player's inventory and moved the player, the same spoon resolved to the player's new cell.
+
+The bakery tests passed on Linux and under Node.js with WebAssembly. They also covered invalid references, conflicting parents, cycles, walls and out-of-bounds placements. To reproduce the fixture checks, run `go test -count=1 -run '^TestBakery' ./internal/simulation`. The full offline check (`sh scripts/check-phase-0.sh`) and the simulation race tests passed locally. Checkpoint 2 adds movement and door interactions.

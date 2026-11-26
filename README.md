@@ -13,7 +13,7 @@ See the [Phase 0 plan](docs/plans/phase-0.md) for the Go foundation milestones.
 
 The [Phase 0 acceptance report](docs/plans/phase-0-results.md) collects the foundation test evidence. The [Phase 1 plan](docs/plans/phase-1.md) covers time, events, saves and replay. Its [acceptance report](docs/plans/phase-1-results.md) gives the reproducible restart and rollback checks and the CI status.
 
-The [Phase 2 proposal](docs/plans/phase-2.md) defines the first spatial fixture and its acceptance walkthrough, from opening a bakery door to carrying an object back outside.
+Phase 2 starts with an in-memory bakery. To check the seeded layouts, run `go test -count=1 -run '^TestBakery' ./internal/simulation`. The walkthrough and checkpoint results are in the [Phase 2 plan](docs/plans/phase-2.md).
 
 To validate a local content pack, run `go run ./cmd/packcheck PACK_DIRECTORY`. The [manifest guide](docs/content-packs.md) includes a bundled example.
 
