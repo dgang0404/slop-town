@@ -13,6 +13,13 @@ import (
 	"github.com/dgang0404/slop-town/internal/storage"
 )
 
+// These Phase 5 golden histories start from the version-eight practice layout.
+func usePhase5Routines(t *testing.T, path string, scope simulation.Scope) {
+	t.Helper()
+	execSQL(t, path, `UPDATE timeline_state SET bakery=CAST(json_set(bakery, '$.bakery.ContentVersion', 8) AS BLOB)
+		WHERE world=? AND timeline=? AND last_sequence=0`, scope.WorldID, scope.TimelineID)
+}
+
 func TestIntroductionAcrossRestart(t *testing.T) {
 	dir := t.TempDir()
 	runner, path := filepath.Join(dir, "sloptown.exe"), filepath.Join(dir, "practice.sqlite")
@@ -31,6 +38,7 @@ func TestIntroductionAcrossRestart(t *testing.T) {
 	}
 	scope := simulation.Scope{WorldID: "bakery", TimelineID: "main"}
 	run("", "bakery", "-practice", "-seed", "42")
+	usePhase5Routines(t, path, scope)
 	run("", "checkpoint", "-world", "bakery")
 	play := func(script string) string { return run(script, "bakery", "-play", "-batch", "visit") }
 	if out := play("south\nactions\n"); !strings.Contains(out, "introduce yourself to the porter") {

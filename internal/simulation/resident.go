@@ -40,6 +40,15 @@ func (b *Bakery) advanceResidents(clock *Timeline, primary Event) ([]Event, erro
 		}
 		events = append(events, action)
 	}
+	// A free spell belongs to the workers only when both finished their other
+	// business. Neither gives up movement, an introduction or a needed rest.
+	if b.ContentVersion >= conversationContentVersion && len(events) == 0 {
+		if effect := b.residentCheckIn(primary); effect.kind != "" {
+			action := primary.child(primary.Sequence+1, effect.entityID, "spatial", effect.kind, effect.payload)
+			b.applySpatial(action, effect)
+			events = append(events, action)
+		}
+	}
 	return events, nil
 }
 
@@ -49,11 +58,7 @@ func (b *Bakery) residentTurn(scope Scope, role string, clock *Timeline) (spatia
 	id := url.PathEscape(scope.WorldID) + "/" + role
 	doorID := url.PathEscape(scope.WorldID) + "/door"
 	door := b.Entities[doorID].Placement.Cell
-	goal := door
-	goal.X--
-	if (clock.Tick()-1)/4%2 == 1 {
-		goal.X = door.X + 1
-	}
+	goal := workStation(door, clock.Tick())
 	actor := b.Entities[id]
 	if b.ContentVersion < restContentVersion || actor.Fatigue < fatigueLimit {
 		if b.ContentVersion >= relationshipContentVersion && actor.Placement.Cell == goal && goal.X == door.X-1 && !actor.Seated {
@@ -63,6 +68,15 @@ func (b *Bakery) residentTurn(scope Scope, role string, clock *Timeline) (spatia
 	}
 	goal.X = door.X + 2 // The resting place behind the prep area.
 	return b.restTurn(scope, id, role, clock, goal, b.stepToward(scope, id, goal, doorID))
+}
+
+func workStation(door CellPosition, tick int64) CellPosition {
+	if (tick-1)/4%2 == 1 {
+		door.X++
+	} else {
+		door.X--
+	}
+	return door
 }
 
 func (b *Bakery) restTurn(scope Scope, id, role string, clock *Timeline, goal CellPosition, step spatialEffect) (spatialEffect, *EventPayload, error) {
@@ -137,5 +151,42 @@ func (b *Bakery) shopfrontIntroduction(scope Scope, speaker string) spatialEffec
 		return spatialEffect{}
 	}
 	effect, _ := b.resolveSpatial(speaker, Proposal{Scope: scope, Action: ActionIntroduce, Args: ActionArgs{Target: listener}})
+	return effect
+}
+
+// Familiar coworkers can check in during a lull. One conversation per pair in
+// eight turns leaves room for the two four-turn legs of their work routine.
+func (b *Bakery) residentCheckIn(primary Event) spatialEffect {
+	prefix := url.PathEscape(b.WorldID) + "/"
+	baker, porter := prefix+"baker", prefix+"porter"
+	if primary.ActorID == baker || primary.ActorID == porter {
+		return spatialEffect{}
+	}
+	if (primary.Kind == "actors_conversed" || primary.Kind == "actor_introduced") &&
+		(primary.Payload.Target == baker || primary.Payload.Target == porter) {
+		return spatialEffect{}
+	}
+	station := workStation(b.Entities[prefix+"door"].Placement.Cell, primary.Tick)
+	if b.Entities[baker].Placement.Cell != station || b.Entities[porter].Placement.Cell != station {
+		return spatialEffect{}
+	}
+	speaker, listener := baker, porter
+	if !b.recognizes(speaker, listener) {
+		speaker, listener = listener, speaker
+		if !b.recognizes(speaker, listener) {
+			return spatialEffect{}
+		}
+	}
+	entries := b.Notebooks[speaker]
+	for i := len(entries) - 1; i >= 0 && primary.Tick-entries[i].Tick < 8; i-- {
+		if entries[i].Condition != "" && entries[i].Subject == listener {
+			return spatialEffect{}
+		}
+	}
+	view, err := b.Observe(primary.Scope, speaker)
+	if err != nil {
+		return spatialEffect{}
+	}
+	effect, _ := b.checkIn(view, listener)
 	return effect
 }

@@ -78,8 +78,9 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 				other = e.Payload.Target
 				page.Outcome = "" // The exchange includes the actor's own words.
 			}
+			words, reply := e.Payload.Dialogue.lines()
 			page.Conversation = JournalSpeech{With: b.Entities[other].Name, IStarted: started,
-				Words: e.Payload.Dialogue.Words, Reply: e.Payload.Dialogue.Reply}
+				Words: words, Reply: reply}
 		}
 
 		// The notebook retains the first introduction for familiarity. Every

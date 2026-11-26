@@ -10,12 +10,14 @@ import (
 // NotebookEntry records an act the owner witnessed or a report they heard.
 // SourceSequence identifies that sighting or exchange on the owner's timeline.
 type NotebookEntry struct {
-	Tick           int64      `json:"tick"`
-	SourceSequence uint64     `json:"source_sequence"`
-	Subject        string     `json:"subject"`
-	Action         ActionKind `json:"action"`
-	Target         string     `json:"target,omitempty"`
-	Reported       uint64     `json:"reported,omitempty"` // Firsthand entry the speaker described.
+	Tick           int64         `json:"tick"`
+	SourceSequence uint64        `json:"source_sequence"`
+	Subject        string        `json:"subject"`
+	Action         ActionKind    `json:"action"`
+	Target         string        `json:"target,omitempty"`
+	Reported       uint64        `json:"reported,omitempty"`  // Firsthand entry the speaker described.
+	Condition      workCondition `json:"condition,omitempty"` // Listener's answer during this owner's own exchange.
+	Asked          bool          `json:"asked,omitempty"`
 }
 
 // applySpatial records witnesses before applying this individual effect. A
@@ -32,6 +34,14 @@ func (b *Bakery) recordWitnesses(event Event) {
 	switch event.Kind {
 	case "actors_conversed":
 		x := event.Payload.Dialogue
+		if x.Condition != "" {
+			entry.Subject, entry.Target, entry.Action = event.Payload.Target, "", ActionSpeak
+			entry.Condition, entry.Asked = x.Condition, true
+			b.appendSighting(event.ActorID, entry)
+			entry.Subject, entry.Asked = event.ActorID, false
+			b.appendSighting(event.Payload.Target, entry)
+			return
+		}
 		heard := func(owner, speaker string, source uint64) {
 			if source != 0 {
 				b.appendSighting(owner, NotebookEntry{Tick: event.Tick, SourceSequence: event.Sequence, Subject: speaker, Action: ActionSpeak, Reported: source})
@@ -80,13 +90,13 @@ func (b *Bakery) appendSighting(owner string, entry NotebookEntry) {
 	b.Notebooks[owner] = append(slices.Clip(b.Notebooks[owner]), entry)
 }
 
-// reportedSighting retrieves only the specific firsthand memory shared aloud.
-func (b *Bakery) reportedSighting(reporter string, sequence uint64) (NotebookEntry, bool) {
-	entries := b.Notebooks[reporter]
+// firsthandAt looks up a participant or eyewitness memory by event sequence.
+func (b *Bakery) firsthandAt(owner string, sequence uint64) (NotebookEntry, bool) {
+	entries := b.Notebooks[owner]
 	i, found := slices.BinarySearchFunc(entries, sequence, func(entry NotebookEntry, seq uint64) int {
 		return cmp.Compare(entry.SourceSequence, seq)
 	})
-	if !found || entries[i].Action == ActionSpeak {
+	if !found || entries[i].Reported != 0 {
 		return NotebookEntry{}, false
 	}
 	return entries[i], true
@@ -119,12 +129,21 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 		var prev NotebookEntry
 		for _, e := range entries {
 			if e.Tick <= 0 || e.Tick < prev.Tick || e.Tick > tick || e.SourceSequence <= prev.SourceSequence ||
-				(e.Action != ActionSpeak && e.Reported != 0) || e.Subject == owner || b.Entities[e.Subject].Kind != Actor {
+				(e.Action != ActionSpeak && (e.Reported != 0 || e.Condition != "")) || (e.Asked && e.Condition == "") || e.Subject == owner || b.Entities[e.Subject].Kind != Actor {
 				return fmt.Errorf("invalid notebook sighting for %q at sequence %d", owner, e.SourceSequence)
 			}
 			switch e.Action {
 			case ActionSpeak:
-				fact, ok := b.reportedSighting(e.Subject, e.Reported)
+				if e.Condition != "" {
+					other, found := b.firsthandAt(e.Subject, e.SourceSequence)
+					_, valid := checkInAnswers[e.Condition]
+					if b.ContentVersion < conversationContentVersion || !valid || e.Reported != 0 || e.Target != "" ||
+						!found || other.Subject != owner || other.Tick != e.Tick || other.Condition != e.Condition || other.Asked == e.Asked {
+						return fmt.Errorf("invalid check-in for %q at sequence %d", owner, e.SourceSequence)
+					}
+					break
+				}
+				fact, ok := b.firsthandAt(e.Subject, e.Reported)
 				if !ok || fact.Tick > e.Tick || e.Reported >= e.SourceSequence || e.Target != "" || b.ContentVersion < relationshipContentVersion {
 					return fmt.Errorf("invalid reported sighting for %q at sequence %d", owner, e.SourceSequence)
 				}

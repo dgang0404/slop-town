@@ -25,7 +25,7 @@ func RestoreBakery(data []byte, world string, clock *Timeline) (*Bakery, error) 
 		return nil, err
 	}
 	b := saved.Bakery
-	if saved.Version != 1 || b == nil || b.GeneratorVersion != 1 || b.ContentVersion < 1 || b.ContentVersion > relationshipContentVersion {
+	if saved.Version != 1 || b == nil || b.GeneratorVersion != 1 || b.ContentVersion < 1 || b.ContentVersion > conversationContentVersion {
 		return nil, fmt.Errorf("unsupported bakery snapshot or content version")
 	}
 	if clock == nil || b.WorldID != world || b.Seed != clock.seed || clock.draws["geography"] != 1 {

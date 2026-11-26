@@ -21,7 +21,7 @@ In Phase 4 the baker and porter follow work routines, choose where to rest and k
 
 In Phase 5, the player and residents build endurance, feel relief after a tiring walk, and recognize people who have introduced themselves. [Phase 5 plan](docs/plans/phase-5.md) · [Acceptance results](docs/plans/phase-5-results.md)
 
-The Phase 7 bakery narrator offers brief and story settings. Both describe what your character notices, with new details in bold on supported terminals. In the practice bakery, you can ask a worker what they have seen. The player journal recalls the visit and its conversations in chapters and can be exported as plain text. [Phase 7 presentation plan](docs/plans/phase-7.md)
+The Phase 7 bakery narrator offers brief and story settings. Both describe what your character notices, with new details in bold on supported terminals. In the practice bakery, workers can talk while you are elsewhere. You can ask either person about the conversation later. The player journal recalls the visit and its conversations in chapters and can be exported as plain text. [Phase 7 presentation plan](docs/plans/phase-7.md)
 
 To validate a local content pack, run `go run ./cmd/packcheck PACK_DIRECTORY`. The [manifest guide](docs/content-packs.md) includes a bundled example.
 
@@ -111,6 +111,24 @@ This command-line walkthrough prints the full player view after each action. On 
 Start a fresh practice bakery with `go run ./cmd/sloptown bakery -practice -play -seed 42`. Enter `wait` three times at the shopfront, then `talk to baker`. Choose **“What have you seen around here?”** with the arrows and Enter, or type its number. The baker can tell you about a meeting you missed. Look for **“So the porter introduced themselves to you?”** in the refreshed choices.
 
 Each exchange takes one turn. The workers keep their routines and can walk out of reach. Browsing the lines and typing `cancel` to leave cost no time. Type `journal` to read who said what.
+
+### Catch up on a conversation you missed
+
+In a fresh seed-42 practice bakery, enter these commands one per line.
+
+```text
+wait
+east
+east
+south
+journal
+north
+talk to porter
+```
+
+Stepping south takes you around a corner inside the bakery. While you are out of sight, the baker checks in on the porter at the shopfront. Your first journal reading covers your walk. Back within reach, choose **“Have you had a chance to talk with anyone lately?”** The porter will tell you what they said. You can ask a follow-up or type `cancel` and read `journal` again to see the porter's account.
+
+This routine runs in newly created practice bakeries. To try it alongside an existing save, add `-practice -timeline coworker-visit` when starting a fresh timeline in that file.
 
 ### Read your journal
 

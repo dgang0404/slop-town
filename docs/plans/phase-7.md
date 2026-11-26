@@ -91,8 +91,20 @@ An interrupted SQLite receipt write preserved the pre-conversation checkpoint. R
 
 A save made by checkpoint 4 at `4a1d626` replayed to the same tick-three hash in both executables. Continuing that save with typed choices and making the same choices in a fresh Linux terminal using Down and Enter both reached tick 5, sequence 20, with SHA-256 `5e58b9675cdff165c41eef113171ed6e4e21c8317483782b28280899294ffc66`. The full offline build and tests, both smoke runs and three race-detector runs passed.
 
+## Checkpoint 6 — conversations between residents
+
+In new practice bakeries (content version 9), a worker who recognizes a coworker can ask how they are doing when both have reached their work station and have a free turn. The answer reflects how the other worker feels at that moment. Walking, taking a needed break, making an introduction and speaking with the player take priority. The same pair waits at least eight turns before another routine check-in, enough time for a trip from the shopfront to the prep area and back. The exchange takes place within the existing turn. [Try the missed meeting](../../README.md#catch-up-on-a-conversation-you-missed)
+
+An off-screen meeting records who spoke, the question's intent and tone, and the answer as a fact. Each participant remembers their side. On a later visit, either can describe the conversation in their own words. The player's journal credits the person who told them. Older saves keep the routines for their original content version. [Master design, section 14.9](../design/Slop_Town_Master_Design_Revised_v7.docx)
+
+### Checkpoint 6 results
+
+On seed 42, the player walked around a corner inside the bakery on turn four. Both workers were out of sight. At the shopfront, the baker checked in on the porter, who felt fine. The two workers’ notebooks and journals agreed on who had asked and answered. The player’s journal first mentioned the meeting on turn six, after the porter described it. A follow-up on turn seven let the player confirm who had spoken. [Simulation checks](../../internal/simulation/check_in_test.go)
+
+Interrupting the SQLite write for turn four rolled back the meeting and both memories. After reopening, retrying the visit recorded each exchange once. Replay from sequences 0, 12 and 15 reached tick 7, sequence 25, with SHA-256 `650517bfbf9fe414a7d2f57a937b520d75ef56fc99d0f7e3d0bf8eda05606a08`. A version-eight save created by `3d5aadc` retained its journal text and replay hash through reopening and retry. The offline build and test suite, both smoke runs and three race-detector runs passed. The terminal also cross-built for Windows amd64 and macOS arm64. [Restart and replay walkthrough](../../internal/storage/check_in_test.go)
+
 ## Later narrative work
 
-The next conversation checkpoint is for residents to start exchanges during their own routines. Two residents can meet while the player is elsewhere. A later conversation can bring news of that meeting back to the player. [Master design, section 14.9](../design/Slop_Town_Master_Design_Revised_v7.docx)
+The next conversation checkpoint is for a worker to pass along something they witnessed. If a second worker later tells the player, their account should name the original witness and preserve what that person actually knew.
 
 A world calendar can supply day and season boundaries for longer chronicles. Illustrated export follows the plain-text edition.

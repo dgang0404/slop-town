@@ -15,13 +15,15 @@ type DialogueChoice struct {
 	Words string
 }
 
-// Exchange records both audible lines. Sources refer to a firsthand sighting
-// in the notebook of the participant who actually voiced that report.
+// Exchange keeps player-facing lines or the intent and answer of a background
+// check-in. Each report source points into the notebook of the person who spoke.
 type Exchange struct {
-	Words         string
-	Reply         string
-	SpeakerSource uint64 `json:",omitempty"`
-	ReplySource   uint64 `json:",omitempty"`
+	Words         string        `json:",omitempty"`
+	Reply         string        `json:",omitempty"`
+	SpeakerSource uint64        `json:",omitempty"`
+	ReplySource   uint64        `json:",omitempty"`
+	Question      SpeechLine    `json:",omitzero"`
+	Condition     workCondition `json:",omitempty"`
 }
 
 func (c *Coordinator) DialogueChoices(actor, listener string) ([]DialogueChoice, error) {
@@ -57,7 +59,7 @@ func (b *Bakery) dialogueChoices(view Observation, listener string) []DialogueCh
 		}
 	}
 	add("greeting", "greet", "warm", 0, "Hello.")
-	add("condition", "ask", "gentle", 0, "How are you holding up?")
+	add(checkInQuestion.Topic, checkInQuestion.Intent, checkInQuestion.Tone, 0, checkInWords)
 	add("news", "ask", "curious", 0, "What have you seen around here?")
 
 	// Most recent memories first. Only a report addressed to this speaker
@@ -65,15 +67,18 @@ func (b *Bakery) dialogueChoices(view Observation, listener string) []DialogueCh
 	entries := b.Notebooks[view.ObserverID]
 	for i := len(entries) - 1; i >= 0 && len(choices) < limit; i-- {
 		e := entries[i]
-		if e.Action == ActionSpeak {
+		if e.Reported != 0 {
 			if e.Subject == listener {
-				if fact, ok := b.reportedSighting(listener, e.Reported); ok {
+				if fact, ok := b.firsthandAt(listener, e.Reported); ok {
 					add(fact.Subject, "confirm", "careful", fact.SourceSequence, b.sightingWords(fact, view.ObserverID, true))
 				}
 			}
 		} else {
 			add(e.Subject, "share", "plain", e.SourceSequence, b.sightingWords(e, listener, false))
 		}
+	}
+	if b.ContentVersion >= conversationContentVersion {
+		add("conversation", "ask", "curious", 0, "Have you had a chance to talk with anyone lately?")
 	}
 	for _, obj := range view.Targets {
 		if obj.Ref == listener {
@@ -91,6 +96,9 @@ func (b *Bakery) dialogueChoices(view Observation, listener string) []DialogueCh
 // A confirmation gives the same event back to its source in the hearer's voice.
 func (b *Bakery) sightingWords(fact NotebookEntry, hearer string, confirm bool) string {
 	name := b.Entities[fact.Subject].Name
+	if fact.Condition != "" {
+		return fact.checkInAccount(name, fact.Subject == hearer, confirm)
+	}
 	if fact.Action == ActionIntroduce {
 		if fact.Subject == hearer {
 			if confirm {
@@ -122,6 +130,15 @@ func (b *Bakery) sightingWords(fact NotebookEntry, hearer string, confirm bool) 
 }
 
 func (b *Bakery) speak(view Observation, listener string, line SpeechLine) (spatialEffect, *actionFailure) {
+	if line == checkInQuestion {
+		effect, failure := b.checkIn(view, listener)
+		if failure == nil {
+			x := &effect.payload.Dialogue
+			x.Words, x.Reply = x.lines()
+			effect.message = x.message(b.Entities[listener].Name)
+		}
+		return effect, failure
+	}
 	choices := b.dialogueChoices(view, listener)
 	if len(choices) == 0 {
 		return spatialEffect{}, targetUnavailable()
@@ -136,7 +153,7 @@ func (b *Bakery) speak(view Observation, listener string, line SpeechLine) (spat
 		}
 		exchange := b.answer(view.ObserverID, listening, choice)
 		return spatialEffect{kind: "actors_conversed", payload: EventPayload{Target: listener, Dialogue: exchange},
-			message:  "You say, “" + exchange.Words + "”\nThe " + b.Entities[listener].Name + " replies, “" + exchange.Reply + "”",
+			message:  exchange.message(b.Entities[listener].Name),
 			entityID: view.ObserverID, entity: b.Entities[view.ObserverID]}, nil
 	}
 	return spatialEffect{}, &actionFailure{"line_unavailable", "That line is no longer available."}
@@ -163,31 +180,21 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 		}
 	case "ask":
 		switch line.Topic {
-		case "condition":
-			actor := b.Entities[listener]
-			switch {
-			case actor.ReliefTurns > 0:
-				x.Reply = "Better. I needed that rest."
-			case actor.SeekingRestSpot || actor.Fatigue == fatigueLimit:
-				x.Reply = "I could use a place to sit."
-			case actor.Seated:
-				x.Reply = "I'm taking a breather."
-			default:
-				x.Reply = "Doing all right, thank you."
-			}
+		case "news":
+			x.Reply = "Nothing comes to mind."
+		case "conversation":
+			x.Reply = "I don't remember anyone checking in lately."
 		default:
 			x.Reply = "I don't remember an introduction."
-			if line.Topic == "news" {
-				x.Reply = "Nothing comes to mind."
-			}
-			entries := b.Notebooks[listener]
-			for i := len(entries) - 1; i >= 0; i-- {
-				fact := entries[i]
-				if (line.Topic == "news" && fact.Action != ActionSpeak) || (fact.Action == ActionIntroduce && fact.Subject == line.Topic) {
-					x.Reply = b.sightingWords(fact, speaker, false)
-					x.ReplySource = fact.SourceSequence
-					break
-				}
+		}
+		entries := b.Notebooks[listener]
+		for i := len(entries) - 1; i >= 0; i-- {
+			fact := entries[i]
+			if (line.Topic == "news" && fact.Reported == 0) || (line.Topic == "conversation" && fact.Condition != "") ||
+				(fact.Action == ActionIntroduce && fact.Subject == line.Topic) {
+				x.Reply = b.sightingWords(fact, speaker, false)
+				x.ReplySource = fact.SourceSequence
+				break
 			}
 		}
 	}
