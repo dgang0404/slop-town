@@ -170,6 +170,18 @@ func BakeryNotebook(path string, scope simulation.Scope, actor string) ([]simula
 	return bakery.Notebook(actor)
 }
 
+// BakeryRestPreference exposes one saved tendency to the developer inspector.
+func BakeryRestPreference(path string, scope simulation.Scope, actor string) (int, error) {
+	bakery, err := readBakery(path, scope)
+	if err != nil {
+		return 0, err
+	}
+	if bakery == nil || bakery.Entities[actor].RestInPlacePercent == 0 {
+		return 0, fmt.Errorf("no saved personality profile for %q", actor)
+	}
+	return bakery.Entities[actor].RestInPlacePercent, nil
+}
+
 func readBakery(path string, scope simulation.Scope) (*simulation.Bakery, error) {
 	db, err := openTimelineDB(path, true)
 	if err != nil {

@@ -1,6 +1,6 @@
 # Phase 4 — autonomous residents
 
-The baker follows a work routine and takes breaks. Residents keep private notebooks of what they witness. The next checkpoint introduces individual preferences. The terminal shows the people and objects the player can observe. The simulation chooses and validates resident actions offline. [Master design, sections 9, 11 and 50](../design/Slop_Town_Master_Design_Revised_v7.docx) · [Phase 3 acceptance](phase-3-results.md)
+The baker and porter follow work routines, choose where to take breaks and keep private notebooks of what they witness. Their individual preferences influence their choices. The terminal shows the people and objects the player can observe. The simulation chooses and validates resident actions offline. [Master design, sections 9, 11, 40–41 and 50](../design/Slop_Town_Master_Design_Revised_v7.docx) · [Phase 3 acceptance](phase-3-results.md)
 
 ## Checkpoints
 
@@ -82,3 +82,28 @@ Notebook timelines use bakery content version 4. A version 3 save from checkpoin
 ```sh
 go test -count=1 -v -run '^TestNotebook' ./internal/simulation ./internal/storage
 ```
+
+The hosted Linux verification passed for checkpoint 3 at `920caf0`. [Hosted run](https://github.com/dgang0404/slop-town/actions/runs/45839368340)
+
+## Checkpoint 4 results
+
+New resident bakeries use content version 5. The porter now joins the baker on the route between the shopfront and the prep area. At generation, each worker draws a stable preference between 1 and 99 percent for resting where they stand. When fatigue calls for a break and both locations are available, a worker draws once from their own stream. The simulation saves the decision, its source request and the chosen destination. A worker heading to the back continues there across turns and restarts. When the worker is already there or the next step is blocked with no door they can open, they can sit immediately.
+
+In the seed-42 walkthrough on 26 November 2026, the player waited outside. At tick 9 the baker and porter stood together in the open doorway. Each had taken five steps since their last rest. Both chose a resting place at tick 10.
+
+| Worker | Chance of sitting in place | Draw (0–99) | Observable action |
+| --- | ---: | ---: | --- |
+| Baker | 40% | 58 | Stepped into prep, reached the back at tick 11 and sat down at tick 12. |
+| Porter | 87% | 48 | Sat down in the doorway and returned to the shopfront at tick 11. |
+
+A test exchanged just the two preferences. With the same starting positions, clock and random draws, the baker sat down in the doorway and the porter walked to the back. The ordinary terminal shows the workers' actions. The developer `profile` command reads the saved percentage without advancing the timeline. [Simulation tests](../../internal/simulation/personality_test.go) · [Play the walkthrough](../../README.md#meet-the-baker)
+
+Replay from sequence 0, sequence 29 (just before the choices) and sequence 35 (after both choices) reached tick 13, sequence 46, with SHA-256 `42fc440f92d381c50c0b96b11c6e72456cef5116399ec811914e5ec38b9fb24d`. A failed SQLite write during the porter's decision rolled back both workers' turns, including the random draws. The retry committed each decision once. A save written by checkpoint 3 reopened, matched the published tick-6 digest, and continued to tick 13 with the same result in both executables. [SQLite restart and rollback test](../../internal/storage/personality_test.go)
+
+The full offline Linux checks passed, including both seed-42 smoke runs. Three race-detector runs passed for the simulation, terminal and storage packages. Repeat the focused checks with
+
+```sh
+go test -count=1 -v -run '^(TestPersonality|TestRestPreference|TestRestoreInvalidRestPreference)' ./internal/simulation ./internal/storage
+```
+
+Checkpoint 5 will follow both residents through a missed encounter, restart and failed save, and record the local and hosted Phase 4 acceptance results.

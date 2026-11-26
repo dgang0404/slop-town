@@ -11,14 +11,14 @@ import (
 	"github.com/dgang0404/slop-town/internal/storage"
 )
 
-// runNotebook is a developer command, separate from the player's bakery session.
-func runNotebook(args []string, stdout, stderr io.Writer) int {
-	flags := flag.NewFlagSet("sloptown notebook", flag.ContinueOnError)
+// Actor inspection is read-only and separate from the player's bakery session.
+func runActorInspection(command string, args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("sloptown "+command, flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	path := flags.String("db", "", "existing SQLite save")
 	world := flags.String("world", "bakery", "saved world")
 	timeline := flags.String("timeline", "main", "saved timeline")
-	actor := flags.String("actor", "", "notebook owner's full actor ID")
+	actor := flags.String("actor", "", "full actor ID")
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
@@ -29,6 +29,15 @@ func runNotebook(args []string, stdout, stderr io.Writer) int {
 	if flags.NArg() != 0 || *path == "" || *actor == "" || !scope.Valid() {
 		flags.Usage()
 		return 2
+	}
+	if command == "profile" {
+		percent, err := storage.BakeryRestPreference(*path, scope, *actor)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		fmt.Fprintf(stdout, "Profile of %s (timeline %s)\n%d%% chance of resting in place when both spots are available.\n", *actor, *timeline, percent)
+		return 0
 	}
 	entries, err := storage.BakeryNotebook(*path, scope, *actor)
 	if err != nil {

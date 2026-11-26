@@ -99,6 +99,18 @@ type Event struct {
 	Payload        EventPayload
 }
 
+func eventID(scope Scope, sequence uint64) string {
+	return fmt.Sprintf("%s/%s/%d", url.PathEscape(scope.WorldID), url.PathEscape(scope.TimelineID), sequence)
+}
+
+// All effects of a turn share its scope, tick and causing request.
+func (parent Event) child(sequence uint64, actor, engine, kind string, payload EventPayload) Event {
+	e := parent
+	e.ID, e.ParentID, e.Sequence = eventID(e.Scope, sequence), parent.ID, sequence
+	e.ActorID, e.Engine, e.Kind, e.Payload = actor, engine, kind, payload
+	return e
+}
+
 // A transfer identifies the item in Target and its new parent in HolderID or Destination.
 type EventPayload struct {
 	Delta       int64
@@ -249,29 +261,21 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 		nextBakery = &staged
 		engine, kind, payload, message = "spatial", primary.kind, primary.payload, primary.message
 	}
-	event := func(seq uint64, actor, kind string, payload EventPayload) Event {
-		id := fmt.Sprintf("%s/%s/%d", url.PathEscape(scope.WorldID), url.PathEscape(scope.TimelineID), seq)
-		return Event{Scope: scope, ID: id, Sequence: seq, Tick: next.Tick(), Version: contractVersion,
-			RequestID: p.RequestID, ActorID: actor, Engine: engine, Kind: kind, PayloadVersion: 1, Payload: payload}
-	}
-	advanced := event(lastSequence+1, actorID, "tick_advanced", EventPayload{Delta: 1})
-	action := event(advanced.Sequence+1, actorID, kind, payload)
-	action.ParentID = advanced.ID
+	advanced := Event{Scope: scope, ID: eventID(scope, lastSequence+1), Sequence: lastSequence + 1,
+		Tick: next.Tick(), Version: contractVersion, RequestID: p.RequestID, ActorID: actorID,
+		Engine: engine, Kind: "tick_advanced", PayloadVersion: 1, Payload: EventPayload{Delta: 1}}
+	action := advanced.child(advanced.Sequence+1, actorID, engine, kind, payload)
 	events := []Event{advanced, action}
 	result.Status = "accepted"
 	if nextBakery == nil {
 		result.Observation = Observation{Scope: scope, Version: contractVersion, ObserverID: actorID, Text: message}
 	} else {
 		nextBakery.applySpatial(action, primary)
-		bakerID := url.PathEscape(scope.WorldID) + "/baker"
-		if nextBakery.ContentVersion >= residentContentVersion && actorID != bakerID {
-			if effect, ok := nextBakery.bakerTurn(scope, bakerID, next.Tick()); ok {
-				resident := event(action.Sequence+1, bakerID, effect.kind, effect.payload)
-				resident.ParentID = action.ID
-				nextBakery.applySpatial(resident, effect)
-				events = append(events, resident)
-			}
+		residents, err := nextBakery.advanceResidents(&next, action)
+		if err != nil {
+			return reject("resolution_failed", "The resident could not finish the turn."), nil
 		}
+		events = append(events, residents...)
 		view, err := nextBakery.Observe(scope, actorID)
 		if err != nil {
 			return reject("resolution_failed", "You cannot observe your surroundings."), nil

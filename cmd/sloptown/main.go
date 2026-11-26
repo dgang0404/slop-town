@@ -47,8 +47,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		switch args[0] {
 		case "bakery":
 			return runBakery(args[1:], os.Stdin, stdout, stderr)
-		case "notebook":
-			return runNotebook(args[1:], stdout, stderr)
+		case "notebook", "profile":
+			return runActorInspection(args[0], args[1:], stdout, stderr)
 		case "step":
 			return runStep(args[1:], stdout, stderr)
 		case "checkpoint", "replay":

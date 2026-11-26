@@ -8,14 +8,25 @@ import (
 	"testing"
 )
 
+// Checkpoint 3 timelines have one scheduled worker and a stationary porter.
+func notebookCoordinator(t *testing.T, seed int64) *Coordinator {
+	t.Helper()
+	c, err := NewCoordinator(Scope{"town", "main"}, seed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.bakery, err = generateNotebookBakery(c.scope.WorldID, c.clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return c
+}
+
 func TestBakerWorkRoutine(t *testing.T) {
 	const player, baker = "town/player", "town/baker"
 	for _, seed := range []int64{42, 43} {
 		t.Run(fmt.Sprint(seed), func(t *testing.T) {
-			c, err := (BakerySetup{Resident: true}).NewCoordinator(Scope{"town", "main"}, seed)
-			if err != nil {
-				t.Fatal(err)
-			}
+			c := notebookCoordinator(t, seed)
 			start, err := c.Observe(player)
 			if err != nil || start.hasTarget(baker) {
 				t.Fatalf("baker should start behind a closed door: %+v, %v", start, err)
@@ -98,17 +109,15 @@ func TestBakerUsesSharedDoor(t *testing.T) {
 	if r := submitUnchanged(t, c, player, spatialProposal(c, "close", ActionClose, door)); r.Code != "doorway_occupied" {
 		t.Fatalf("player closed the door on the baker: %+v", r)
 	}
+	before := len(c.events)
 	if r := c.Submit(baker, spatialProposal(c, "baker-wait", ActionWait, ActionArgs{})); r.Status != "accepted" ||
-		len(c.events) != 5 || c.bakery.Entities[baker].Placement != c.bakery.Entities[door.Target].Placement {
+		len(c.events) != before+3 || c.events[before+2].ActorID != "town/porter" || c.bakery.Entities[baker].Placement != c.bakery.Entities[door.Target].Placement {
 		t.Fatal("an explicitly acting resident should only take one turn", r)
 	}
 }
 
 func TestBakerWorksOutOfSight(t *testing.T) {
-	c, err := (BakerySetup{Resident: true}).NewCoordinator(Scope{"town", "main"}, 42)
-	if err != nil {
-		t.Fatal(err)
-	}
+	c := notebookCoordinator(t, 42)
 	// Walk south along the street, then stay there as the baker returns indoors.
 	var r Result
 	for tick := 1; tick <= 12; tick++ {

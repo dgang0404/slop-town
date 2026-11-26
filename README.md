@@ -105,13 +105,20 @@ go run ./cmd/sloptown bakery -resident -play -seed 42
 
 Stay outside and type `wait` three times. On the first turn the baker opens the door from inside. On the second the baker steps into the doorway. On the third you see “You see the baker here.” If you open the door yourself, the baker can cross a turn sooner. Looking around and asking for available actions take no game time.
 
-Keep waiting on the same spot to watch a full shift. On the twelfth turn you see “You see the baker sitting to the east.” On the next turn the baker gets up and heads back to prep. You can also type `rest` to sit for a turn. Your next step brings you back to your feet.
+Keep waiting on the same spot. On turn 9 both workers reach the doorway. On turn 10 the porter sits down there while the baker walks back into the bakery. On turn 12 you can see the baker sitting at the back. The next turn the baker returns to prep. You can also type `rest` to sit for a turn. Your next step brings you back to your feet.
 
 To save this visit, add `-db resident.sqlite` when starting. Use a fresh save or a new `-timeline NAME` alongside an existing bakery. Each timeline remembers the content it started with, so you can omit `-resident` when resuming.
 
+In a new resident timeline, each worker has a seeded preference for where to take a break. To inspect the saved preferences after playing, run the read-only developer commands from the repository root.
+
+```sh
+go run ./cmd/sloptown profile -db resident.sqlite -actor bakery/baker
+go run ./cmd/sloptown profile -db resident.sqlite -actor bakery/porter
+```
+
 ### Inspect the residents' notebooks
 
-In a new resident bakery, a porter stands on the street. The porter and the baker can each record seeing someone sit down, open a door or crate, or close one. To compare their accounts, start a fresh save and sit down outside, then walk inside and sit down again. The developer command `notebook` reads one character's sightings from the save. Reading costs no game time.
+In a new resident bakery, the porter starts on the street. The porter and the baker can each record seeing someone sit down, open a door or crate, or close one. To compare their accounts, start a fresh save and sit down outside, then walk inside and sit down again. The developer command `notebook` reads one character's sightings from the save. Reading costs no game time.
 
 ```sh
 save_dir=$(mktemp -d)
@@ -121,7 +128,7 @@ go run ./cmd/sloptown notebook -db "$save" -actor bakery/porter
 go run ./cmd/sloptown notebook -db "$save" -actor bakery/baker
 ```
 
-The porter saw the player sit on the street at tick 1. The baker saw the player sit in the prep area at tick 4. Each entry gives the sequence number of the event the character witnessed. [Phase 4 checkpoint results](docs/plans/phase-4.md#checkpoint-3-results)
+Only the porter saw the player sit on the street at tick 1. Both workers saw the player sit in the prep area at tick 4. Each entry gives the sequence number of the event the character witnessed. [Phase 4 checkpoint results](docs/plans/phase-4.md#checkpoint-4-results)
 
 ### Save and replay the bakery
 

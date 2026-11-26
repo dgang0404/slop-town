@@ -55,7 +55,7 @@ func TestRestoreInvalidRestState(t *testing.T) {
 		{"town/baker", residentContentVersion, 1, false},
 	} {
 		clock := NewTimeline(42)
-		b, err := (BakerySetup{Resident: true}).Generate("town", clock)
+		b, err := generateNotebookBakery("town", clock)
 		if err != nil {
 			t.Fatal(err)
 		}

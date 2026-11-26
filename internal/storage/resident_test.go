@@ -13,7 +13,7 @@ import (
 	"github.com/dgang0404/slop-town/internal/storage"
 )
 
-// Recreate the tick-zero actor layout from checkpoints 1 and 2. Their
+// Recreate the tick-zero actor layouts from checkpoints 1 through 3. Their
 // published replay hashes below pin both the saved content and its behavior.
 func legacyResidentSave(t *testing.T, path string, s simulation.Scope, version int) simulation.State {
 	t.Helper()
@@ -25,6 +25,11 @@ func legacyResidentSave(t *testing.T, path string, s simulation.Scope, version i
 	station := b.Entities["bakery/door"].Placement
 	station.Cell.X++
 	b.Entities["bakery/baker"] = simulation.SpatialEntity{Name: "baker", Kind: simulation.Actor, Placement: station}
+	if version == 4 {
+		street := b.Entities["bakery/player"].Placement
+		street.Cell.Y = len(b.Cells) - 1
+		b.Entities["bakery/porter"] = simulation.SpatialEntity{Name: "porter", Kind: simulation.Actor, Placement: street}
+	}
 	b.ContentVersion = version
 	data, err := b.Snapshot()
 	if err != nil {

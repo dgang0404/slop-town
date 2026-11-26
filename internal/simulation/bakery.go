@@ -3,6 +3,7 @@ package simulation
 
 import (
 	"fmt"
+	"maps"
 	"net/url"
 	"strings"
 )
@@ -43,13 +44,15 @@ const (
 )
 
 type SpatialEntity struct {
-	Name      string
-	Kind      EntityKind
-	Placement Placement
-	Open      bool
-	Portable  bool
-	Fatigue   int  `json:",omitempty"`
-	Seated    bool `json:",omitempty"`
+	Name               string
+	Kind               EntityKind
+	Placement          Placement
+	Open               bool
+	Portable           bool
+	Fatigue            int  `json:",omitempty"`
+	Seated             bool `json:",omitempty"`
+	RestInPlacePercent int  `json:",omitempty"`
+	SeekingRestSpot    bool `json:",omitempty"`
 }
 
 // Bakery is authoritative fixture state. Cells are in row-major order and
@@ -74,16 +77,43 @@ type BakerySetup struct {
 }
 
 const (
-	residentContentVersion = 2 // The original work routine.
-	restContentVersion     = 3
-	notebookContentVersion = 4
-	fatigueLimit           = 5 // Steps since the last rest, capped during a break.
+	residentContentVersion    = 2 // The original work routine.
+	restContentVersion        = 3
+	notebookContentVersion    = 4
+	personalityContentVersion = 5
+	fatigueLimit              = 5 // Steps since the last rest, capped during a break.
 )
 
 func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, error) {
+	if !setup.Resident || clock == nil {
+		return GenerateBakery(worldID, clock)
+	}
+	// Publish the geography and both profile draws together.
+	staged := *clock
+	staged.draws = maps.Clone(clock.draws)
+	b, err := generateNotebookBakery(worldID, &staged)
+	if err != nil {
+		return nil, err
+	}
+	for _, role := range []string{"baker", "porter"} {
+		draw, err := staged.Draw("personality/" + role)
+		if err != nil {
+			return nil, err
+		}
+		id := url.PathEscape(worldID) + "/" + role
+		resident := b.Entities[id]
+		resident.RestInPlacePercent = 1 + int(draw%99)
+		b.Entities[id] = resident
+	}
+	b.ContentVersion = personalityContentVersion
+	*clock = staged
+	return b, nil
+}
+
+func generateNotebookBakery(worldID string, clock *Timeline) (*Bakery, error) {
 	b, err := GenerateBakery(worldID, clock)
-	if err != nil || !setup.Resident {
-		return b, err
+	if err != nil {
+		return nil, err
 	}
 	prefix := url.PathEscape(worldID) + "/"
 	station := b.Entities[prefix+"door"].Placement
@@ -192,6 +222,17 @@ func (b *Bakery) Validate() error {
 		}
 		if _, err := b.PositionOf(id); err != nil {
 			return err
+		}
+		hasProfile := b.ContentVersion >= personalityContentVersion && (id == prefix+"baker" || id == prefix+"porter")
+		if hasProfile {
+			if e.Kind != Actor || e.RestInPlacePercent < 1 || e.RestInPlacePercent > 99 {
+				return fmt.Errorf("invalid rest preference for %q", id)
+			}
+		} else if e.RestInPlacePercent != 0 || e.SeekingRestSpot {
+			return fmt.Errorf("unexpected rest preference for %q", id)
+		}
+		if e.SeekingRestSpot && e.Fatigue != fatigueLimit {
+			return fmt.Errorf("invalid break in progress for %q", id)
 		}
 		if (e.Fatigue != 0 || e.Seated) && (e.Kind != Actor || b.ContentVersion < restContentVersion) {
 			return fmt.Errorf("unexpected rest state for %q", id)

@@ -71,7 +71,7 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 		if b.ContentVersion < restContentVersion {
 			return spatialEffect{}, &actionFailure{"action_unavailable", "You can't rest here."}
 		}
-		actor.Fatigue, actor.Seated = 0, true
+		actor.Fatigue, actor.Seated, actor.SeekingRestSpot = 0, true, false
 		return spatialEffect{kind: "actor_rested", message: "You rest for a turn.", entityID: view.ObserverID, entity: actor}, nil
 	case ActionMove:
 		if p.ByName || args != (ActionArgs{Direction: args.Direction}) {

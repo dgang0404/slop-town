@@ -9,10 +9,7 @@ import (
 
 func TestNotebookRecordsVisibleChanges(t *testing.T) {
 	const player, baker, porter = "town/player", "town/baker", "town/porter"
-	c, err := (BakerySetup{Resident: true}).NewCoordinator(Scope{"town", "main"}, 42)
-	if err != nil {
-		t.Fatal(err)
-	}
+	c := notebookCoordinator(t, 42)
 	for tick := 1; tick <= 12; tick++ {
 		p := spatialProposal(c, fmt.Sprint(tick), ActionWait, ActionArgs{})
 		if tick <= 2 {

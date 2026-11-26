@@ -31,6 +31,7 @@ func TestNotebookWitnessesAcrossRestart(t *testing.T) {
 		}
 		return string(out)
 	}
+	legacyResidentSave(t, save, s, 4)
 	run("", "bakery", "-resident", "-seed", "42")
 	run("", "checkpoint", "-world", "bakery")
 	run("", "bakery", "-batch", "outside", "rest")

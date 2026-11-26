@@ -92,6 +92,10 @@ func TestBakerTerminalSession(t *testing.T) {
 		return out.String()
 	}
 	start := run("look\nactions\neast\n", "-resident", "-play")
+	var profile, diag bytes.Buffer
+	if code := runActorInspection("profile", []string{"-db", path, "-actor", "bakery/baker"}, &profile, &diag); code != 0 || !strings.Contains(profile.String(), "40% chance of resting in place") {
+		t.Fatalf("inspect profile: exit %d, %s, %s", code, profile.String(), diag.String())
+	}
 	s := simulation.Scope{WorldID: "bakery", TimelineID: "main"}
 	cp, err := storage.SaveCheckpoint(path, s)
 	if err != nil || cp.Tick != 0 || strings.Contains(start, "the baker ") || !strings.Contains(start, "  wait\n") {
@@ -106,7 +110,7 @@ func TestBakerTerminalSession(t *testing.T) {
 		t.Fatal(visit)
 	}
 	head, err := storage.Replay(path, s, 0)
-	if err != nil || head.Tick != 3 || head.Sequence != 9 {
+	if err != nil || head.Tick != 3 || head.Sequence != 11 {
 		t.Fatalf("resumed visit: %+v, %v", head, err)
 	}
 	if !strings.Contains(start, "  rest\n") || !strings.Contains(run("", "-batch", "break", "rest"), "You are sitting down.") {
