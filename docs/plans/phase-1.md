@@ -26,6 +26,20 @@ Version 1 snapshots use UTF-8 JSON with `version`, signed 64-bit `seed` and `tic
 
 On 25 November 2026, `sh scripts/check-phase-0.sh` passed locally with Go downloads disabled, including the existing seed-42 SQLite smoke check. All five new timeline tests also passed as WebAssembly under Node. The resume test takes a snapshot at tick 1 and compares subsequent draws and serialized state at tick 2 with an uninterrupted run. This checkpoint covers clock and stream state in memory. Checkpoint 2 will resolve a synthetic action and record its events.
 
+## Checkpoint 2 results
+
+The [in-memory coordinator](../../internal/simulation/coordinator.go) owns one world and timeline. A caller supplies the actor separately and submits a version 1 `fixture_step` proposal with a request ID and a named stream. The coordinator stages a one-tick advance and one draw. On success, it publishes the new state, two events and the actor's request receipt together.
+
+For two successive steps, tick 1 has sequences 1 and 2, and tick 2 has sequences 3 and 4. Each `tick_advanced` event identifies the causing request and actor. Its `stream_drawn` child records the parent event ID, stream and sampled value. Event IDs combine the escaped world and timeline IDs with the sequence. The caller receives an actor-scoped observation. The developer history exposes the ordered events.
+
+Within that actor and timeline, an identical retry returns the stored result. Changing the stream under an already committed request ID yields `request_conflict`. Invalid proposals and failed draws leave the clock, streams, events and receipts untouched. These receipts currently last for the lifetime of the coordinator. Checkpoint 3 will persist them with the state and events in one SQLite transaction.
+
+On 25 November 2026, `sh scripts/check-phase-0.sh` passed offline and both SQLite smoke runs produced the reference hash. The four coordinator tests also passed five times under the Go race detector and once under WebAssembly in Node. They covered deterministic histories, equal-tick ordering, causal links, actor and timeline isolation, rejected commands, retries after a later commit, and 12 concurrent submissions of one request. Reproduce the focused Linux checks with:
+
+```sh
+go test -race -count=5 -run 'Test(Command|ScopedCommand|ConcurrentCommand)' ./internal/simulation
+```
+
 ## Rules to settle in implementation
 
 - Carry the [existing simulation contracts](../decisions/0002-simulation-contracts.md) into executable types. Keep SQL handles, wall-clock time and logging run IDs outside authoritative state. A failed storage attempt must never publish staged events.
