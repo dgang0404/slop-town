@@ -12,5 +12,6 @@ Use this plan for the implementation stack alongside the [original workstreams](
 | 05 Runner | Run a seeded fixture and check its state hash after reopening the database. |
 | 06 Content | Specify and validate a minimal content manifest and document safe loading. |
 | 07 Verification | Run Go tests and the offline smoke command locally, then add Linux CI. |
+| 08 Handoff | Review Phase 0 acceptance evidence and draft the Phase 1 specification. |
 
 The first implementation checkpoint covers a seeded fixture persisted across database connections. Remaining workstreams and final Phase 0 acceptance require separate verification.
