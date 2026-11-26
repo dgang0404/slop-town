@@ -26,4 +26,4 @@ go test -count=1 -v -run '^TestPhase4Acceptance$' ./internal/storage
 
 The full offline check passed on Linux amd64 with Go 1.27.4, including vet, all tests, the build, pack validation and both seed-42 smoke runs. The terminal, simulation and storage packages also passed three race-detector runs. [Offline verification script](../../scripts/check-phase-0.sh)
 
-Hosted Linux verification passed for checkpoint 4 at `2c7567b`. The checkpoint 5 hosted result is pending its push. The workflow runs the acceptance test and prints both replay hashes in the log. [Checkpoint 4 hosted run](https://github.com/dgang0404/slop-town/actions/runs/45841597354) · [Linux workflow](../../.github/workflows/phase-0.yml)
+Hosted Linux verification passed for checkpoint 4 at `2c7567b`. The final checkpoint passed at `a463d2a`. [Checkpoint 5 hosted run](https://github.com/dgang0404/slop-town/actions/runs/45842625342) The workflow runs the acceptance test and prints both replay hashes in the log. [Checkpoint 4 hosted run](https://github.com/dgang0404/slop-town/actions/runs/45841597354) · [Linux workflow](../../.github/workflows/phase-0.yml)

@@ -118,6 +118,8 @@ func (b *Bakery) observe(scope Scope, actorID string, locations map[string]strin
 	}
 	if actor.Seated {
 		lines = append(lines, "You are sitting down.")
+	} else if b.ContentVersion >= practiceContentVersion && actor.Fatigue == fatigueLimit {
+		lines = append(lines, "Your legs feel tired.")
 	}
 	for _, id := range slices.Sorted(maps.Keys(b.Entities)) {
 		if id == actorID {

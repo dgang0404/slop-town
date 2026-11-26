@@ -49,10 +49,12 @@ type SpatialEntity struct {
 	Placement          Placement
 	Open               bool
 	Portable           bool
-	Fatigue            int  `json:",omitempty"`
-	Seated             bool `json:",omitempty"`
-	RestInPlacePercent int  `json:",omitempty"`
-	SeekingRestSpot    bool `json:",omitempty"`
+	Fatigue            int    `json:",omitempty"`
+	Seated             bool   `json:",omitempty"`
+	RestInPlacePercent int    `json:",omitempty"`
+	SeekingRestSpot    bool   `json:",omitempty"`
+	WalkedCells        uint32 `json:",omitempty"`
+	EnduranceBouts     int    `json:",omitempty"`
 }
 
 // Bakery is authoritative fixture state. Cells are in row-major order and
@@ -74,6 +76,7 @@ type Bakery struct {
 // content version when resuming an existing timeline.
 type BakerySetup struct {
 	Resident bool
+	Practice bool // Includes both workers in a bakery with use-based endurance.
 }
 
 const (
@@ -81,11 +84,12 @@ const (
 	restContentVersion        = 3
 	notebookContentVersion    = 4
 	personalityContentVersion = 5
+	practiceContentVersion    = 6
 	fatigueLimit              = 5 // Steps since the last rest, capped during a break.
 )
 
 func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, error) {
-	if !setup.Resident || clock == nil {
+	if (!setup.Resident && !setup.Practice) || clock == nil {
 		return GenerateBakery(worldID, clock)
 	}
 	// Publish the geography and both profile draws together.
@@ -106,6 +110,9 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 		b.Entities[id] = resident
 	}
 	b.ContentVersion = personalityContentVersion
+	if setup.Practice {
+		b.ContentVersion = practiceContentVersion
+	}
 	*clock = staged
 	return b, nil
 }
@@ -221,6 +228,9 @@ func (b *Bakery) Validate() error {
 			return fmt.Errorf("entity ID %q is already used by a space", id)
 		}
 		if _, err := b.PositionOf(id); err != nil {
+			return err
+		}
+		if err := b.validatePractice(id, e); err != nil {
 			return err
 		}
 		hasProfile := b.ContentVersion >= personalityContentVersion && (id == prefix+"baker" || id == prefix+"porter")

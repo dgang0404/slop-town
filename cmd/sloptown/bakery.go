@@ -23,8 +23,9 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	batch := flags.String("batch", "", "repeat the same batch ID to retry its ordered requests")
 	play := flags.Bool("play", false, "read one player command per line")
 	resident := flags.Bool("resident", false, "include the baker's work routine when creating a new timeline")
+	practice := flags.Bool("practice", false, "create a resident bakery with use-based endurance")
 	flags.Usage = func() {
-		fmt.Fprintln(stderr, "Usage: sloptown bakery [-seed N] [-resident] [-db PATH] [-timeline NAME] [-batch ID] [-play | ACTION ...]")
+		fmt.Fprintln(stderr, "Usage: sloptown bakery [-seed N] [-resident] [-practice] [-db PATH] [-timeline NAME] [-batch ID] [-play | ACTION ...]")
 		fmt.Fprintln(stderr, "Actions: wait | rest | move DIRECTION | open NAME | close NAME | take NAME | drop NAME | put ITEM CONTAINER")
 	}
 	if err := flags.Parse(args); err != nil {
@@ -38,7 +39,7 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 2
 	}
 	scope := simulation.Scope{WorldID: "bakery", TimelineID: *timeline}
-	setup := simulation.BakerySetup{Resident: *resident}
+	setup := simulation.BakerySetup{Resident: *resident, Practice: *practice}
 	const player = "bakery/player"
 	var session bakerySession
 	var submit func(simulation.Proposal, *simulation.CommandInput) (simulation.Result, bool, error)

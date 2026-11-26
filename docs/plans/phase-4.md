@@ -110,4 +110,4 @@ The hosted Linux verification passed for checkpoint 4 at `2c7567b`. [Hosted run]
 
 ## Checkpoint 5 results
 
-The porter saw the baker take a break while the player was down the street. Interrupting the save on that turn and retrying produced the same event history and the same three private notebooks as playing straight through. Both replays reached tick 14, sequence 49. The local offline and race checks passed. Hosted verification of this final checkpoint is pending its push. [Phase 4 acceptance results](phase-4-results.md)
+The porter saw the baker take a break while the player was down the street. Interrupting the save on that turn and retrying produced the same event history and the same three private notebooks as playing straight through. Both replays reached tick 14, sequence 49. The local offline and race checks passed. Hosted Linux verification passed at `a463d2a`. [Hosted run](https://github.com/dgang0404/slop-town/actions/runs/45842625342) [Phase 4 acceptance results](phase-4-results.md)

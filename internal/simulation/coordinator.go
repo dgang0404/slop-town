@@ -113,12 +113,13 @@ func (parent Event) child(sequence uint64, actor, engine, kind string, payload E
 
 // A transfer identifies the item in Target and its new parent in HolderID or Destination.
 type EventPayload struct {
-	Delta       int64
-	Stream      string
-	Value       uint64
-	Destination CellPosition `json:",omitzero"`
-	Target      string       `json:",omitempty"`
-	HolderID    string       `json:",omitempty"`
+	Delta             int64
+	Stream            string
+	Value             uint64
+	Destination       CellPosition `json:",omitzero"`
+	Target            string       `json:",omitempty"`
+	HolderID          string       `json:",omitempty"`
+	EndurancePractice bool         `json:",omitempty"`
 }
 
 type requestKey struct{ actorID, requestID string }

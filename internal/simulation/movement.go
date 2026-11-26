@@ -71,8 +71,9 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 		if b.ContentVersion < restContentVersion {
 			return spatialEffect{}, &actionFailure{"action_unavailable", "You can't rest here."}
 		}
+		practiced := actor.recoverEndurance()
 		actor.Fatigue, actor.Seated, actor.SeekingRestSpot = 0, true, false
-		return spatialEffect{kind: "actor_rested", message: "You rest for a turn.", entityID: view.ObserverID, entity: actor}, nil
+		return spatialEffect{kind: "actor_rested", payload: EventPayload{EndurancePractice: practiced}, message: "You rest for a turn.", entityID: view.ObserverID, entity: actor}, nil
 	case ActionMove:
 		if p.ByName || args != (ActionArgs{Direction: args.Direction}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Movement takes one direction."}
@@ -138,7 +139,7 @@ func (b *Bakery) move(actorID string, actor SpatialEntity, dir Direction) (spati
 	}
 	actor.Placement.Cell = dest
 	if b.ContentVersion >= restContentVersion {
-		actor.Fatigue = min(actor.Fatigue+1, fatigueLimit)
+		actor.walkStep(b.ContentVersion, dest)
 		actor.Seated = false
 	}
 	return spatialEffect{kind: "actor_moved", payload: EventPayload{Destination: dest},

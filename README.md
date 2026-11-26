@@ -19,6 +19,8 @@ Phase 3 adds a playable text-command session, contextual actions and numbered ch
 
 In Phase 4 the baker and porter follow work routines, choose where to rest and keep private notebooks. The acceptance walkthrough follows a break the porter witnesses while the player is down the street. [Phase 4 plan](docs/plans/phase-4.md) · [Acceptance results](docs/plans/phase-4-results.md)
 
+Phase 5 begins with use-based endurance for the player and residents. [Phase 5 plan](docs/plans/phase-5.md)
+
 To validate a local content pack, run `go run ./cmd/packcheck PACK_DIRECTORY`. The [manifest guide](docs/content-packs.md) includes a bundled example.
 
 ## Run the Phase 0 fixture
@@ -115,6 +117,28 @@ In a new resident timeline, each worker has a seeded preference for where to tak
 go run ./cmd/sloptown profile -db resident.sqlite -actor bakery/baker
 go run ./cmd/sloptown profile -db resident.sqlite -actor bakery/porter
 ```
+
+### Try the endurance walk
+
+Start a fresh seed-42 bakery with both workers.
+
+```sh
+go run ./cmd/sloptown bakery -practice -play -seed 42
+```
+
+Walk the following route three times, sitting down at the end of each circuit. Notice where you are when your legs start feeling tired.
+
+```text
+west
+south
+east
+north
+south
+north
+rest
+```
+
+To keep the visit, add `-db practice.sqlite` when creating the timeline and use the same path when returning.
 
 ### Inspect the residents' notebooks
 
