@@ -11,6 +11,8 @@ For tested devices, hardware targets and offline play, see the [player system re
 
 See the [current Phase 0 plan](docs/plans/phase-0.md) for the Go implementation milestones.
 
+To validate a local content pack, run `go run ./cmd/packcheck PACK_DIRECTORY`. The [manifest guide](docs/content-packs.md) includes a bundled example.
+
 ## Run the Phase 0 fixture
 
 With Go 1.25 or newer, run these commands from the repository root. The first build needs access to the module dependencies.

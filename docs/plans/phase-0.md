@@ -79,3 +79,9 @@ seed=42 sha256=60261db115f851c52ad8e47ec6c6b787992eab8518bf7656591bd22b923e96b5
 ```
 
 After a saved value was deliberately changed, the next traced run reported `fixture_failed` at `verify` and exited 1. Invalid seed text, an empty database path and a stray positional argument each exited 2. Help exited 0.
+
+## Content pack checkpoint
+
+The [manifest guide](../content-packs.md) defines pack IDs, revisions, compatibility and dependency declarations. The bundled `content/smoke` fixture contains metadata only.
+
+On 25 November 2026, with `GOPROXY=off`, the full test suite, `go vet ./...` and both command builds passed. The checker accepted the bundled fixture and exited 1 for malformed JSON and an unsupported content API. Tests also covered duplicate fields, invalid dependency IDs, oversized input and linked manifests. The SQLite smoke command reproduced the seed-42 reference hash.

@@ -42,6 +42,14 @@ The response gives the player enough information to choose a new action without 
 {"version":1,"request_id":"r17","status":"rejected","code":"target_unavailable","message":"You can't reach that target."}
 ```
 
+## Conversation choices
+
+Players and residents use the same speech action. The speaker chooses a listener, topic, intent and tone. The simulation validates the attempt and resolves how the listener responds using that listener's knowledge, mood and goals.
+
+For a player turn, build **up to 11 distinct choices** from the latest exchange, current observations and the character's own conversation history. Show the words the character will actually say. Clicking a line or entering its number submits the same proposal. A brief greeting may warrant only two or three choices. Refresh the options after each exchange.
+
+For example, “Is today the day your sister gets in?” becomes eligible if the player learned about the visit. Preserve who said it and any uncertainty. A private entry in the baker's notebook cannot unlock that line. NPCs choose their own intentions under the same knowledge rules. Authored templates support offline play. This extends section 14.8 of the [master design](../design/Slop_Town_Master_Design_Revised_v7.docx) for the later conversation milestone.
+
 ## Resolution and persistence
 
 1. At startup, each engine declares its stable ID, version, owned state and dependencies. The registry rejects duplicate owners, missing dependencies and cycles before advancing time.

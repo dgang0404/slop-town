@@ -1,0 +1,7 @@
+{
+  "manifest_version": 1,
+  "content_api": 1,
+  "id": "smoke",
+  "version": 1,
+  "dependencies": []
+}
