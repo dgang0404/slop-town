@@ -85,3 +85,11 @@ After a saved value was deliberately changed, the next traced run reported `fixt
 The [manifest guide](../content-packs.md) defines pack IDs, revisions, compatibility and dependency declarations. The bundled `content/smoke` fixture contains metadata only.
 
 On 25 November 2026, with `GOPROXY=off`, the full test suite, `go vet ./...` and both command builds passed. The checker accepted the bundled fixture and exited 1 for malformed JSON and an unsupported content API. Tests also covered duplicate fields, invalid dependency IDs, oversized input and linked manifests. The SQLite smoke command reproduced the seed-42 reference hash.
+
+## Linux CI checkpoint
+
+The [GitHub Actions workflow](../../.github/workflows/phase-0.yml) runs on pushes and pull requests using Ubuntu 24.04 and the Go version declared in `go.mod`. After `go mod download`, it runs the same [verification script](../../scripts/check-phase-0.sh) contributors can run locally.
+
+On 25 November 2026 the script exited 0 in a fresh local checkout on Linux x86-64 with Go 1.27.4. Dependencies were restored from the local module archive. With Go downloads disabled, vet, tests and both builds passed. The pack checker printed `valid manifest: smoke version 1 (content API 1)`. Both CLI runs reported the seed-42 reference hash above. Substituting an incorrect expected result in a temporary copy of the script made it exit 1.
+
+The first GitHub-hosted result is pending publication of the workflow. Look for **Phase 0 verification** in the repository's Actions tab after pushing.

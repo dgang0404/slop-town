@@ -28,6 +28,17 @@ The runner writes a fixture to `slop-town-smoke.sqlite`, closes the database, re
 
 Use `./sloptown -trace -seed 42` to print a JSON record to standard error after each successful step or when a step fails. Standard output carries the usual seed and hash on success. Exit codes are 0 for success or help, 1 for a save or verification failure, and 2 for invalid arguments.
 
+## Run the Linux CI checks locally
+
+From the repository root, restore the pinned Go modules once, then run the same verification script used for pushes and pull requests.
+
+```sh
+go mod download
+sh scripts/check-phase-0.sh
+```
+
+The script disables Go downloads, runs vet and the full test suite, builds both commands, and validates the sample pack. It runs seed 42 twice against the same temporary save and checks both outputs against the reference hash. It removes the temporary binaries and save on exit.
+
 ## License
 
 The Go source code is licensed under the [GNU General Public License, version 3 or later](LICENSE-CODE).
