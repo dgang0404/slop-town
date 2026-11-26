@@ -16,17 +16,22 @@ import (
 // Submit resolves one proposal against the latest committed state on disk.
 // seed initializes a new timeline; existing timelines keep their saved seed.
 func Submit(path string, scope simulation.Scope, seed int64, actor string, p simulation.Proposal) (simulation.Result, error) {
-	result, _, err := submit(path, scope, seed, actor, p, false)
+	result, _, err := submit(path, scope, seed, actor, p, false, nil)
 	return result, err
 }
 
 // SubmitBakery requires an initialized bakery. The boolean identifies an old
 // receipt, so a client need not display its historical scene as a new action.
 func SubmitBakery(path string, scope simulation.Scope, actor string, p simulation.Proposal) (simulation.Result, bool, error) {
-	return submit(path, scope, 0, actor, p, true)
+	return submit(path, scope, 0, actor, p, true, nil)
 }
 
-func submit(path string, scope simulation.Scope, seed int64, actor string, p simulation.Proposal, requireBakery bool) (simulation.Result, bool, error) {
+// SubmitBakeryInput commits the accepted terminal input with its authoritative receipt.
+func SubmitBakeryInput(path string, scope simulation.Scope, actor string, p simulation.Proposal, input *simulation.CommandInput) (simulation.Result, bool, error) {
+	return submit(path, scope, 0, actor, p, true, input)
+}
+
+func submit(path string, scope simulation.Scope, seed int64, actor string, p simulation.Proposal, requireBakery bool, input *simulation.CommandInput) (simulation.Result, bool, error) {
 	var empty simulation.Result
 	db, err := openTimelineDB(path, false)
 	if err != nil {
@@ -60,7 +65,7 @@ func submit(path string, scope simulation.Scope, seed int64, actor string, p sim
 	if step == nil {
 		return result, prior != nil && result.Status == "accepted", nil
 	}
-	if err := writeStep(tx, scope, actor, step, simulation.Receipt{Proposal: p, Result: result}); err != nil {
+	if err := writeStep(tx, scope, actor, step, simulation.Receipt{Proposal: p, Result: result, Input: input}); err != nil {
 		return empty, false, fmt.Errorf("save step: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -161,9 +166,28 @@ func BakeryActions(path string, scope simulation.Scope, actor string) ([]simulat
 	return state.Bakery.AvailableActions(scope, actor)
 }
 
-func loadReceipt(tx *sql.Tx, scope simulation.Scope, actor, request string) (*simulation.Receipt, error) {
+// BakeryReceipt looks up one committed request when resuming an explicit batch.
+func BakeryReceipt(path string, scope simulation.Scope, actor, request string) (*simulation.Receipt, error) {
+	db, err := openTimelineDB(path, true)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+	receipt, err := loadReceipt(db, scope, actor, request)
+	if err != nil || receipt == nil {
+		return receipt, err
+	}
+	result := receipt.Result
+	if receipt.Proposal.Scope != scope || receipt.Proposal.RequestID != request || result.RequestID != request ||
+		result.Status != "accepted" || result.Observation.Scope != scope || result.Observation.ObserverID != actor {
+		return nil, fmt.Errorf("stored receipt does not match the requested actor and command")
+	}
+	return receipt, nil
+}
+
+func loadReceipt(reader interface{ QueryRow(string, ...any) *sql.Row }, scope simulation.Scope, actor, request string) (*simulation.Receipt, error) {
 	var data []byte
-	err := tx.QueryRow("SELECT receipt FROM request_receipt WHERE world=? AND timeline=? AND actor=? AND request=?", scope.WorldID, scope.TimelineID, actor, request).Scan(&data)
+	err := reader.QueryRow("SELECT receipt FROM request_receipt WHERE world=? AND timeline=? AND actor=? AND request=?", scope.WorldID, scope.TimelineID, actor, request).Scan(&data)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}

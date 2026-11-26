@@ -28,14 +28,14 @@ func accept(t *testing.T, path, request string) simulation.Result {
 	return r
 }
 
-func execSQL(t *testing.T, path, statement string) {
+func execSQL(t *testing.T, path, statement string, args ...any) {
 	t.Helper()
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	if _, err := db.Exec(statement); err != nil {
+	if _, err := db.Exec(statement, args...); err != nil {
 		t.Fatal(err)
 	}
 }

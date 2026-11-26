@@ -15,7 +15,7 @@ The [Phase 0 acceptance report](docs/plans/phase-0-results.md) collects the foun
 
 Phase 2 follows a wooden spoon from a bakery crate to the street. The runner can reopen the town and replay that journey. See the [Phase 2 plan](docs/plans/phase-2.md) and [acceptance results](docs/plans/phase-2-results.md).
 
-Phase 3 starts with a playable text-command session. The [Phase 3 plan](docs/plans/phase-3.md) covers command parsing, discovering available actions and clarifying targets.
+Phase 3 adds a playable text-command session, contextual actions and numbered choices for ambiguous names. Its acceptance test compares a typed walkthrough with explicit commands across restarts. [Phase 3 plan](docs/plans/phase-3.md) · [Acceptance results](docs/plans/phase-3-results.md)
 
 To validate a local content pack, run `go run ./cmd/packcheck PACK_DIRECTORY`. The [manifest guide](docs/content-packs.md) includes a bundled example.
 
@@ -111,6 +111,8 @@ go run ./cmd/sloptown replay -db "$save" -world bakery -from 10
 
 The checkpoint records tick 5 at event sequence 10. Reopening after the return trip shows the spoon on the street. Replay verifies the next ten events and the final state at tick 10. Reuse a batch ID with the same ordered actions to retry after an interruption. Each action commits separately. A new invocation generates a fresh batch ID unless you supply one. Use `-timeline NAME` on all three subcommands for a separate history.
 
+In `-play` mode, resume a saved batch by repeating its commands from the beginning with the same `-db` and `-batch`. When a command originally needed a numbered choice, enter the same number again. The terminal acknowledges each completed action. You can then continue with a new command.
+
 ## Run the Linux CI checks locally
 
 From the repository root, restore the pinned Go modules once, then run the same verification script used for pushes and pull requests.
@@ -123,6 +125,8 @@ sh scripts/check-phase-0.sh
 The script disables Go downloads, runs vet and the full test suite, builds both commands, and validates the sample pack. It runs seed 42 twice against the same temporary save and checks both outputs against the reference hash. It removes the temporary binaries and save on exit.
 
 In the test output, `TestPhase1Acceptance` shows the runner reopening a separate temporary timeline, retrying a request and recovering from a failed receipt write. It logs the replay hash before and after rollback.
+
+To run the Phase 3 restart check on its own, use `go test -count=1 -v -run '^TestPhase3Acceptance$' ./internal/storage`.
 
 ## License
 

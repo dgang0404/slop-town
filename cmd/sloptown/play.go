@@ -15,7 +15,14 @@ import (
 
 const bakeryHelp = "Type a direction, or use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. Short names work. Use it for the last object you acted on. Type actions for choices here, look to see the scene again or quit to leave."
 
-func playBakery(in io.Reader, out io.Writer, observe func() (simulation.Scene, error), available func() ([]simulation.ActionOption, error), act func(simulation.Proposal) (simulation.Result, error)) error {
+type bakerySession struct {
+	observe   func() (simulation.Scene, error)
+	available func() ([]simulation.ActionOption, error)
+	recall    func() (*simulation.Receipt, error)
+	act       func(bakeryCommand) (simulation.Result, error)
+}
+
+func (s bakerySession) play(in io.Reader, out io.Writer) error {
 	fmt.Fprintln(out, "Enter one command per line. Ask “What can I do here?” for choices, type help for commands or quit to leave.")
 	var cmd bakeryCommand
 	var last string
@@ -31,7 +38,7 @@ func playBakery(in io.Reader, out io.Writer, observe func() (simulation.Scene, e
 			fmt.Fprintln(out, bakeryHelp)
 			continue
 		case "actions", "what can i do here", "what can i do here?":
-			options, err := available()
+			options, err := s.available()
 			if err != nil {
 				return err
 			}
@@ -45,7 +52,7 @@ func playBakery(in io.Reader, out io.Writer, observe func() (simulation.Scene, e
 			}
 			continue
 		case "look", "l":
-			scene, err := observe()
+			scene, err := s.observe()
 			if err != nil {
 				return err
 			}
@@ -59,28 +66,36 @@ func playBakery(in io.Reader, out io.Writer, observe func() (simulation.Scene, e
 				continue
 			}
 			i, err := strconv.Atoi(line)
-			if err != nil || i < 1 || i > len(n.options) {
+			if n.repeatNumber > 0 {
+				if err != nil || i < 1 {
+					cmd.prompt(out, n)
+					continue
+				}
+				if i != n.repeatNumber {
+					fmt.Fprintln(out, "That request ID was already used for a different action.")
+					cmd = bakeryCommand{}
+					continue
+				}
+			} else if err != nil || i < 1 || i > len(n.options) {
 				fmt.Fprintf(out, "Enter a number from 1 to %d or type cancel.\n", len(n.options))
 				continue
+			} else {
+				n.ref = n.options[i-1].Ref
 			}
-			n.ref = n.options[i-1].Ref
+			n.number = i
 		} else {
 			action, args, err := parseBakeryAction(strings.Fields(line))
 			if err != nil {
 				fmt.Fprintln(out, err)
 				continue
 			}
-			var scene simulation.Scene
-			if args.Target != "" {
-				scene, err = observe()
-				if err != nil {
-					return err
-				}
-			}
-			cmd, err = prepareCommand(action, args, scene, last)
+			var rejection string
+			cmd, rejection, err = s.command(action, args, last)
 			if err != nil {
-				fmt.Fprintln(out, err)
-				cmd = bakeryCommand{}
+				return err
+			}
+			if rejection != "" {
+				fmt.Fprintln(out, rejection)
 				continue
 			}
 		}
@@ -88,7 +103,7 @@ func playBakery(in io.Reader, out io.Writer, observe func() (simulation.Scene, e
 			cmd.prompt(out, n)
 			continue
 		}
-		result, err := act(cmd.proposal())
+		result, err := s.act(cmd)
 		if err != nil {
 			return err
 		}

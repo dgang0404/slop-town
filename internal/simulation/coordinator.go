@@ -109,9 +109,19 @@ type EventPayload struct {
 
 type requestKey struct{ actorID, requestID string }
 
+// CommandInput preserves the player's noun phrases and one-based answers for
+// a reference proposal. The simulation replays the resolved proposal itself.
+type CommandInput struct {
+	Target          string `json:"target"`
+	Container       string `json:"container,omitempty"`
+	TargetChoice    int    `json:"target_choice,omitempty"`
+	ContainerChoice int    `json:"container_choice,omitempty"`
+}
+
 type Receipt struct {
 	Proposal Proposal
 	Result   Result
+	Input    *CommandInput `json:"input,omitempty"`
 }
 
 // Coordinator serializes submissions and owns a timeline's in-memory state.
@@ -154,7 +164,7 @@ func (c *Coordinator) Submit(actorID string, p Proposal) Result {
 		c.clock = step.Clock
 		c.bakery = step.Bakery
 		c.events = append(c.events, step.Events...)
-		c.receipts[key] = &Receipt{p, result}
+		c.receipts[key] = &Receipt{Proposal: p, Result: result}
 	}
 	result.Observation.Targets = slices.Clone(result.Observation.Targets)
 	return result

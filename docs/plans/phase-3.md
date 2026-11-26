@@ -46,3 +46,9 @@ The seed-42 walkthrough reached the Phase 2 tick-10 digest using short names. Th
 ```sh
 go test -v -count=1 -run '^(TestMatchingTargets|TestNamedActionKeepsObservedReference|TestBakeryClarification|TestBakeryPlaySession)$' ./internal/simulation ./cmd/sloptown
 ```
+
+## Checkpoint 4 results
+
+On 26 November 2026 the local Linux acceptance test reproduced the same events and observations with parsed commands and explicit commands in separate SQLite saves. After restart, the player repeated five completed actions, including choosing a spoon and a destination crate. Appending `open it` advanced the save exactly once. The final replay reached tick 10 and sequence 20 in both saves. [Acceptance results and hosted verification status](phase-3-results.md)
+
+The Phase 4 handoff awaits the hosted Linux run for checkpoint 4 after push. The next roadmap milestone introduces autonomous residents, needs, schedules, notebooks and personality. The baker in the Phase 3 tests acts at times selected by the test.
