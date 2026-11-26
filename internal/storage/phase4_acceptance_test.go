@@ -15,26 +15,15 @@ import (
 	"github.com/dgang0404/slop-town/internal/storage"
 )
 
-func TestPhase4Acceptance(t *testing.T) {
-	dir := t.TempDir()
-	runner := filepath.Join(dir, "sloptown.exe")
+func newAcceptancePlayer(t *testing.T, batch string) func(path, transcript, wantFailure string) string {
+	t.Helper()
+	runner := filepath.Join(t.TempDir(), "sloptown.exe")
 	if out, err := exec.Command("go", "build", "-mod=readonly", "-o", runner, "../../cmd/sloptown").CombinedOutput(); err != nil {
 		t.Fatalf("build runner: %v: %s", err, out)
 	}
-	const player, baker, porter = "bakery/player", "bakery/baker", "bakery/porter"
-	scope := simulation.Scope{WorldID: "bakery", TimelineID: "main"}
-	clean, restarted := filepath.Join(dir, "clean.sqlite"), filepath.Join(dir, "restarted.sqlite")
-	for _, path := range []string{clean, restarted} {
-		if _, err := storage.OpenBakerySceneWithSetup(path, scope, 42, player, simulation.BakerySetup{Resident: true}); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := storage.SaveCheckpoint(path, scope); err != nil {
-			t.Fatal(err)
-		}
-	}
-	play := func(path, transcript, wantFailure string) string {
+	return func(path, transcript, wantFailure string) string {
 		t.Helper()
-		cmd := exec.Command(runner, "bakery", "-db", path, "-play", "-batch", "walk")
+		cmd := exec.Command(runner, "bakery", "-db", path, "-play", "-batch", batch)
 		cmd.Stdin = strings.NewReader(transcript)
 		out, err := cmd.CombinedOutput()
 		if wantFailure == "" {
@@ -48,6 +37,22 @@ func TestPhase4Acceptance(t *testing.T) {
 			}
 		}
 		return string(out)
+	}
+}
+
+func TestPhase4Acceptance(t *testing.T) {
+	dir := t.TempDir()
+	play := newAcceptancePlayer(t, "walk")
+	const player, baker, porter = "bakery/player", "bakery/baker", "bakery/porter"
+	scope := simulation.Scope{WorldID: "bakery", TimelineID: "main"}
+	clean, restarted := filepath.Join(dir, "clean.sqlite"), filepath.Join(dir, "restarted.sqlite")
+	for _, path := range []string{clean, restarted} {
+		if _, err := storage.OpenBakerySceneWithSetup(path, scope, 42, player, simulation.BakerySetup{Resident: true}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := storage.SaveCheckpoint(path, scope); err != nil {
+			t.Fatal(err)
+		}
 	}
 	beforeBreak := "rest\nsouth\nsouth\n" + strings.Repeat("wait\n", 8)
 	atBreak := beforeBreak + "wait\n"

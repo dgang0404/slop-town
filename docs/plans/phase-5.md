@@ -61,7 +61,7 @@ Repeat the focused checks with
 go test -count=1 -v -run Introduction ./internal/simulation ./internal/storage
 ```
 
-The full offline Linux check passed with Go 1.27.4, including both seed-42 smoke runs. The terminal, simulation and storage packages passed three race-detector runs. Hosted verification for checkpoint 3 is pending its push. [Offline verification script](../../scripts/check-phase-0.sh)
+The full offline Linux check passed with Go 1.27.4, including both seed-42 smoke runs. The terminal, simulation and storage packages passed three race-detector runs. Checkpoint 3 passed hosted verification in the same push as checkpoint 4. [Offline verification script](../../scripts/check-phase-0.sh)
 
 ## Checkpoint 4 demo controls
 
@@ -89,4 +89,8 @@ In a seed-42 test with the crate placed across the street, a worker at the shopf
 
 Longer travel to known town destinations, such as a bakery down the road, follows the same design. Each leg advances the simulation and an en-route event can return control to the player. The current demo covers destinations visible on the bakery map. Elapsed time in this demo is measured in simulation turns.
 
-The offline Linux suite and three race-detector runs passed. The Windows amd64 and macOS arm64 executables cross-built successfully. Interactive arrow input was exercised on Linux. Hosted checks for checkpoints 3 and 4 will start with the push.
+The offline Linux suite and three race-detector runs passed. The Windows amd64 and macOS arm64 executables cross-built successfully. Interactive arrow input was exercised on Linux. The hosted Linux job passed for the push containing checkpoints 3 and 4 at `aac5b0b`. [Hosted Linux job](https://github.com/dgang0404/slop-town/actions/runs/45872493285/job/140091194974)
+
+## Checkpoint 5 results
+
+A seed-42 player introduced themselves to the porter, walked to the crate, and rested in sight of both workers. A failed save rolled back the second endurance improvement, the feeling of relief and both witnesses’ notebook entries together. After retry, the player walked six steps before feeling tired. The uninterrupted and restarted visits ended with matching views for all three characters and identical event histories. Three replays reached tick 23, sequence 80. [Phase 5 acceptance results](phase-5-results.md)
