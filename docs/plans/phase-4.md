@@ -34,3 +34,26 @@ Repeat the focused checks from the repository root.
 ```sh
 go test -count=1 -v -run '^TestBaker(WorkRoutine|WorksOutOfSight|UsesSharedDoor|RollbackAndReplay|TerminalSession)$' ./internal/simulation ./internal/storage ./cmd/sloptown
 ```
+
+The hosted Linux verification passed for checkpoint 1 at `c8d26f9`. [Hosted run](https://github.com/dgang0404/slop-town/actions/runs/45765257972)
+
+## Checkpoint 2 results
+
+Walking builds fatigue. In this prototype, after five successful steps the baker chooses the back of the bakery as a place to rest. Opening a closed door costs a turn, and a blocked move adds no fatigue. The baker stays on the way to the break even if the shift changes. On arrival the baker spends one turn sitting down, recovers, and follows the current shift on the next turn. Players use the same movement and rest rules and choose their own resting place.
+
+On 26 November 2026, a player waiting outside on seed 42 saw the baker head for the shopfront and then turn back in the doorway. At tick 12 the player could see the baker sitting at the back of the bakery. At tick 13 the baker moved to the prep area. A player who walked down the street missed the break. Giving the baker an early rest at tick 8 changed the outcome at tick 10, when the baker reached the shopfront. [Work routine and observation tests](../../internal/simulation/resident_test.go)
+
+| Seed-42 save with the player waiting outside | Tick | Event sequence | SHA-256 |
+| --- | ---: | ---: | --- |
+| Baker has turned back and is walking to the resting place | 10 | 27 | `89920a3c8181e5eaf21b9a1cf316e5e591199aa4fdba63b3aa9edbf09d036b9e` |
+| Baker has rested and returned to prep | 13 | 36 | `8e2b1876a8e108382a11b3319e77e24f01d54220ba15932e9ab74f3f497ce535` |
+
+Reopening mid-break reproduced the uninterrupted observations and events. Replay from sequences 0 and 27 produced the same tick-13 digest. Forcing SQLite to fail while writing the rest event preserved both actors, the clock, the receipt history and the events. Retrying committed the break once. [Restart and rollback test](../../internal/storage/resident_test.go)
+
+New `-resident` timelines use content version 3. A separate compatibility run reopened a version 2 save made by checkpoint 1. Both executables reproduced the original tick-10 digest. After three new commands both also reproduced the tick-13 digest for that work-only routine. The full offline Linux checks and three race-detector runs passed locally.
+
+Repeat the focused checks from the repository root.
+
+```sh
+go test -count=1 -v -run '^(TestBaker(WorkRoutine|WorksOutOfSight|RestAcrossRestart|RollbackAndReplay|TerminalSession)|TestRestChangesTheBakersNextChoice)$' ./internal/simulation ./internal/storage ./cmd/sloptown
+```

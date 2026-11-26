@@ -22,6 +22,7 @@ type ActionKind string
 
 const (
 	ActionWait  ActionKind = "wait"
+	ActionRest  ActionKind = "rest"
 	ActionMove  ActionKind = "move"
 	ActionOpen  ActionKind = "open"
 	ActionClose ActionKind = "close"
@@ -259,7 +260,7 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 		result.Observation = Observation{Scope: scope, Version: contractVersion, ObserverID: actorID, Text: message}
 	} else {
 		bakerID := url.PathEscape(scope.WorldID) + "/baker"
-		if nextBakery.ContentVersion == residentContentVersion && actorID != bakerID {
+		if nextBakery.ContentVersion >= residentContentVersion && actorID != bakerID {
 			if effect, ok := nextBakery.bakerTurn(scope, bakerID, next.Tick()); ok {
 				resident := event(action.Sequence+1, bakerID, effect.kind, effect.payload)
 				resident.ParentID = action.ID

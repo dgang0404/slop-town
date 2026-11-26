@@ -105,6 +105,8 @@ go run ./cmd/sloptown bakery -resident -play -seed 42
 
 Stay outside and type `wait` three times. On the first turn the baker opens the door from inside. On the second the baker steps into the doorway. On the third you see “You see the baker here.” If you open the door yourself, the baker can cross a turn sooner. Looking around and asking for available actions take no game time.
 
+Keep waiting on the same spot to watch a full shift. On the twelfth turn you see “You see the baker sitting to the east.” On the next turn the baker gets up and heads back to prep. You can also type `rest` to sit for a turn. Your next step brings you back to your feet.
+
 To save this visit, add `-db resident.sqlite` when starting. Use a fresh save or a new `-timeline NAME` alongside an existing bakery. Each timeline remembers the content it started with, so you can omit `-resident` when resuming.
 
 ### Save and replay the bakery

@@ -25,7 +25,7 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	resident := flags.Bool("resident", false, "include the baker's work routine when creating a new timeline")
 	flags.Usage = func() {
 		fmt.Fprintln(stderr, "Usage: sloptown bakery [-seed N] [-resident] [-db PATH] [-timeline NAME] [-batch ID] [-play | ACTION ...]")
-		fmt.Fprintln(stderr, "Actions: wait | move DIRECTION | open NAME | close NAME | take NAME | drop NAME | put ITEM CONTAINER")
+		fmt.Fprintln(stderr, "Actions: wait | rest | move DIRECTION | open NAME | close NAME | take NAME | drop NAME | put ITEM CONTAINER")
 	}
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -112,7 +112,7 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		action := simulation.ActionKind(words[0])
 		count := 2
 		switch action {
-		case simulation.ActionWait:
+		case simulation.ActionWait, simulation.ActionRest:
 			count = 1
 		case simulation.ActionPut:
 			count = 3
@@ -128,7 +128,7 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		var args simulation.ActionArgs
 		if action == simulation.ActionMove {
 			args.Direction = simulation.Direction(words[1])
-		} else if action != simulation.ActionWait {
+		} else if count > 1 {
 			args.Target = words[1]
 			if action == simulation.ActionPut {
 				args.Container = words[2]

@@ -40,3 +40,35 @@ func TestBakerySnapshotRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+func TestRestoreInvalidRestState(t *testing.T) {
+	for _, tc := range []struct {
+		id      string
+		version int
+		fatigue int
+		seated  bool
+	}{
+		{"town/baker", restContentVersion, -1, false},
+		{"town/player", restContentVersion, fatigueLimit + 1, false},
+		{"town/baker", restContentVersion, 1, true},
+		{"town/spoon", restContentVersion, 0, true},
+		{"town/baker", residentContentVersion, 1, false},
+	} {
+		clock := NewTimeline(42)
+		b, err := (BakerySetup{Resident: true}).Generate("town", clock)
+		if err != nil {
+			t.Fatal(err)
+		}
+		b.ContentVersion = tc.version
+		e := b.Entities[tc.id]
+		e.Fatigue, e.Seated = tc.fatigue, tc.seated
+		b.Entities[tc.id] = e
+		data, err := b.Snapshot()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := RestoreBakery(data, "town", clock); err == nil {
+			t.Fatalf("accepted invalid saved state: %+v", tc)
+		}
+	}
+}

@@ -48,6 +48,8 @@ type SpatialEntity struct {
 	Placement Placement
 	Open      bool
 	Portable  bool
+	Fatigue   int  `json:",omitempty"`
+	Seated    bool `json:",omitempty"`
 }
 
 // Bakery is authoritative fixture state. Cells are in row-major order and
@@ -70,7 +72,11 @@ type BakerySetup struct {
 	Resident bool
 }
 
-const residentContentVersion = 2
+const (
+	residentContentVersion = 2 // The original work routine.
+	restContentVersion     = 3
+	fatigueLimit           = 5 // Steps since the last rest, capped during a break.
+)
 
 func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, error) {
 	b, err := GenerateBakery(worldID, clock)
@@ -80,7 +86,7 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 	prefix := url.PathEscape(worldID) + "/"
 	station := b.Entities[prefix+"door"].Placement
 	station.Cell.X++
-	b.ContentVersion = residentContentVersion
+	b.ContentVersion = restContentVersion
 	b.Entities[prefix+"baker"] = SpatialEntity{Name: "baker", Kind: Actor, Placement: station}
 	return b, nil
 }
@@ -171,7 +177,7 @@ func (b *Bakery) Validate() error {
 			}
 		}
 	}
-	for id := range b.Entities {
+	for id, e := range b.Entities {
 		localID, inWorld := strings.CutPrefix(id, prefix)
 		if !inWorld || !validID(localID) {
 			return fmt.Errorf("invalid entity ID %q for world %q", id, b.WorldID)
@@ -181,6 +187,12 @@ func (b *Bakery) Validate() error {
 		}
 		if _, err := b.PositionOf(id); err != nil {
 			return err
+		}
+		if (e.Fatigue != 0 || e.Seated) && (e.Kind != Actor || b.ContentVersion < restContentVersion) {
+			return fmt.Errorf("unexpected rest state for %q", id)
+		}
+		if e.Fatigue < 0 || e.Fatigue > fatigueLimit || (e.Seated && e.Fatigue != 0) {
+			return fmt.Errorf("invalid fatigue for %q", id)
 		}
 	}
 	return nil

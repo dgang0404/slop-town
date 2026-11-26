@@ -116,6 +116,9 @@ func (b *Bakery) observe(scope Scope, actorID string, locations map[string]strin
 	if b.Cells[at.Y][at.X].SpaceID == b.StreetID {
 		lines[0] = "You are on the street."
 	}
+	if actor.Seated {
+		lines = append(lines, "You are sitting down.")
+	}
 	for _, id := range slices.Sorted(maps.Keys(b.Entities)) {
 		if id == actorID {
 			continue
@@ -181,6 +184,9 @@ func appearance(e SpatialEntity) (label, glyph string) {
 		}
 		return "closed " + e.Name, "C"
 	case Actor:
+		if e.Seated {
+			return e.Name + " sitting", "a"
+		}
 		return e.Name, "a"
 	default:
 		return e.Name, "*"

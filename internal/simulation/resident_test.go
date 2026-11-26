@@ -4,6 +4,7 @@ package simulation
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -31,7 +32,8 @@ func TestBakerWorkRoutine(t *testing.T) {
 			}{
 				{3, "door_opened"}, {2, "actor_moved"}, {1, "actor_moved"}, {1, ""},
 				{2, "actor_moved"}, {3, "actor_moved"}, {3, ""}, {3, ""},
-				{2, "actor_moved"}, {1, "actor_moved"},
+				{2, "actor_moved"}, {3, "actor_moved"}, {4, "actor_moved"}, {4, "actor_rested"},
+				{3, "actor_moved"}, {3, ""}, {3, ""}, {3, ""}, {2, "actor_moved"}, {1, "actor_moved"},
 			}
 			door := c.bakery.Entities["town/door"].Placement.Cell
 			var first Result
@@ -44,6 +46,9 @@ func TestBakerWorkRoutine(t *testing.T) {
 					t.Fatalf("tick %d: %+v", tick, r)
 				}
 				at := c.bakery.Entities[baker].Placement.Cell
+				if sitting := strings.Contains(r.Observation.Text, "You see the baker sitting to the east."); sitting != (tick == 12) {
+					t.Fatalf("tick %d: unexpected posture: %s", tick, r.Observation.Text)
+				}
 				if at != (CellPosition{door.FloorID, step.x, door.Y}) || !c.bakery.Entities["town/door"].Open {
 					t.Fatalf("tick %d: got baker at %+v, door open %v", tick, at, c.bakery.Entities["town/door"].Open)
 				}
@@ -106,7 +111,7 @@ func TestBakerWorksOutOfSight(t *testing.T) {
 	}
 	// Walk south along the street, then stay there as the baker returns indoors.
 	var r Result
-	for tick := 1; tick <= 6; tick++ {
+	for tick := 1; tick <= 12; tick++ {
 		p := spatialProposal(c, fmt.Sprint(tick), ActionWait, ActionArgs{})
 		if tick <= 2 {
 			p.Action, p.Args = ActionMove, ActionArgs{Direction: South}
@@ -115,10 +120,56 @@ func TestBakerWorksOutOfSight(t *testing.T) {
 		if r.Status != "accepted" {
 			t.Fatal(r)
 		}
+		if tick == 6 {
+			last := c.events[len(c.events)-1]
+			if last.ActorID != "town/baker" || last.Kind != "actor_moved" || last.Payload.Destination.X != 3 || r.Observation.hasTarget(last.ActorID) {
+				t.Fatalf("expected the baker to return to prep out of sight: %+v, %+v", last, r.Observation)
+			}
+		}
 	}
 	last := c.events[len(c.events)-1]
-	if last.ActorID != "town/baker" || last.Kind != "actor_moved" || last.Payload.Destination.X != 3 ||
-		r.Observation.hasTarget(last.ActorID) {
-		t.Fatalf("expected the baker to return to prep out of sight: %+v, %+v", last, r.Observation)
+	if last.ActorID != "town/baker" || last.Kind != "actor_rested" || !c.bakery.Entities[last.ActorID].Seated ||
+		r.Observation.hasTarget(last.ActorID) || strings.Contains(r.Observation.Text, "sitting") {
+		t.Fatalf("expected the baker to rest out of sight: %+v, %+v", last, r.Observation)
+	}
+}
+
+func TestRestChangesTheBakersNextChoice(t *testing.T) {
+	c, err := (BakerySetup{Resident: true}).NewCoordinator(Scope{"town", "main"}, 42)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const player, baker = "town/player", "town/baker"
+	// The baker normally leaves the route at tick 10. An early rest changes
+	// that choice on the same schedule. The player can rest independently.
+	for tick := 1; tick <= 10; tick++ {
+		p := spatialProposal(c, fmt.Sprint(tick), ActionWait, ActionArgs{})
+		actor := player
+		switch tick {
+		case 1:
+			p.Action, p.Args.Direction = ActionMove, West
+		case 2:
+			p.Action = ActionRest
+		case 8:
+			actor, p.Action = baker, ActionRest
+		}
+		r := c.Submit(actor, p)
+		if r.Status != "accepted" {
+			t.Fatal(r)
+		}
+		self := c.bakery.Entities[actor]
+		if p.Action == ActionRest && (self.Fatigue != 0 || !self.Seated || !strings.Contains(r.Observation.Text, "You are sitting down.")) {
+			t.Fatalf("rest did not recover %s: %+v, %+v", actor, self, r)
+		}
+		if tick == 7 && c.bakery.Entities[baker].Fatigue != 4 {
+			t.Fatal("the player's rest affected the baker's fatigue")
+		}
+	}
+	b := c.bakery.Entities[baker]
+	if b.Seated || b.Fatigue != 2 || b.Placement.Cell.X != 1 {
+		t.Fatalf("expected the rested baker at the shopfront: %+v", b)
+	}
+	if r := submitUnchanged(t, c, player, spatialProposal(c, "bad-rest", ActionRest, ActionArgs{Target: baker})); r.Code != "invalid_request" {
+		t.Fatal(r)
 	}
 }

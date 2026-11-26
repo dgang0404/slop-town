@@ -58,5 +58,6 @@ func (b *Bakery) AvailableActions(scope Scope, actorID string) ([]ActionOption, 
 		}
 	}
 	offer(ActionWait, ActionArgs{})
+	offer(ActionRest, ActionArgs{})
 	return options, nil
 }

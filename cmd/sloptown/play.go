@@ -13,7 +13,7 @@ import (
 	"github.com/dgang0404/slop-town/internal/simulation"
 )
 
-const bakeryHelp = "Type a direction to walk or wait to spend a turn here. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. Short names work. Use it for the last object you acted on. Type actions for choices here, look to see the scene again or quit to leave."
+const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. Short names work. Use it for the last object you acted on. Type actions for choices here, look to see the scene again or quit to leave."
 
 type bakerySession struct {
 	observe   func() (simulation.Scene, error)
@@ -127,8 +127,8 @@ func (s bakerySession) play(in io.Reader, out io.Writer) error {
 
 func actionCommand(option simulation.ActionOption) string {
 	switch option.Action {
-	case simulation.ActionWait:
-		return "wait"
+	case simulation.ActionWait, simulation.ActionRest:
+		return string(option.Action)
 	case simulation.ActionMove:
 		return "go " + string(option.Args.Direction)
 	case simulation.ActionPut:
@@ -172,11 +172,11 @@ func parseBakeryAction(words []string) (simulation.ActionKind, simulation.Action
 		}
 	}
 	switch verb {
-	case "wait":
+	case "wait", "rest":
 		if len(rest) != 0 {
-			return "", args, errors.New("Type wait to spend one turn here.")
+			return "", args, fmt.Errorf("Type %s to spend one turn here.", verb)
 		}
-		return simulation.ActionWait, args, nil
+		return simulation.ActionKind(verb), args, nil
 	case "go", "walk", "move":
 		if len(rest) != 1 || direction(rest[0]) == "" {
 			return "", args, errors.New("Choose north, south, east or west.")

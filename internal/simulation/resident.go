@@ -13,7 +13,12 @@ func (b *Bakery) bakerTurn(scope Scope, bakerID string, tick int64) (spatialEffe
 	if (tick-1)/4%2 == 1 {
 		goalX = door.X + 1
 	}
-	at := b.Entities[bakerID].Placement.Cell
+	baker := b.Entities[bakerID]
+	takingBreak := b.ContentVersion >= restContentVersion && baker.Fatigue == fatigueLimit
+	if takingBreak {
+		goalX = door.X + 2 // A quiet place at the back of the bakery.
+	}
+	at := baker.Placement.Cell
 	var dir Direction
 	switch {
 	case at.Y < door.Y:
@@ -24,6 +29,9 @@ func (b *Bakery) bakerTurn(scope Scope, bakerID string, tick int64) (spatialEffe
 		dir = East
 	case at.X > goalX:
 		dir = West
+	case takingBreak:
+		effect, failure := b.applySpatial(bakerID, Proposal{Scope: scope, Action: ActionRest})
+		return effect, failure == nil
 	default:
 		return spatialEffect{}, false
 	}

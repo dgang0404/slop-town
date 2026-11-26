@@ -21,6 +21,9 @@ func TestBakerRollbackAndReplay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// At tick zero the work-only fixture differs from the new bakery just
+	// by its content version. Preserve the published checkpoint 1 digest.
+	execSQL(t, path, `UPDATE timeline_state SET bakery=json_set(CAST(bakery AS TEXT), '$.bakery.ContentVersion', 2)`)
 	initial, err := storage.SaveCheckpoint(path, s)
 	if err != nil {
 		t.Fatal(err)
@@ -68,5 +71,70 @@ func TestBakerRollbackAndReplay(t *testing.T) {
 	r, repeated, err := storage.SubmitBakery(path, s, player, wait)
 	if err != nil || !repeated || !reflect.DeepEqual(first, r) || !reflect.DeepEqual(final, inspectScope(t, path, s)) {
 		t.Fatalf("late retry lost its receipt or advanced the baker: %+v, %v", r, err)
+	}
+}
+
+func TestBakerRestAcrossRestart(t *testing.T) {
+	s := simulation.Scope{WorldID: "bakery", TimelineID: "main"}
+	const player = "bakery/player"
+	setup := simulation.BakerySetup{Resident: true}
+	path := filepath.Join(t.TempDir(), "rest.sqlite")
+	live, err := setup.NewCoordinator(s, 42)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := storage.OpenBakerySceneWithSetup(path, s, 42, player, setup); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := storage.SaveCheckpoint(path, s); err != nil {
+		t.Fatal(err)
+	}
+	var mid storage.ReplayReport
+	for tick := 1; tick <= 13; tick++ {
+		p := simulation.Proposal{Scope: s, Version: 1, RequestID: fmt.Sprint(tick), Action: simulation.ActionWait}
+		if tick == 12 {
+			before, entities := inspectScope(t, path, s), bakeryBytes(t, path, s)
+			execSQL(t, path, `CREATE TRIGGER fail_rest BEFORE INSERT ON timeline_event
+				WHEN json_extract(CAST(NEW.event AS TEXT), '$.Kind')='actor_rested'
+				BEGIN SELECT RAISE(FAIL, 'injected during rest'); END`)
+			failed, _, err := storage.SubmitBakery(path, s, player, p)
+			if err == nil || !strings.Contains(err.Error(), "injected during rest") || failed.Status == "accepted" {
+				t.Fatalf("expected interrupted rest: %+v, %v", failed, err)
+			}
+			if !reflect.DeepEqual(before, inspectScope(t, path, s)) || !bytes.Equal(entities, bakeryBytes(t, path, s)) {
+				t.Fatal("failed rest changed the saved actors, clock, receipt or events")
+			}
+			execSQL(t, path, "DROP TRIGGER fail_rest")
+		}
+		want := live.Submit(player, p)
+		got, repeated, err := storage.SubmitBakery(path, s, player, p)
+		if err != nil || repeated || want.Status != "accepted" || !reflect.DeepEqual(got, want) {
+			t.Fatalf("tick %d: reopened result %+v, uninterrupted %+v, %v", tick, got, want, err)
+		}
+		if tick == 10 {
+			mid, err = storage.SaveCheckpoint(path, s)
+			if err != nil || mid.Tick != 10 || mid.Sequence != 27 {
+				t.Fatalf("checkpoint on the way to rest: %+v, %v", mid, err)
+			}
+		}
+		if tick == 12 {
+			view, err := storage.OpenBakery(path, s, 99, player)
+			if err != nil || !reflect.DeepEqual(view, want.Observation) || !strings.Contains(view.Text, "the baker sitting") {
+				t.Fatalf("reopened during rest: %+v, %v", view, err)
+			}
+			if got, repeated, err := storage.SubmitBakery(path, s, player, p); err != nil || !repeated || !reflect.DeepEqual(got, want) {
+				t.Fatalf("retry after rest: %+v, %v", got, err)
+			}
+		}
+	}
+	if !reflect.DeepEqual(inspectScope(t, path, s).events, live.History()) {
+		t.Fatal("reopened history differs from uninterrupted work, break and return")
+	}
+	const want = "8e2b1876a8e108382a11b3319e77e24f01d54220ba15932e9ab74f3f497ce535"
+	for _, from := range []uint64{0, mid.Sequence} {
+		head, err := storage.Replay(path, s, from)
+		if err != nil || head.Tick != 13 || head.Sequence != 36 || head.Hash != want {
+			t.Fatalf("replay from %d: %+v, %v", from, head, err)
+		}
 	}
 }

@@ -18,6 +18,7 @@ func TestParseBakeryAction(t *testing.T) {
 		args simulation.ActionArgs
 	}{
 		{"wait", simulation.ActionWait, simulation.ActionArgs{}},
+		{"rest", simulation.ActionRest, simulation.ActionArgs{}},
 		{"open the bakery door", simulation.ActionOpen, simulation.ActionArgs{Target: "bakery door"}},
 		{"close a crate", simulation.ActionClose, simulation.ActionArgs{Target: "crate"}},
 		{"n", simulation.ActionMove, simulation.ActionArgs{Direction: simulation.North}},
@@ -34,7 +35,7 @@ func TestParseBakeryAction(t *testing.T) {
 			t.Errorf("%q produced %q %+v, %v", tc.line, action, args, err)
 		}
 	}
-	for _, line := range []string{"wait twice", "open the", "pick", "pick up", "go northeast", "east twice", "put spoon", "put the in crate", "put spoon in", "dance"} {
+	for _, line := range []string{"rest baker", "wait twice", "open the", "pick", "pick up", "go northeast", "east twice", "put spoon", "put the in crate", "put spoon in", "dance"} {
 		if _, _, err := parseBakeryAction(strings.Fields(line)); err == nil {
 			t.Errorf("accepted malformed command %q", line)
 		}
@@ -107,6 +108,12 @@ func TestBakerTerminalSession(t *testing.T) {
 	head, err := storage.Replay(path, s, 0)
 	if err != nil || head.Tick != 3 || head.Sequence != 9 {
 		t.Fatalf("resumed visit: %+v, %v", head, err)
+	}
+	if !strings.Contains(start, "  rest\n") || !strings.Contains(run("", "-batch", "break", "rest"), "You are sitting down.") {
+		t.Fatal("the terminal should offer rest and commit the player's break")
+	}
+	if out := run("rest\nlook\n", "-batch", "break", "-play"); !strings.Contains(out, "already completed") || !strings.Contains(out, "You are sitting down.") {
+		t.Fatal(out)
 	}
 	run("", "-timeline", "classic")
 	classic := run("", "-timeline", "classic", "-resident", "wait")

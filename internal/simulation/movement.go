@@ -68,6 +68,15 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 			return spatialEffect{}, &actionFailure{"invalid_request", "Wait takes no arguments."}
 		}
 		return spatialEffect{kind: "actor_waited", message: "You wait.", entityID: view.ObserverID, entity: actor}, nil
+	case ActionRest:
+		if p.ByName || args != (ActionArgs{}) {
+			return spatialEffect{}, &actionFailure{"invalid_request", "Rest takes no arguments."}
+		}
+		if b.ContentVersion < restContentVersion {
+			return spatialEffect{}, &actionFailure{"action_unavailable", "You can't rest here."}
+		}
+		actor.Fatigue, actor.Seated = 0, true
+		return spatialEffect{kind: "actor_rested", message: "You rest for a turn.", entityID: view.ObserverID, entity: actor}, nil
 	case ActionMove:
 		if p.ByName || args != (ActionArgs{Direction: args.Direction}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Movement takes one direction."}
@@ -132,6 +141,10 @@ func (b *Bakery) move(actorID string, actor SpatialEntity, dir Direction) (spati
 		}
 	}
 	actor.Placement.Cell = dest
+	if b.ContentVersion >= restContentVersion {
+		actor.Fatigue = min(actor.Fatigue+1, fatigueLimit)
+		actor.Seated = false
+	}
 	return spatialEffect{kind: "actor_moved", payload: EventPayload{Destination: dest},
 		message: "You move " + string(dir) + ".", entityID: actorID, entity: actor}, nil
 }
