@@ -51,4 +51,4 @@ go test -v -count=1 -run '^(TestMatchingTargets|TestNamedActionKeepsObservedRefe
 
 On 26 November 2026 the local Linux acceptance test reproduced the same events and observations with parsed commands and explicit commands in separate SQLite saves. After restart, the player repeated five completed actions, including choosing a spoon and a destination crate. Appending `open it` advanced the save exactly once. The final replay reached tick 10 and sequence 20 in both saves. [Acceptance results and hosted verification status](phase-3-results.md)
 
-The Phase 4 handoff awaits the hosted Linux run for checkpoint 4 after push. The next roadmap milestone introduces autonomous residents, needs, schedules, notebooks and personality. The baker in the Phase 3 tests acts at times selected by the test.
+The hosted Linux job passed checkpoint 4 on commit `92e67f6`, reproducing the local replay digests at ticks 9 and 10. Phase 4 begins with the baker choosing an action as the simulation clock advances. [Hosted run](https://github.com/dgang0404/slop-town/actions/runs/45763940069/job/139720209156) · [Phase 4 plan](phase-4.md)

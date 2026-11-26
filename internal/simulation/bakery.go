@@ -64,6 +64,27 @@ type Bakery struct {
 	Entities         map[string]SpatialEntity
 }
 
+// BakerySetup selects the content of a new timeline. The save supplies the
+// content version when resuming an existing timeline.
+type BakerySetup struct {
+	Resident bool
+}
+
+const residentContentVersion = 2
+
+func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, error) {
+	b, err := GenerateBakery(worldID, clock)
+	if err != nil || !setup.Resident {
+		return b, err
+	}
+	prefix := url.PathEscape(worldID) + "/"
+	station := b.Entities[prefix+"door"].Placement
+	station.Cell.X++
+	b.ContentVersion = residentContentVersion
+	b.Entities[prefix+"baker"] = SpatialEntity{Name: "baker", Kind: Actor, Placement: station}
+	return b, nil
+}
+
 // GenerateBakery initializes a world at tick zero using the first geography
 // draw. Rejecting a late or repeated initialization consumes no randomness.
 func GenerateBakery(worldID string, timeline *Timeline) (*Bakery, error) {

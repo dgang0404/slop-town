@@ -39,6 +39,7 @@ func encodeState(scope simulation.Scope, state timelineState) ([]byte, ReplayRep
 	cp := checkpoint{Version: 1, Scope: scope, Sequence: state.sequence, EngineVersion: 1, ContentVersion: 1, Clock: snapshot}
 	if state.Bakery != nil {
 		cp.Version = 2
+		cp.ContentVersion = state.Bakery.ContentVersion
 		cp.Bakery, err = state.Bakery.Snapshot()
 		if err != nil {
 			return nil, ReplayReport{}, err
@@ -112,7 +113,7 @@ func restoreCheckpoint(tx *sql.Tx, scope simulation.Scope, seq uint64) (timeline
 	if len(cp.Bakery) != 0 {
 		wantFormat = 2
 	}
-	if cp.Version != wantFormat || cp.EngineVersion != 1 || cp.ContentVersion != 1 {
+	if cp.Version != wantFormat || cp.EngineVersion != 1 || (wantFormat == 1 && cp.ContentVersion != 1) {
 		return state, fmt.Errorf("checkpoint sequence %d: incompatible versions (format %d, engine %d, content %d)", seq, cp.Version, cp.EngineVersion, cp.ContentVersion)
 	}
 	if cp.Scope != scope || cp.Sequence != seq || fmt.Sprintf("%x", sha256.Sum256(data)) != digest {
@@ -122,6 +123,9 @@ func restoreCheckpoint(tx *sql.Tx, scope simulation.Scope, seq uint64) (timeline
 	state.Clock, err = simulation.RestoreTimeline(cp.Clock)
 	if err == nil && cp.Version == 2 {
 		state.Bakery, err = simulation.RestoreBakery(cp.Bakery, scope.WorldID, state.Clock)
+		if err == nil && state.Bakery.ContentVersion != cp.ContentVersion {
+			return state, fmt.Errorf("checkpoint sequence %d: bakery content version mismatch", seq)
+		}
 	}
 	return state, err
 }

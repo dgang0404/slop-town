@@ -66,7 +66,7 @@ func recordedCommand(r *simulation.Receipt, action simulation.ActionKind, args s
 	}
 	// Older reference receipts only record the resolved objects. Leave them
 	// to the normal visible-choice and exact-proposal retry paths.
-	return cmd, (p.ByName || action == simulation.ActionMove) && p.Args == args
+	return cmd, (p.ByName || args.Target == "") && p.Args == args
 }
 
 func (cmd *bakeryCommand) input() *simulation.CommandInput {

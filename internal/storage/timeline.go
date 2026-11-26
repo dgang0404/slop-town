@@ -106,6 +106,11 @@ func OpenBakery(path string, scope simulation.Scope, seed int64, actor string) (
 }
 
 func OpenBakeryScene(path string, scope simulation.Scope, seed int64, actor string) (simulation.Scene, error) {
+	return OpenBakerySceneWithSetup(path, scope, seed, actor, simulation.BakerySetup{})
+}
+
+// OpenBakerySceneWithSetup applies the selected content only to a new timeline.
+func OpenBakerySceneWithSetup(path string, scope simulation.Scope, seed int64, actor string, setup simulation.BakerySetup) (simulation.Scene, error) {
 	var empty simulation.Scene
 	if !scope.Valid() {
 		return empty, fmt.Errorf("invalid world or timeline ID")
@@ -126,7 +131,7 @@ func OpenBakeryScene(path string, scope simulation.Scope, seed int64, actor stri
 	state, err := committedState(tx, scope, 4)
 	if errors.Is(err, sql.ErrNoRows) {
 		state.Clock = simulation.NewTimeline(seed)
-		state.Bakery, err = simulation.GenerateBakery(scope.WorldID, state.Clock)
+		state.Bakery, err = setup.Generate(scope.WorldID, state.Clock)
 		if err == nil {
 			err = writeState(tx, scope, state)
 		}

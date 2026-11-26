@@ -22,9 +22,10 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	timeline := flags.String("timeline", "main", "bakery timeline")
 	batch := flags.String("batch", "", "repeat the same batch ID to retry its ordered requests")
 	play := flags.Bool("play", false, "read one player command per line")
+	resident := flags.Bool("resident", false, "include the baker's work routine when creating a new timeline")
 	flags.Usage = func() {
-		fmt.Fprintln(stderr, "Usage: sloptown bakery [-seed N] [-db PATH] [-timeline NAME] [-batch ID] [-play | ACTION ...]")
-		fmt.Fprintln(stderr, "Actions: move DIRECTION | open NAME | close NAME | take NAME | drop NAME | put ITEM CONTAINER")
+		fmt.Fprintln(stderr, "Usage: sloptown bakery [-seed N] [-resident] [-db PATH] [-timeline NAME] [-batch ID] [-play | ACTION ...]")
+		fmt.Fprintln(stderr, "Actions: wait | move DIRECTION | open NAME | close NAME | take NAME | drop NAME | put ITEM CONTAINER")
 	}
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -37,13 +38,14 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 2
 	}
 	scope := simulation.Scope{WorldID: "bakery", TimelineID: *timeline}
+	setup := simulation.BakerySetup{Resident: *resident}
 	const player = "bakery/player"
 	var session bakerySession
 	var submit func(simulation.Proposal, *simulation.CommandInput) (simulation.Result, bool, error)
 	request := 1
 	requestID := func() string { return *batch + "/" + strconv.Itoa(request) }
 	if *path == "" {
-		c, err := simulation.NewBakeryCoordinator(scope, *seed)
+		c, err := setup.NewCoordinator(scope, *seed)
 		if err != nil {
 			fmt.Fprintln(stderr, err)
 			return 1
@@ -55,7 +57,7 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		}
 	} else {
 		session.observe = func() (simulation.Scene, error) {
-			return storage.OpenBakeryScene(*path, scope, *seed, player)
+			return storage.OpenBakerySceneWithSetup(*path, scope, *seed, player, setup)
 		}
 		session.available = func() ([]simulation.ActionOption, error) { return storage.BakeryActions(*path, scope, player) }
 		submit = func(p simulation.Proposal, input *simulation.CommandInput) (simulation.Result, bool, error) {
@@ -110,6 +112,8 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		action := simulation.ActionKind(words[0])
 		count := 2
 		switch action {
+		case simulation.ActionWait:
+			count = 1
 		case simulation.ActionPut:
 			count = 3
 		case simulation.ActionMove, simulation.ActionOpen, simulation.ActionClose, simulation.ActionTake, simulation.ActionDrop:
@@ -124,13 +128,13 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		var args simulation.ActionArgs
 		if action == simulation.ActionMove {
 			args.Direction = simulation.Direction(words[1])
-		} else {
+		} else if action != simulation.ActionWait {
 			args.Target = words[1]
 			if action == simulation.ActionPut {
 				args.Container = words[2]
 			}
 		}
-		result, err := session.act(bakeryCommand{Proposal: simulation.Proposal{Action: action, Args: args, ByName: action != simulation.ActionMove}})
+		result, err := session.act(bakeryCommand{Proposal: simulation.Proposal{Action: action, Args: args, ByName: args.Target != ""}})
 		if err != nil {
 			fmt.Fprintln(stderr, err)
 			return 1

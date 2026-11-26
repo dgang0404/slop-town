@@ -12,11 +12,15 @@ const (
 
 // NewBakeryCoordinator starts the spatial fixture with its own clock and geography draw.
 func NewBakeryCoordinator(scope Scope, seed int64) (*Coordinator, error) {
+	return (BakerySetup{}).NewCoordinator(scope, seed)
+}
+
+func (setup BakerySetup) NewCoordinator(scope Scope, seed int64) (*Coordinator, error) {
 	c, err := NewCoordinator(scope, seed)
 	if err != nil {
 		return nil, err
 	}
-	c.bakery, err = GenerateBakery(scope.WorldID, c.clock)
+	c.bakery, err = setup.Generate(scope.WorldID, c.clock)
 	if err != nil {
 		return nil, err
 	}
@@ -59,6 +63,11 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 	actor := b.Entities[view.ObserverID]
 	action, args := p.Action, p.Args
 	switch action {
+	case ActionWait:
+		if p.ByName || args != (ActionArgs{}) {
+			return spatialEffect{}, &actionFailure{"invalid_request", "Wait takes no arguments."}
+		}
+		return spatialEffect{kind: "actor_waited", message: "You wait.", entityID: view.ObserverID, entity: actor}, nil
 	case ActionMove:
 		if p.ByName || args != (ActionArgs{Direction: args.Direction}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Movement takes one direction."}
@@ -92,8 +101,7 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 	return b.transferItem(view.ObserverID, actor.Placement.Cell, action, args)
 }
 
-func (b *Bakery) move(actorID string, actor SpatialEntity, dir Direction) (spatialEffect, *actionFailure) {
-	dest := actor.Placement.Cell
+func (dest CellPosition) neighbor(dir Direction) (CellPosition, bool) {
 	switch dir {
 	case North:
 		dest.Y--
@@ -104,6 +112,14 @@ func (b *Bakery) move(actorID string, actor SpatialEntity, dir Direction) (spati
 	case West:
 		dest.X--
 	default:
+		return dest, false
+	}
+	return dest, true
+}
+
+func (b *Bakery) move(actorID string, actor SpatialEntity, dir Direction) (spatialEffect, *actionFailure) {
+	dest, ok := actor.Placement.Cell.neighbor(dir)
+	if !ok {
 		return spatialEffect{}, &actionFailure{"invalid_request", "Choose north, south, east or west."}
 	}
 	blocked := &actionFailure{"movement_blocked", "You can't move there."}

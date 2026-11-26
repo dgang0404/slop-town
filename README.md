@@ -17,6 +17,8 @@ Phase 2 follows a wooden spoon from a bakery crate to the street. The runner can
 
 Phase 3 adds a playable text-command session, contextual actions and numbered choices for ambiguous names. Its acceptance test compares a typed walkthrough with explicit commands across restarts. [Phase 3 plan](docs/plans/phase-3.md) · [Acceptance results](docs/plans/phase-3-results.md)
 
+Phase 4 starts with a baker who opens the shop and walks between the street and the prep area as game time passes. [Phase 4 plan](docs/plans/phase-4.md)
+
 To validate a local content pack, run `go run ./cmd/packcheck PACK_DIRECTORY`. The [manifest guide](docs/content-packs.md) includes a bundled example.
 
 ## Run the Phase 0 fixture
@@ -94,6 +96,16 @@ go run ./cmd/sloptown bakery -seed 42 open "bakery door" move east move east ope
 ```
 
 The terminal shows the player's view on arrival and after each action. On the grid, `@` marks the player, `?` a square out of sight, and `#` a wall. Opening the lid changes the crate's square from `C` to `c*` as the spoon comes into view. Omit `-db` for a fresh in-memory session.
+
+### Meet the baker
+
+```sh
+go run ./cmd/sloptown bakery -resident -play -seed 42
+```
+
+Stay outside and type `wait` three times. On the first turn the baker opens the door from inside. On the second the baker steps into the doorway. On the third you see “You see the baker here.” If you open the door yourself, the baker can cross a turn sooner. Looking around and asking for available actions take no game time.
+
+To save this visit, add `-db resident.sqlite` when starting. Use a fresh save or a new `-timeline NAME` alongside an existing bakery. Each timeline remembers the content it started with, so you can omit `-resident` when resuming.
 
 ### Save and replay the bakery
 

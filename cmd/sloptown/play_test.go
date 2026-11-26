@@ -17,6 +17,7 @@ func TestParseBakeryAction(t *testing.T) {
 		want simulation.ActionKind
 		args simulation.ActionArgs
 	}{
+		{"wait", simulation.ActionWait, simulation.ActionArgs{}},
 		{"open the bakery door", simulation.ActionOpen, simulation.ActionArgs{Target: "bakery door"}},
 		{"close a crate", simulation.ActionClose, simulation.ActionArgs{Target: "crate"}},
 		{"n", simulation.ActionMove, simulation.ActionArgs{Direction: simulation.North}},
@@ -33,7 +34,7 @@ func TestParseBakeryAction(t *testing.T) {
 			t.Errorf("%q produced %q %+v, %v", tc.line, action, args, err)
 		}
 	}
-	for _, line := range []string{"open the", "pick", "pick up", "go northeast", "east twice", "put spoon", "put the in crate", "put spoon in", "dance"} {
+	for _, line := range []string{"wait twice", "open the", "pick", "pick up", "go northeast", "east twice", "put spoon", "put the in crate", "put spoon in", "dance"} {
 		if _, _, err := parseBakeryAction(strings.Fields(line)); err == nil {
 			t.Errorf("accepted malformed command %q", line)
 		}
@@ -79,6 +80,41 @@ func TestBakeryPlaySession(t *testing.T) {
 	}
 }
 
+func TestBakerTerminalSession(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "town.sqlite")
+	run := func(input string, args ...string) string {
+		t.Helper()
+		var out, diag bytes.Buffer
+		if code := runBakery(append([]string{"-db", path}, args...), strings.NewReader(input), &out, &diag); code != 0 {
+			t.Fatalf("bakery %v exited %d: %s", args, code, diag.String())
+		}
+		return out.String()
+	}
+	start := run("look\nactions\neast\n", "-resident", "-play")
+	s := simulation.Scope{WorldID: "bakery", TimelineID: "main"}
+	cp, err := storage.SaveCheckpoint(path, s)
+	if err != nil || cp.Tick != 0 || strings.Contains(start, "the baker ") || !strings.Contains(start, "  wait\n") {
+		t.Fatalf("starting street: %s, checkpoint %+v, %v", start, cp, err)
+	}
+	first := run("", "-batch", "visit", "wait")
+	if !strings.Contains(first, "You see the open bakery door") || !strings.Contains(first, "You see the baker to the east.") {
+		t.Fatal(first)
+	}
+	visit := run("wait\nwait\nwait\nlook\n", "-play", "-batch", "visit")
+	if strings.Count(visit, "already completed") != 1 || strings.Count(visit, "You wait.") != 2 || !strings.Contains(visit, "You see the baker here.") {
+		t.Fatal(visit)
+	}
+	head, err := storage.Replay(path, s, 0)
+	if err != nil || head.Tick != 3 || head.Sequence != 9 {
+		t.Fatalf("resumed visit: %+v, %v", head, err)
+	}
+	run("", "-timeline", "classic")
+	classic := run("", "-timeline", "classic", "-resident", "wait")
+	if strings.Contains(classic, "the baker ") || strings.Contains(classic, "the open bakery door") {
+		t.Fatal("reopening a classic timeline changed its content:", classic)
+	}
+}
+
 func TestBakeryActionDiscovery(t *testing.T) {
 	const allMoves = "go north|go east|go south|go west"
 	steps := []struct {
@@ -119,7 +155,7 @@ func TestBakeryActionDiscovery(t *testing.T) {
 			}
 			for i, menu := range menus {
 				got, _, _ := strings.Cut(strings.TrimSuffix(menu, "\n"), "\n\n")
-				want := "  " + strings.ReplaceAll(steps[i].menu, "|", "\n  ")
+				want := "  " + strings.ReplaceAll(steps[i].menu+"|wait", "|", "\n  ")
 				if got != want {
 					t.Errorf("step %d after %q:\ngot\n%s\nwant\n%s", i, steps[i].input, got, want)
 				}

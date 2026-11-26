@@ -21,6 +21,7 @@ type Scope struct {
 type ActionKind string
 
 const (
+	ActionWait  ActionKind = "wait"
 	ActionMove  ActionKind = "move"
 	ActionOpen  ActionKind = "open"
 	ActionClose ActionKind = "close"
@@ -244,18 +245,27 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 		nextBakery = &staged
 		engine, kind, payload, message = "spatial", effect.kind, effect.payload, effect.message
 	}
-	event := func(seq uint64, kind string, payload EventPayload) Event {
+	event := func(seq uint64, actor, kind string, payload EventPayload) Event {
 		id := fmt.Sprintf("%s/%s/%d", url.PathEscape(scope.WorldID), url.PathEscape(scope.TimelineID), seq)
 		return Event{Scope: scope, ID: id, Sequence: seq, Tick: next.Tick(), Version: contractVersion,
-			RequestID: p.RequestID, ActorID: actorID, Engine: engine, Kind: kind, PayloadVersion: 1, Payload: payload}
+			RequestID: p.RequestID, ActorID: actor, Engine: engine, Kind: kind, PayloadVersion: 1, Payload: payload}
 	}
-	advanced := event(lastSequence+1, "tick_advanced", EventPayload{Delta: 1})
-	action := event(advanced.Sequence+1, kind, payload)
+	advanced := event(lastSequence+1, actorID, "tick_advanced", EventPayload{Delta: 1})
+	action := event(advanced.Sequence+1, actorID, kind, payload)
 	action.ParentID = advanced.ID
+	events := []Event{advanced, action}
 	result.Status = "accepted"
 	if nextBakery == nil {
 		result.Observation = Observation{Scope: scope, Version: contractVersion, ObserverID: actorID, Text: message}
 	} else {
+		bakerID := url.PathEscape(scope.WorldID) + "/baker"
+		if nextBakery.ContentVersion == residentContentVersion && actorID != bakerID {
+			if effect, ok := nextBakery.bakerTurn(scope, bakerID, next.Tick()); ok {
+				resident := event(action.Sequence+1, bakerID, effect.kind, effect.payload)
+				resident.ParentID = action.ID
+				events = append(events, resident)
+			}
+		}
 		view, err := nextBakery.Observe(scope, actorID)
 		if err != nil {
 			return reject("resolution_failed", "You cannot observe your surroundings."), nil
@@ -265,5 +275,5 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 		result.SelectedTarget = p.Observed.Target
 	}
 
-	return result, &Transition{State: State{Clock: &next, Bakery: nextBakery}, Events: []Event{advanced, action}}
+	return result, &Transition{State: State{Clock: &next, Bakery: nextBakery}, Events: events}
 }
