@@ -13,7 +13,7 @@ import (
 	"github.com/dgang0404/slop-town/internal/simulation"
 )
 
-const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use walk to NAME to approach a visible destination. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. Use introduce yourself to NAME or talk to NAME when someone is nearby. Short names work. Use it for the last object you acted on. Type actions for choices here, look for the current scene, journal to read your memories or quit to leave. Use export journal to save a text copy. Choose narration brief or narration story to change how turns read."
+const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use walk to NAME to approach a visible destination. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. Use introduce yourself to NAME or talk to NAME when someone is nearby. Short names work. Use it for the last object you acted on. Type actions for choices here, look for the current scene, calendar for today's date, journal to read your memories or quit to leave. Use export journal to save a text copy. Choose narration brief or narration story to change how turns read."
 
 type bakerySession struct {
 	narrator  *turnNarrator
@@ -110,12 +110,16 @@ func (s bakerySession) play(in io.Reader, out io.Writer) error {
 				return err
 			}
 			continue
-		case "look", "l":
+		case "look", "l", "calendar":
 			scene, err := s.observe()
 			if err != nil {
 				return err
 			}
-			s.showScene(out, scene)
+			if line == "calendar" {
+				fmt.Fprintln(out, formatBakeryDate(scene.Date)+".")
+			} else {
+				s.showScene(out, scene)
+			}
 			continue
 		}
 		if n := cmd.question(); n != nil {

@@ -148,7 +148,7 @@ func OpenBakerySceneWithSetup(path string, scope simulation.Scope, seed int64, a
 	if state.Bakery == nil {
 		return empty, fmt.Errorf("timeline contains a different fixture")
 	}
-	view, err := state.Bakery.Scene(scope, actor)
+	view, err := state.Scene(scope, actor)
 	if err != nil {
 		return empty, err
 	}

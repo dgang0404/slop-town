@@ -17,6 +17,7 @@ type JournalSpeech struct {
 // JournalEntry holds an actor's own action, audible dialogue, firsthand sightings
 // and discoveries in the action's saved observation. Entries are in turn order.
 type JournalEntry struct {
+	Date         BakeryDate
 	Conversation JournalSpeech
 	Action       ActionKind
 	Outcome      string
@@ -38,7 +39,7 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 	var lastTick int64
 	entryAt := func(tick int64) *JournalEntry {
 		if len(entries) == 0 || tick != lastTick {
-			entries = append(entries, JournalEntry{})
+			entries = append(entries, JournalEntry{Date: bakeryDateAt(tick)})
 			lastTick = tick
 		}
 		return &entries[len(entries)-1]
@@ -48,6 +49,9 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 	err := visit(func(e Event) error {
 		if e.Scope != scope {
 			return fmt.Errorf("mismatched journal history")
+		}
+		if e.Tick < 0 {
+			return fmt.Errorf("invalid journal tick %d", e.Tick)
 		}
 		if e.Kind == "tick_advanced" && e.ActorID == actor {
 			r, err := receipt(e.RequestID)

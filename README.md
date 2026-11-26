@@ -146,6 +146,10 @@ Start with `go run ./cmd/sloptown bakery -practice -play -db bakery.sqlite` to k
 
 In a fresh seed-42 practice bakery, wait four turns at the shopfront and open the journal. “Meeting the baker and the porter” begins on the turn they introduce themselves. Entering the bakery for the first time can also start a chapter.
 
+Type `calendar` or choose it with the arrows and Enter to check today's date. The bakery opens on day 1 of spring, year 1. Each 24 turns starts a new day. After seven days the season changes, from spring through summer, autumn and winter. Walking one square, waiting or resting each spends one turn. Checking the date and closing the game spend none.
+
+The first thing your character records on a new day starts a dated chapter. If you walk into the bakery for the first time as spring turns to summer, the heading reads “Day 1 of summer, year 1 · Inside the bakery.” A day with no memories gets no chapter.
+
 Type `export journal` or select it with the arrows and Enter to save the chaptered text in the directory where you started the game. The first available name is `slop-town-journal.txt`, followed by `slop-town-journal-2.txt`, `slop-town-journal-3.txt` and so on. This also works during an in-memory visit.
 
 To export directly from an existing save, give the shell a destination filename. Add `-timeline NAME` to select another timeline in that save.

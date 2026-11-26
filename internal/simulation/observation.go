@@ -18,6 +18,7 @@ func (c *Coordinator) Observe(actorID string) (Observation, error) {
 // Scene carries live presentation details separately from the versioned observation in a receipt.
 type Scene struct {
 	Observation
+	Date      BakeryDate
 	Self      ObserverDetail
 	Details   map[string]VisibleDetail
 	Witnessed []WitnessedAction // During this turn. Empty on a look.
@@ -46,12 +47,15 @@ type WitnessedAction struct {
 func (c *Coordinator) Scene(actorID string) (Scene, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.bakery.Scene(c.scope, actorID)
+	return (State{Clock: c.clock, Bakery: c.bakery}).Scene(c.scope, actorID)
 }
 
-func (b *Bakery) Scene(scope Scope, actorID string) (Scene, error) {
-	scene := Scene{Details: make(map[string]VisibleDetail)}
-	view, err := b.observe(scope, actorID, &scene)
+func (s State) Scene(scope Scope, actorID string) (Scene, error) {
+	if s.Clock == nil {
+		return Scene{}, errors.New("scene requires a timeline")
+	}
+	scene := Scene{Details: make(map[string]VisibleDetail), Date: bakeryDateAt(s.Clock.Tick())}
+	view, err := s.Bakery.observe(scope, actorID, &scene)
 	scene.Observation = view
 	return scene, err
 }

@@ -91,7 +91,7 @@ func TestWalkNarrationKeepsWitnessedInterruption(t *testing.T) {
 	target := bakery.Entities[crate]
 	target.Placement.Cell.X, target.Placement.Cell.Y = 0, 0
 	bakery.Entities[crate] = target
-	initial, err := bakery.Scene(scope, player)
+	initial, err := state.Scene(scope, player)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -33,6 +33,7 @@ func writeJournal(dst io.Writer, entries []simulation.JournalEntry) error {
 		quietWaits = 0
 	}
 	for _, entry := range entries {
+		newDay := entry.Date != chapters.date
 		if title := chapters.begin(entry); title != "" {
 			flushWaits()
 			fmt.Fprintf(out, "\nChapter %d — %s\n\n", chapters.number, title)
@@ -42,7 +43,7 @@ func writeJournal(dst io.Writer, entries []simulation.JournalEntry) error {
 		if entry.ContinueWalk {
 			continuingTo = entry.WalkTarget
 		}
-		if entry.Action == simulation.ActionWait && len(entry.Witnessed) == 0 && len(entry.Observations) == 0 {
+		if entry.Action == simulation.ActionWait && len(entry.Witnessed) == 0 && len(entry.Observations) == 0 && entry.Conversation.With == "" {
 			quietWaits++
 			continue
 		}
@@ -50,6 +51,8 @@ func writeJournal(dst io.Writer, entries []simulation.JournalEntry) error {
 		var lines []string
 		if entry.Outcome != "" && !continuation {
 			lines = append(lines, remembered(entry.Outcome))
+		} else if continuation && newDay {
+			lines = append(lines, strings.Replace(remembered(entry.Outcome), "I walked toward ", "I continued toward ", 1))
 		}
 		if speech := entry.Conversation; speech.With != "" {
 			if speech.IStarted {
@@ -87,10 +90,14 @@ type journalChapters struct {
 	number int
 	inside bool
 	met    map[string]bool
+	date   simulation.BakeryDate
 }
 
-// A chapter starts on the event itself. Later visits and greetings can
-// extend the account without moving an earlier chapter boundary.
+func formatBakeryDate(date simulation.BakeryDate) string {
+	return fmt.Sprintf("Day %d of %s, year %d", date.Day, date.Season, date.Year)
+}
+
+// A new date and a milestone on the same recorded turn share one heading.
 func (c *journalChapters) begin(entry simulation.JournalEntry) string {
 	var title string
 	if c.number == 0 {
@@ -120,6 +127,14 @@ func (c *journalChapters) begin(entry simulation.JournalEntry) string {
 		title = "Introductions"
 	} else if len(names) > 0 {
 		title = "Meeting " + proseList(names)
+	}
+	if entry.Date != c.date {
+		c.date = entry.Date
+		if title == "" {
+			title = formatBakeryDate(entry.Date)
+		} else {
+			title = formatBakeryDate(entry.Date) + " · " + title
+		}
 	}
 	if title != "" {
 		c.number++

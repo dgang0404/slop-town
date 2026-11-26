@@ -127,6 +127,18 @@ In a save written by `a236e25`, the player had heard and confirmed the baker's s
 
 In the miller test scene, the porter remembered the miller opening the crate even though it had since closed. Choosing the wrong person, guessing the original event number, or resubmitting the question after hearing the direct answer spent no turn. Interrupting the SQLite write left the earlier account intact and the question available on retry. The journal retained one direct answer. [Simulation checks](../../internal/simulation/report_test.go) · [SQLite walkthrough](../../internal/storage/report_test.go)
 
+## Checkpoint 9 — a calendar for the journal
+
+The bakery calendar gives the saved simulation clock a date. The prototype starts on day 1 of spring, year 1, uses 24 ticks per day and seven days per season, and cycles through spring, summer, autumn and winter. The turn that reaches tick 24 belongs to day 2. Resident activity within the same turn shares its date. These lengths set the pace for the demo. World-specific calendars, holidays and seasonal effects belong to later world simulation work. [Master design, sections 8 and 17](../design/Slop_Town_Master_Design_Revised_v7.docx)
+
+In play, choose `calendar` with the arrows and Enter or type the command. It reads the current date even if another session has advanced the town. The journal dates each personal memory from its original event. A new day opens a chapter on the character's first entry that day. A meeting or arrival on that turn shares the heading. A walk that crosses into another day picks up in the next chapter. Days the character missed have no pages. [Read your journal](../../README.md#read-your-journal)
+
+### Checkpoint 9 results
+
+A seed-42 save created by `8faff65` reached the bakery doorway on day 7 of spring. Interrupting the SQLite receipt write on the next step kept the journal byte-for-byte intact and the clock at tick 167. Retrying put the character inside on day 1 of summer, with one heading for the date and the arrival. The old and new executables agreed on the final replay hash. Replay from sequences 0 and 334 reached tick 168, sequence 336, with SHA-256 `bf88d4af2e710fbcb49ff49ee131e975641659f58e831cbb0b31717579f5824c`.
+
+Up and Enter showed the summer date in a Linux terminal. The in-game export matched the standalone journal byte for byte. Separate tests covered a named walk across midnight, days spent by another actor and the return to spring in year two. The offline build, full test suite, both seed-42 smoke runs and three race-detector runs passed. The CLI also cross-built for Windows amd64 and macOS arm64. [Calendar tests](../../internal/simulation/calendar_test.go) · [Journal walkthroughs](../../cmd/sloptown/calendar_test.go)
+
 ## Later narrative work
 
-A world calendar can supply day and season boundaries for longer chronicles. Illustrated export follows the plain-text edition.
+Illustrated journal export follows the dated plain-text edition.
