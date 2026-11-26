@@ -42,6 +42,7 @@ type Proposal struct {
 	Scope
 	Version   int        `json:"version"`
 	RequestID string     `json:"request_id"`
+	ByName    bool       `json:"by_name,omitempty"` // Resolve target names against the acting character's view.
 	Action    ActionKind `json:"action"`
 	Args      ActionArgs `json:"args"`
 }
@@ -116,8 +117,10 @@ type Coordinator struct {
 
 func validID(id string) bool { return id != "" && utf8.ValidString(id) }
 
+func (s Scope) Valid() bool { return validID(s.WorldID) && validID(s.TimelineID) }
+
 func NewCoordinator(scope Scope, seed int64) (*Coordinator, error) {
-	if !validID(scope.WorldID) || !validID(scope.TimelineID) {
+	if !scope.Valid() {
 		return nil, fmt.Errorf("world and timeline IDs must be nonempty UTF-8")
 	}
 	return &Coordinator{scope: scope, clock: NewTimeline(seed), receipts: make(map[requestKey]*Receipt)}, nil
@@ -137,7 +140,7 @@ func (c *Coordinator) Submit(actorID string, p Proposal) Result {
 	defer c.mu.Unlock()
 
 	key := requestKey{actorID, p.RequestID}
-	result, step := resolve(c.scope, c.clock, c.bakery, uint64(len(c.events)), actorID, p, c.receipts[key])
+	result, step := (State{Clock: c.clock, Bakery: c.bakery}).Resolve(c.scope, uint64(len(c.events)), actorID, p, c.receipts[key])
 	if step != nil {
 		c.clock = step.Clock
 		c.bakery = step.Bakery
@@ -148,20 +151,26 @@ func (c *Coordinator) Submit(actorID string, p Proposal) Result {
 	return result
 }
 
-// Transition holds all state and events staged for a single commit.
-type Transition struct {
+// State is the authoritative simulation state at one point in a timeline.
+type State struct {
 	Clock  *Timeline
 	Bakery *Bakery
+}
+
+// Transition holds the staged state and events for a single commit.
+type Transition struct {
+	State
 	Events []Event
 }
 
 // Resolve stages a Phase 1 fixture command. A nil transition denotes
 // a rejection or an identical retry. Callers publish only after commit.
 func Resolve(scope Scope, clock *Timeline, lastSequence uint64, actorID string, p Proposal, saved *Receipt) (Result, *Transition) {
-	return resolve(scope, clock, nil, lastSequence, actorID, p, saved)
+	return (State{Clock: clock}).Resolve(scope, lastSequence, actorID, p, saved)
 }
 
-func resolve(scope Scope, clock *Timeline, bakery *Bakery, lastSequence uint64, actorID string, p Proposal, saved *Receipt) (Result, *Transition) {
+func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Proposal, saved *Receipt) (Result, *Transition) {
+	clock, bakery := s.Clock, s.Bakery
 	result := Result{Version: contractVersion, RequestID: p.RequestID}
 	reject := func(code, message string) Result {
 		result.Status, result.Code, result.Message = "rejected", code, message
@@ -170,7 +179,8 @@ func resolve(scope Scope, clock *Timeline, bakery *Bakery, lastSequence uint64, 
 	if p.Version != contractVersion {
 		return reject("unsupported_version", "Unsupported action version."), nil
 	}
-	if !validID(scope.WorldID) || !validID(scope.TimelineID) || p.Scope != scope || !validID(actorID) || !validID(p.RequestID) {
+	if !scope.Valid() || p.Scope != scope || !validID(actorID) || !validID(p.RequestID) ||
+		clock == nil || (bakery != nil && bakery.WorldID != scope.WorldID) {
 		return reject("invalid_request", "Invalid request context."), nil
 	}
 	if saved != nil {
@@ -179,10 +189,11 @@ func resolve(scope Scope, clock *Timeline, bakery *Bakery, lastSequence uint64, 
 		}
 		return saved.Result, nil
 	}
-	if bakery == nil && (p.Action != "fixture_step" || !validID(p.Args.Stream) || p.Args != (ActionArgs{Stream: p.Args.Stream})) {
+	if bakery == nil && (p.Action != "fixture_step" || p.ByName || !validID(p.Args.Stream) || p.Args != (ActionArgs{Stream: p.Args.Stream})) {
 		return reject("invalid_request", "Expected a fixture step with a named stream."), nil
 	}
 	next := *clock
+	next.draws = maps.Clone(clock.draws)
 	if err := next.Advance(1); err != nil {
 		return reject("resolution_failed", "The fixture could not advance."), nil
 	}
@@ -190,7 +201,6 @@ func resolve(scope Scope, clock *Timeline, bakery *Bakery, lastSequence uint64, 
 	var engine, kind, message string
 	var payload EventPayload
 	if bakery == nil {
-		next.draws = maps.Clone(clock.draws)
 		value, err := next.Draw(p.Args.Stream)
 		if err != nil {
 			return reject("resolution_failed", "The fixture could not draw a value."), nil
@@ -219,7 +229,7 @@ func resolve(scope Scope, clock *Timeline, bakery *Bakery, lastSequence uint64, 
 	if nextBakery == nil {
 		result.Observation = Observation{Scope: scope, Version: contractVersion, ObserverID: actorID, Text: message}
 	} else {
-		view, err := nextBakery.observe(scope, actorID)
+		view, err := nextBakery.Observe(scope, actorID)
 		if err != nil {
 			return reject("resolution_failed", "You cannot observe your surroundings."), nil
 		}
@@ -227,5 +237,5 @@ func resolve(scope Scope, clock *Timeline, bakery *Bakery, lastSequence uint64, 
 		result.Message = message
 	}
 
-	return result, &Transition{Clock: &next, Bakery: nextBakery, Events: []Event{advanced, action}}
+	return result, &Transition{State: State{Clock: &next, Bakery: nextBakery}, Events: []Event{advanced, action}}
 }

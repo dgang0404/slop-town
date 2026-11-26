@@ -12,7 +12,7 @@ import (
 func (c *Coordinator) Observe(actorID string) (Observation, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.bakery.observe(c.scope, actorID)
+	return c.bakery.Observe(c.scope, actorID)
 }
 
 type cellMask [bakeryHeight][bakeryWidth]bool
@@ -53,8 +53,8 @@ func (opaque *cellMask) canSee(x, y, destX, destY int) bool {
 	return true
 }
 
-func (b *Bakery) observe(scope Scope, actorID string) (Observation, error) {
-	if b == nil {
+func (b *Bakery) Observe(scope Scope, actorID string) (Observation, error) {
+	if b == nil || !scope.Valid() || scope.WorldID != b.WorldID {
 		return Observation{}, errors.New("there is no spatial scene")
 	}
 	actor := b.Entities[actorID]
@@ -192,4 +192,27 @@ func renderTiles(tiles [bakeryHeight][bakeryWidth]string) string {
 
 func (v Observation) hasTarget(ref string) bool {
 	return slices.ContainsFunc(v.Targets, func(t ObservedTarget) bool { return t.Ref == ref })
+}
+
+// selectTarget accepts one visible reference, or one unambiguous visible name.
+func (v Observation) selectTarget(query string, byName bool) (string, *actionFailure) {
+	if !byName {
+		if v.hasTarget(query) {
+			return query, nil
+		}
+		return "", targetUnavailable()
+	}
+	var ref string
+	for _, target := range v.Targets {
+		if target.Name == query {
+			if ref != "" {
+				return "", &actionFailure{"ambiguous_target", "That name matches more than one visible target."}
+			}
+			ref = target.Ref
+		}
+	}
+	if ref == "" {
+		return "", targetUnavailable()
+	}
+	return ref, nil
 }

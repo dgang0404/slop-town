@@ -2,6 +2,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"errors"
 	"flag"
 	"fmt"
@@ -9,16 +10,19 @@ import (
 	"strconv"
 
 	"github.com/dgang0404/slop-town/internal/simulation"
+	"github.com/dgang0404/slop-town/internal/storage"
 )
 
-// runBakery executes explicit actions in one in-memory session. The terminal
-// only receives actor observations and resolves names against their references.
+// runBakery shows the actor view after each committed action.
 func runBakery(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("sloptown bakery", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	seed := flags.Int64("seed", 42, "bakery layout seed")
+	path := flags.String("db", "", "optional SQLite save file")
+	timeline := flags.String("timeline", "main", "bakery timeline")
+	batch := flags.String("batch", "", "repeat the same batch ID to retry its ordered requests")
 	flags.Usage = func() {
-		fmt.Fprintln(stderr, "Usage: sloptown bakery [-seed N] [move DIRECTION | open NAME | close NAME | take NAME | drop NAME | put ITEM CONTAINER] ...")
+		fmt.Fprintln(stderr, "Usage: sloptown bakery [-seed N] [-db PATH] [-timeline NAME] [-batch ID] [move DIRECTION | open NAME | close NAME | take NAME | drop NAME | put ITEM CONTAINER] ...")
 	}
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -26,17 +30,35 @@ func runBakery(args []string, stdout, stderr io.Writer) int {
 		}
 		return 2
 	}
-	scope := simulation.Scope{WorldID: "bakery", TimelineID: "main"}
+	scope := simulation.Scope{WorldID: "bakery", TimelineID: *timeline}
 	const player = "bakery/player"
-	c, err := simulation.NewBakeryCoordinator(scope, *seed)
-	if err != nil {
-		fmt.Fprintln(stderr, err)
-		return 1
+	var view simulation.Observation
+	var submit func(simulation.Proposal) (simulation.Result, bool, error)
+	var err error
+	if *path == "" {
+		c, err := simulation.NewBakeryCoordinator(scope, *seed)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		view, err = c.Observe(player)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		submit = func(p simulation.Proposal) (simulation.Result, bool, error) { return c.Submit(player, p), false, nil }
+	} else {
+		view, err = storage.OpenBakery(*path, scope, *seed, player)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		submit = func(p simulation.Proposal) (simulation.Result, bool, error) {
+			return storage.SubmitBakery(*path, scope, player, p)
+		}
 	}
-	view, err := c.Observe(player)
-	if err != nil {
-		fmt.Fprintln(stderr, err)
-		return 1
+	if *batch == "" {
+		*batch = rand.Text()
 	}
 	fmt.Fprintln(stdout, view.Text+"\n"+view.Grid)
 	words := flags.Args()
@@ -59,39 +81,27 @@ func runBakery(args []string, stdout, stderr io.Writer) int {
 		if action == simulation.ActionMove {
 			args.Direction = simulation.Direction(words[1])
 		} else {
-			args.Target, err = visibleRef(view, words[1])
-			if err == nil && action == simulation.ActionPut {
-				args.Container, err = visibleRef(view, words[2])
-			}
-			if err != nil {
-				fmt.Fprintln(stderr, err)
-				return 1
+			args.Target = words[1]
+			if action == simulation.ActionPut {
+				args.Container = words[2]
 			}
 		}
-		result := c.Submit(player, simulation.Proposal{Scope: scope, Version: 1, RequestID: strconv.Itoa(request), Action: action, Args: args})
+		result, repeated, err := submit(simulation.Proposal{Scope: scope, Version: 1, RequestID: *batch + "/" + strconv.Itoa(request), Action: action, ByName: action != simulation.ActionMove, Args: args})
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
 		if result.Status != "accepted" {
 			fmt.Fprintln(stderr, result.Message)
 			return 1
 		}
-		view = result.Observation
-		fmt.Fprintf(stdout, "\n%s\n%s\n%s\n", result.Message, view.Text, view.Grid)
+		if repeated {
+			fmt.Fprintln(stdout, "This action was already completed.")
+		} else {
+			view = result.Observation
+			fmt.Fprintf(stdout, "\n%s\n%s\n%s\n", result.Message, view.Text, view.Grid)
+		}
 		words = words[count:]
 	}
 	return 0
-}
-
-func visibleRef(view simulation.Observation, name string) (string, error) {
-	var ref string
-	for _, target := range view.Targets {
-		if target.Name == name {
-			if ref != "" {
-				return "", errors.New("That name matches more than one visible target.")
-			}
-			ref = target.Ref
-		}
-	}
-	if ref == "" {
-		return "", errors.New("That target is out of view.")
-	}
-	return ref, nil
 }

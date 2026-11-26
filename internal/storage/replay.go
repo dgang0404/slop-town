@@ -21,6 +21,7 @@ type checkpoint struct {
 	EngineVersion  int             `json:"engine_version"`
 	ContentVersion int             `json:"content_version"`
 	Clock          json.RawMessage `json:"clock"`
+	Bakery         json.RawMessage `json:"bakery,omitempty"`
 }
 
 type ReplayReport struct {
@@ -30,16 +31,24 @@ type ReplayReport struct {
 	Hash     string `json:"sha256"`
 }
 
-func encodeState(scope simulation.Scope, seq uint64, clock *simulation.Timeline) ([]byte, ReplayReport, error) {
-	snapshot, err := clock.Snapshot()
+func encodeState(scope simulation.Scope, state timelineState) ([]byte, ReplayReport, error) {
+	snapshot, err := state.Clock.Snapshot()
 	if err != nil {
 		return nil, ReplayReport{}, err
 	}
-	data, err := json.Marshal(checkpoint{Version: 1, Scope: scope, Sequence: seq, EngineVersion: 1, ContentVersion: 1, Clock: snapshot})
+	cp := checkpoint{Version: 1, Scope: scope, Sequence: state.sequence, EngineVersion: 1, ContentVersion: 1, Clock: snapshot}
+	if state.Bakery != nil {
+		cp.Version = 2
+		cp.Bakery, err = state.Bakery.Snapshot()
+		if err != nil {
+			return nil, ReplayReport{}, err
+		}
+	}
+	data, err := json.Marshal(cp)
 	if err != nil {
 		return nil, ReplayReport{}, err
 	}
-	return data, ReplayReport{scope, seq, clock.Tick(), fmt.Sprintf("%x", sha256.Sum256(data))}, nil
+	return data, ReplayReport{scope, state.sequence, state.Clock.Tick(), fmt.Sprintf("%x", sha256.Sum256(data))}, nil
 }
 
 // SaveCheckpoint bookmarks the current committed position. Existing checkpoints
@@ -59,11 +68,12 @@ func SaveCheckpoint(path string, scope simulation.Scope) (ReplayReport, error) {
 	if err := migrate(tx); err != nil {
 		return empty, err
 	}
-	clock, seq, err := committedClock(tx, scope)
+	state, err := committedState(tx, scope, 4)
 	if err != nil {
 		return empty, err
 	}
-	data, report, err := encodeState(scope, seq, clock)
+	seq := state.sequence
+	data, report, err := encodeState(scope, state)
 	if err != nil {
 		return empty, err
 	}
@@ -86,24 +96,34 @@ func SaveCheckpoint(path string, scope simulation.Scope) (ReplayReport, error) {
 	return report, nil
 }
 
-func restoreCheckpoint(tx *sql.Tx, scope simulation.Scope, seq uint64) (*simulation.Timeline, error) {
+func restoreCheckpoint(tx *sql.Tx, scope simulation.Scope, seq uint64) (timelineState, error) {
+	var state timelineState
 	var data []byte
 	var digest string
 	err := tx.QueryRow("SELECT data,digest FROM timeline_checkpoint WHERE world=? AND timeline=? AND seq=?", scope.WorldID, scope.TimelineID, seq).Scan(&data, &digest)
 	if err != nil {
-		return nil, fmt.Errorf("checkpoint sequence %d: %w", seq, err)
+		return state, fmt.Errorf("checkpoint sequence %d: %w", seq, err)
 	}
 	var cp checkpoint
 	if err := json.Unmarshal(data, &cp); err != nil {
-		return nil, err
+		return state, err
 	}
-	if cp.Version != 1 || cp.EngineVersion != 1 || cp.ContentVersion != 1 {
-		return nil, fmt.Errorf("checkpoint sequence %d: incompatible versions (format %d, engine %d, content %d)", seq, cp.Version, cp.EngineVersion, cp.ContentVersion)
+	wantFormat := 1
+	if len(cp.Bakery) != 0 {
+		wantFormat = 2
+	}
+	if cp.Version != wantFormat || cp.EngineVersion != 1 || cp.ContentVersion != 1 {
+		return state, fmt.Errorf("checkpoint sequence %d: incompatible versions (format %d, engine %d, content %d)", seq, cp.Version, cp.EngineVersion, cp.ContentVersion)
 	}
 	if cp.Scope != scope || cp.Sequence != seq || fmt.Sprintf("%x", sha256.Sum256(data)) != digest {
-		return nil, fmt.Errorf("checkpoint identity or hash mismatch at sequence %d", seq)
+		return state, fmt.Errorf("checkpoint identity or hash mismatch at sequence %d", seq)
 	}
-	return simulation.RestoreTimeline(cp.Clock)
+	state.sequence = seq
+	state.Clock, err = simulation.RestoreTimeline(cp.Clock)
+	if err == nil && cp.Version == 2 {
+		state.Bakery, err = simulation.RestoreBakery(cp.Bakery, scope.WorldID, state.Clock)
+	}
+	return state, err
 }
 
 // Replay verifies the suffix against one consistent read-only view of the save.
@@ -123,29 +143,30 @@ func Replay(path string, scope simulation.Scope, from uint64) (ReplayReport, err
 	if err := tx.QueryRow("PRAGMA user_version").Scan(&schema); err != nil {
 		return empty, err
 	}
-	if schema != 3 {
-		return empty, fmt.Errorf("replay requires save schema 3, found %d", schema)
+	if schema != 3 && schema != 4 {
+		return empty, fmt.Errorf("replay requires save schema 3 or 4, found %d", schema)
 	}
-	clock, err := restoreCheckpoint(tx, scope, from)
+	state, err := restoreCheckpoint(tx, scope, from)
 	if err != nil {
 		return empty, err
 	}
-	head, last, err := committedClock(tx, scope)
+	head, err := committedState(tx, scope, schema)
 	if err != nil {
 		return empty, err
 	}
+	last := head.sequence
 	if from > last {
 		return empty, fmt.Errorf("checkpoint sequence %d exceeds head %d", from, last)
 	}
-	clock, err = replaySuffix(tx, scope, clock, from, last)
+	state, err = replaySuffix(tx, scope, state, last)
 	if err != nil {
 		return empty, err
 	}
-	_, got, err := encodeState(scope, last, clock)
+	_, got, err := encodeState(scope, state)
 	if err != nil {
 		return empty, err
 	}
-	_, want, err := encodeState(scope, last, head)
+	_, want, err := encodeState(scope, head)
 	if err != nil {
 		return empty, err
 	}
@@ -155,10 +176,11 @@ func Replay(path string, scope simulation.Scope, from uint64) (ReplayReport, err
 	return got, nil
 }
 
-func replaySuffix(tx *sql.Tx, scope simulation.Scope, clock *simulation.Timeline, from, last uint64) (*simulation.Timeline, error) {
+func replaySuffix(tx *sql.Tx, scope simulation.Scope, state timelineState, last uint64) (timelineState, error) {
+	from := state.sequence
 	rows, err := tx.Query("SELECT seq,event FROM timeline_event WHERE world=? AND timeline=? AND seq>? ORDER BY seq", scope.WorldID, scope.TimelineID, from)
 	if err != nil {
-		return nil, err
+		return timelineState{}, err
 	}
 	defer rows.Close()
 	seq := from
@@ -169,51 +191,52 @@ func replaySuffix(tx *sql.Tx, scope simulation.Scope, clock *simulation.Timeline
 		var position uint64
 		var data []byte
 		if err := rows.Scan(&position, &data); err != nil {
-			return nil, err
+			return timelineState{}, err
 		}
 		seq++
 		if position != seq || seq > last {
-			return nil, fmt.Errorf("sequence %d: unexpected stored position %d (head %d)", seq, position, last)
+			return timelineState{}, fmt.Errorf("sequence %d: unexpected stored position %d (head %d)", seq, position, last)
 		}
 		var event simulation.Event
 		if err := json.Unmarshal(data, &event); err != nil {
-			return nil, fmt.Errorf("sequence %d: %w", seq, err)
+			return timelineState{}, fmt.Errorf("sequence %d: %w", seq, err)
 		}
 		if event.Version != 1 || event.PayloadVersion != 1 {
-			return nil, fmt.Errorf("sequence %d: unsupported event version %d or payload version %d", seq, event.Version, event.PayloadVersion)
+			return timelineState{}, fmt.Errorf("sequence %d: unsupported event version %d or payload version %d", seq, event.Version, event.PayloadVersion)
 		}
 		if len(pending) == 0 {
 			key := requestKey{event.ActorID, event.RequestID}
 			if resolved[key] {
-				return nil, fmt.Errorf("sequence %d: repeated committed request", seq)
+				return timelineState{}, fmt.Errorf("sequence %d: repeated committed request", seq)
 			}
 			resolved[key] = true
 			receipt, err := loadReceipt(tx, scope, event.ActorID, event.RequestID)
 			if err != nil {
-				return nil, fmt.Errorf("sequence %d: read receipt: %w", seq, err)
+				return timelineState{}, fmt.Errorf("sequence %d: read receipt: %w", seq, err)
 			}
 			if receipt == nil {
-				return nil, fmt.Errorf("sequence %d: missing request receipt", seq)
+				return timelineState{}, fmt.Errorf("sequence %d: missing request receipt", seq)
 			}
-			result, step := simulation.Resolve(scope, clock, seq-1, event.ActorID, receipt.Proposal, nil)
+			result, step := state.Resolve(scope, seq-1, event.ActorID, receipt.Proposal, nil)
 			if step == nil {
-				return nil, fmt.Errorf("sequence %d: proposal version %d rejected (%s)", seq, receipt.Proposal.Version, result.Code)
+				return timelineState{}, fmt.Errorf("sequence %d: proposal version %d rejected (%s)", seq, receipt.Proposal.Version, result.Code)
 			}
 			if !reflect.DeepEqual(result, receipt.Result) {
-				return nil, fmt.Errorf("sequence %d: recorded result differs from resolved result", seq)
+				return timelineState{}, fmt.Errorf("sequence %d: recorded result differs from resolved result", seq)
 			}
-			clock, pending = step.Clock, step.Events
+			state.State, pending = step.State, step.Events
 		}
 		if event != pending[0] {
-			return nil, fmt.Errorf("sequence %d: recorded event differs from resolved event", seq)
+			return timelineState{}, fmt.Errorf("sequence %d: recorded event differs from resolved event", seq)
 		}
 		pending = pending[1:]
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return timelineState{}, err
 	}
 	if seq != last || len(pending) != 0 {
-		return nil, fmt.Errorf("sequence %d: missing event", seq+1)
+		return timelineState{}, fmt.Errorf("sequence %d: missing event", seq+1)
 	}
-	return clock, nil
+	state.sequence = seq
+	return state, nil
 }

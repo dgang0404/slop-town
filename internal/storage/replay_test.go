@@ -119,7 +119,7 @@ func TestReplayReportsDivergence(t *testing.T) {
 func TestCheckpointUpgradesVersionTwo(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "version2.sqlite")
 	accept(t, path, "one")
-	execSQL(t, path, "DROP TABLE timeline_checkpoint; PRAGMA user_version=2")
+	execSQL(t, path, "ALTER TABLE timeline_state DROP COLUMN bakery; DROP TABLE timeline_checkpoint; PRAGMA user_version=2")
 	before := inspect(t, path)
 	cp := checkpointAtHead(t, path, scope)
 	if cp.Sequence != 2 || !reflect.DeepEqual(before, inspect(t, path)) {
@@ -127,6 +127,40 @@ func TestCheckpointUpgradesVersionTwo(t *testing.T) {
 	}
 	if r, err := storage.Replay(path, scope, cp.Sequence); err != nil || r != cp {
 		t.Fatalf("upgraded replay: %+v, %v", r, err)
+	}
+}
+
+func TestSchemaThreeReplayBeforeAndAfterUpgrade(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "phase1.sqlite")
+	accept(t, path, "one")
+	cp := checkpointAtHead(t, path, scope)
+	accept(t, path, "two")
+	want := checkpointAtHead(t, path, scope)
+	execSQL(t, path, "ALTER TABLE timeline_state DROP COLUMN bakery; PRAGMA user_version=3")
+	check := func() {
+		t.Helper()
+		if got, err := storage.Replay(path, scope, cp.Sequence); err != nil || got != want {
+			t.Fatalf("legacy replay %+v, %v", got, err)
+		}
+	}
+	check()
+	if got := checkpointAtHead(t, path, scope); got != want {
+		t.Fatal("migrating changed the legacy bookmark")
+	}
+	check()
+}
+
+func TestReplayDetectsChangedBakeryHead(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bakery.sqlite")
+	s := simulation.Scope{WorldID: "bakery", TimelineID: "main"}
+	if _, err := storage.OpenBakery(path, s, 42, "bakery/player"); err != nil {
+		t.Fatal(err)
+	}
+	cp := checkpointAtHead(t, path, s)
+	// Change a physically valid lid state without recording an event.
+	execSQL(t, path, `UPDATE timeline_state SET bakery=json_set(bakery,'$.bakery.Entities."bakery/crate".Open',json('true'))`)
+	if _, err := storage.Replay(path, s, cp.Sequence); err == nil || !strings.Contains(err.Error(), "replayed state hash differs") {
+		t.Fatalf("changed lid escaped verification: %v", err)
 	}
 }
 

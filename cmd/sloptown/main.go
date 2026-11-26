@@ -124,9 +124,11 @@ func runCheckpoint(command string, args []string, stdout, stderr io.Writer) int 
 	flags := flag.NewFlagSet("sloptown "+command, flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	path := flags.String("db", "slop-town-smoke.sqlite", "local SQLite save")
-	var from uint64
+	world := flags.String("world", "smoke", "saved world")
+	timeline := flags.String("timeline", "main", "saved timeline")
+	var from int64
 	if command == "replay" {
-		flags.Uint64Var(&from, "from", 0, "required saved checkpoint sequence")
+		flags.Int64Var(&from, "from", -1, "required saved checkpoint sequence")
 	}
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -134,15 +136,15 @@ func runCheckpoint(command string, args []string, stdout, stderr io.Writer) int 
 		}
 		return 2
 	}
-	if flags.NArg() != 0 || *path == "" || command == "replay" && from == 0 {
+	if flags.NArg() != 0 || *path == "" || command == "replay" && from < 0 {
 		flags.Usage()
 		return 2
 	}
-	scope := simulation.Scope{WorldID: "smoke", TimelineID: "main"}
+	scope := simulation.Scope{WorldID: *world, TimelineID: *timeline}
 	var report storage.ReplayReport
 	var err error
 	if command == "replay" {
-		report, err = storage.Replay(*path, scope, from)
+		report, err = storage.Replay(*path, scope, uint64(from))
 	} else {
 		report, err = storage.SaveCheckpoint(*path, scope)
 	}

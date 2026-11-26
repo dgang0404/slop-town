@@ -16,7 +16,90 @@ import (
 // Submit resolves one proposal against the latest committed state on disk.
 // seed initializes a new timeline; existing timelines keep their saved seed.
 func Submit(path string, scope simulation.Scope, seed int64, actor string, p simulation.Proposal) (simulation.Result, error) {
+	result, _, err := submit(path, scope, seed, actor, p, false)
+	return result, err
+}
+
+// SubmitBakery requires an initialized bakery. The boolean identifies an old
+// receipt, so a client need not display its historical scene as a new action.
+func SubmitBakery(path string, scope simulation.Scope, actor string, p simulation.Proposal) (simulation.Result, bool, error) {
+	return submit(path, scope, 0, actor, p, true)
+}
+
+func submit(path string, scope simulation.Scope, seed int64, actor string, p simulation.Proposal, requireBakery bool) (simulation.Result, bool, error) {
 	var empty simulation.Result
+	db, err := openTimelineDB(path, false)
+	if err != nil {
+		return empty, false, err
+	}
+	defer db.Close()
+	tx, err := db.Begin()
+	if err != nil {
+		return empty, false, err
+	}
+	defer tx.Rollback()
+	if err := migrate(tx); err != nil {
+		return empty, false, fmt.Errorf("migrate save: %w", err)
+	}
+	state, err := committedState(tx, scope, 4)
+	if !requireBakery && errors.Is(err, sql.ErrNoRows) {
+		state.Clock = simulation.NewTimeline(seed)
+		err = nil
+	}
+	if err != nil {
+		return empty, false, err
+	}
+	if requireBakery && state.Bakery == nil {
+		return empty, false, fmt.Errorf("timeline contains a different fixture")
+	}
+	prior, err := loadReceipt(tx, scope, actor, p.RequestID)
+	if err != nil {
+		return empty, false, err
+	}
+	result, step := state.Resolve(scope, state.sequence, actor, p, prior)
+	if step == nil {
+		return result, prior != nil && result.Status == "accepted", nil
+	}
+	if err := writeStep(tx, scope, actor, step, simulation.Receipt{Proposal: p, Result: result}); err != nil {
+		return empty, false, fmt.Errorf("save step: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return empty, false, err
+	}
+	return result, false, nil
+}
+
+type timelineState struct {
+	simulation.State
+	sequence uint64
+}
+
+func committedState(tx *sql.Tx, scope simulation.Scope, schema int) (timelineState, error) {
+	var state timelineState
+	var clock, bakery []byte
+	query := "SELECT clock,last_sequence,bakery FROM timeline_state WHERE world=? AND timeline=?"
+	if schema == 3 {
+		// Read historical Phase 1 saves without migrating them during replay.
+		query = "SELECT clock,last_sequence,NULL FROM timeline_state WHERE world=? AND timeline=?"
+	}
+	err := tx.QueryRow(query, scope.WorldID, scope.TimelineID).Scan(&clock, &state.sequence, &bakery)
+	if err != nil {
+		return state, fmt.Errorf("read committed timeline: %w", err)
+	}
+	state.Clock, err = simulation.RestoreTimeline(clock)
+	if err == nil && bakery != nil {
+		state.Bakery, err = simulation.RestoreBakery(bakery, scope.WorldID, state.Clock)
+	}
+	return state, err
+}
+
+// OpenBakery initializes a fresh timeline once. Each later open restores its
+// saved layout and geography stream before projecting the current actor view.
+func OpenBakery(path string, scope simulation.Scope, seed int64, actor string) (simulation.Observation, error) {
+	var empty simulation.Observation
+	if !scope.Valid() {
+		return empty, fmt.Errorf("invalid world or timeline ID")
+	}
 	db, err := openTimelineDB(path, false)
 	if err != nil {
 		return empty, err
@@ -28,46 +111,30 @@ func Submit(path string, scope simulation.Scope, seed int64, actor string, p sim
 	}
 	defer tx.Rollback()
 	if err := migrate(tx); err != nil {
-		return empty, fmt.Errorf("migrate save: %w", err)
+		return empty, err
 	}
-	clock, seq, err := loadClock(tx, scope, seed)
+	state, err := committedState(tx, scope, 4)
+	if errors.Is(err, sql.ErrNoRows) {
+		state.Clock = simulation.NewTimeline(seed)
+		state.Bakery, err = simulation.GenerateBakery(scope.WorldID, state.Clock)
+		if err == nil {
+			err = writeState(tx, scope, state)
+		}
+	}
 	if err != nil {
 		return empty, err
 	}
-	prior, err := loadReceipt(tx, scope, actor, p.RequestID)
+	if state.Bakery == nil {
+		return empty, fmt.Errorf("timeline contains a different fixture")
+	}
+	view, err := state.Bakery.Observe(scope, actor)
 	if err != nil {
 		return empty, err
-	}
-	result, step := simulation.Resolve(scope, clock, seq, actor, p, prior)
-	if step == nil {
-		return result, nil
-	}
-	if err := writeStep(tx, scope, actor, step, simulation.Receipt{Proposal: p, Result: result}); err != nil {
-		return empty, fmt.Errorf("save step: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
 		return empty, err
 	}
-	return result, nil
-}
-
-func committedClock(tx *sql.Tx, scope simulation.Scope) (*simulation.Timeline, uint64, error) {
-	var data []byte
-	var seq uint64
-	err := tx.QueryRow("SELECT clock,last_sequence FROM timeline_state WHERE world=? AND timeline=?", scope.WorldID, scope.TimelineID).Scan(&data, &seq)
-	if err != nil {
-		return nil, 0, fmt.Errorf("read committed timeline: %w", err)
-	}
-	clock, err := simulation.RestoreTimeline(data)
-	return clock, seq, err
-}
-
-func loadClock(tx *sql.Tx, scope simulation.Scope, seed int64) (*simulation.Timeline, uint64, error) {
-	clock, seq, err := committedClock(tx, scope)
-	if errors.Is(err, sql.ErrNoRows) {
-		return simulation.NewTimeline(seed), 0, nil
-	}
-	return clock, seq, err
+	return view, nil
 }
 
 func loadReceipt(tx *sql.Tx, scope simulation.Scope, actor, request string) (*simulation.Receipt, error) {
@@ -87,14 +154,7 @@ func loadReceipt(tx *sql.Tx, scope simulation.Scope, actor, request string) (*si
 }
 
 func writeStep(tx *sql.Tx, scope simulation.Scope, actor string, step *simulation.Transition, receipt simulation.Receipt) error {
-	clock, err := step.Clock.Snapshot()
-	if err != nil {
-		return err
-	}
-	_, err = tx.Exec(`INSERT INTO timeline_state(world,timeline,clock,last_sequence) VALUES (?,?,?,?)
-		ON CONFLICT(world,timeline) DO UPDATE SET clock=excluded.clock, last_sequence=excluded.last_sequence`,
-		scope.WorldID, scope.TimelineID, clock, step.Events[len(step.Events)-1].Sequence)
-	if err != nil {
+	if err := writeState(tx, scope, timelineState{step.State, step.Events[len(step.Events)-1].Sequence}); err != nil {
 		return err
 	}
 	for _, event := range step.Events {
@@ -111,6 +171,24 @@ func writeStep(tx *sql.Tx, scope simulation.Scope, actor string, step *simulatio
 		return err
 	}
 	_, err = tx.Exec("INSERT INTO request_receipt(world,timeline,actor,request,receipt) VALUES (?,?,?,?,?)", scope.WorldID, scope.TimelineID, actor, receipt.Proposal.RequestID, data)
+	return err
+}
+
+func writeState(tx *sql.Tx, scope simulation.Scope, state timelineState) error {
+	clock, err := state.Clock.Snapshot()
+	if err != nil {
+		return err
+	}
+	var bakery []byte
+	if state.Bakery != nil {
+		bakery, err = state.Bakery.Snapshot()
+		if err != nil {
+			return err
+		}
+	}
+	_, err = tx.Exec(`INSERT INTO timeline_state(world,timeline,clock,last_sequence,bakery) VALUES (?,?,?,?,?)
+		ON CONFLICT(world,timeline) DO UPDATE SET clock=excluded.clock, last_sequence=excluded.last_sequence, bakery=excluded.bakery`,
+		scope.WorldID, scope.TimelineID, clock, state.sequence, bakery)
 	return err
 }
 

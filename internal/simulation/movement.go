@@ -47,7 +47,7 @@ func (b *Bakery) applySpatial(actorID string, p Proposal) (spatialEffect, *actio
 	args := p.Args
 	switch p.Action {
 	case ActionMove:
-		if args != (ActionArgs{Direction: args.Direction}) {
+		if p.ByName || args != (ActionArgs{Direction: args.Direction}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Movement takes one direction."}
 		}
 		return b.move(actorID, actor, args.Direction)
@@ -62,12 +62,23 @@ func (b *Bakery) applySpatial(actorID string, p Proposal) (spatialEffect, *actio
 	default:
 		return spatialEffect{}, &actionFailure{"invalid_request", "Unknown spatial action."}
 	}
-	view, err := b.observe(p.Scope, actorID)
-	if err != nil || !view.hasTarget(args.Target) || (p.Action == ActionPut && !view.hasTarget(args.Container)) {
+	view, err := b.Observe(p.Scope, actorID)
+	if err != nil {
 		return spatialEffect{}, targetUnavailable()
 	}
+	var failure *actionFailure
+	p.Args.Target, failure = view.selectTarget(args.Target, p.ByName)
+	if failure != nil {
+		return spatialEffect{}, failure
+	}
+	if p.Action == ActionPut {
+		p.Args.Container, failure = view.selectTarget(args.Container, p.ByName)
+		if failure != nil {
+			return spatialEffect{}, failure
+		}
+	}
 	if p.Action == ActionOpen || p.Action == ActionClose {
-		return b.setOpen(actor.Placement.Cell, args.Target, p.Action == ActionOpen)
+		return b.setOpen(actor.Placement.Cell, p.Args.Target, p.Action == ActionOpen)
 	}
 	return b.transferItem(actorID, actor.Placement.Cell, p)
 }

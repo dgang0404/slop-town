@@ -180,7 +180,7 @@ func TestLegacyMigrationRunsTwice(t *testing.T) {
 		if hash != original {
 			t.Fatalf("run %d changed fixture hash to %s", run, hash)
 		}
-		if version := readInt(t, db, "PRAGMA user_version"); version != 3 {
+		if version := readInt(t, db, "PRAGMA user_version"); version != 4 {
 			t.Fatalf("run %d stored schema version %d, want 3", run, version)
 		}
 		if n := readInt(t, db, "SELECT count(*) FROM fixture_metadata WHERE world_id = 'smoke' AND timeline_id = 'main'"); n != 1 {

@@ -13,7 +13,7 @@ See the [Phase 0 plan](docs/plans/phase-0.md) for the Go foundation milestones.
 
 The [Phase 0 acceptance report](docs/plans/phase-0-results.md) collects the foundation test evidence. The [Phase 1 plan](docs/plans/phase-1.md) covers time, events, saves and replay. Its [acceptance report](docs/plans/phase-1-results.md) gives the reproducible restart and rollback checks and the CI status.
 
-The Phase 2 tests walk a character into an in-memory bakery, open a crate, and carry a wooden spoon back outside. See the [Phase 2 plan](docs/plans/phase-2.md) for the walkthrough and checkpoint results.
+Phase 2 follows a wooden spoon from a bakery crate to the street. The runner can reopen the town and replay that journey. See the [Phase 2 plan](docs/plans/phase-2.md) and [acceptance results](docs/plans/phase-2-results.md).
 
 To validate a local content pack, run `go run ./cmd/packcheck PACK_DIRECTORY`. The [manifest guide](docs/content-packs.md) includes a bundled example.
 
@@ -66,7 +66,23 @@ From the repository root, run the street-to-crate walkthrough in a fresh, in-mem
 go run ./cmd/sloptown bakery -seed 42 open "bakery door" move east move east open crate
 ```
 
-The terminal shows the player's view on arrival and after each action. On the grid, `@` marks the player, `?` a square out of sight, and `#` a wall. Opening the lid changes the crate's square from `C` to `c*` as the spoon comes into view. To carry it outside, append `take "wooden spoon" close crate move west move west close "bakery door" drop "wooden spoon"` to the same command. Each invocation starts a new bakery. Run `go test -v -count=1 -run '^TestBakery' ./internal/simulation` to check both reference layouts.
+The terminal shows the player's view on arrival and after each action. On the grid, `@` marks the player, `?` a square out of sight, and `#` a wall. Opening the lid changes the crate's square from `C` to `c*` as the spoon comes into view. Omit `-db` for a fresh in-memory session.
+
+### Save and replay the bakery
+
+Use a fresh temporary directory for the reference walkthrough. Each command runs in a new process.
+
+```sh
+save_dir=$(mktemp -d)
+save="$save_dir/bakery.sqlite"
+go run ./cmd/sloptown bakery -db "$save" -seed 42 -batch pickup open "bakery door" move east move east open crate take "wooden spoon"
+go run ./cmd/sloptown checkpoint -db "$save" -world bakery
+go run ./cmd/sloptown bakery -db "$save" -batch return close crate move west move west close "bakery door" drop "wooden spoon"
+go run ./cmd/sloptown bakery -db "$save"
+go run ./cmd/sloptown replay -db "$save" -world bakery -from 10
+```
+
+The checkpoint records tick 5 at event sequence 10. Reopening after the return trip shows the spoon on the street. Replay verifies the next ten events and the final state at tick 10. Reuse a batch ID with the same ordered actions to retry after an interruption. Each action commits separately. A new invocation generates a fresh batch ID unless you supply one. Use `-timeline NAME` on all three subcommands for a separate history.
 
 ## Run the Linux CI checks locally
 

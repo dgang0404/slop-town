@@ -15,7 +15,7 @@ func migrate(tx *sql.Tx) error {
 		return err
 	}
 	switch version {
-	case 3:
+	case 4:
 		return nil
 	case 0:
 		// The original runner created smoke_fixture without setting a version.
@@ -59,6 +59,13 @@ func migrate(tx *sql.Tx) error {
 				data BLOB NOT NULL, digest TEXT NOT NULL, PRIMARY KEY(world,timeline,seq)
 			);
 			PRAGMA user_version = 3;`)
+		if err != nil {
+			return err
+		}
+		fallthrough
+	case 3:
+		_, err := tx.Exec(`ALTER TABLE timeline_state ADD COLUMN bakery BLOB;
+			PRAGMA user_version = 4;`)
 		return err
 	default:
 		return fmt.Errorf("unsupported save schema version %d", version)
