@@ -13,7 +13,7 @@ See the [Phase 0 plan](docs/plans/phase-0.md) for the Go foundation milestones.
 
 The [Phase 0 acceptance report](docs/plans/phase-0-results.md) collects the foundation test evidence. The [Phase 1 plan](docs/plans/phase-1.md) covers time, events, saves and replay. Its [acceptance report](docs/plans/phase-1-results.md) gives the reproducible restart and rollback checks and the CI status.
 
-The Phase 2 tests walk a character into an in-memory bakery, open a crate, and carry a wooden spoon back outside. Run `go test -v -count=1 -run '^TestBakery' ./internal/simulation` to exercise both seeded layouts and the inventory rules. See the [Phase 2 plan](docs/plans/phase-2.md) for the walkthrough and checkpoint results.
+The Phase 2 tests walk a character into an in-memory bakery, open a crate, and carry a wooden spoon back outside. See the [Phase 2 plan](docs/plans/phase-2.md) for the walkthrough and checkpoint results.
 
 To validate a local content pack, run `go run ./cmd/packcheck PACK_DIRECTORY`. The [manifest guide](docs/content-packs.md) includes a bundled example.
 
@@ -57,6 +57,16 @@ save_dir=$(mktemp -d)
 ```
 
 Use the sequence printed by `checkpoint` when trying an existing timeline. Replay opens the save read-only, checks each subsequent event, and compares the reconstructed state with the committed head. The example ends at tick 2 and sequence 4 with SHA-256 `d508c6d2e9416be9d60c32bbc51cb36d2c2be7e13c146057d74dad10c525554d`.
+
+## Look inside the bakery
+
+From the repository root, run the street-to-crate walkthrough in a fresh, in-memory session.
+
+```sh
+go run ./cmd/sloptown bakery -seed 42 open "bakery door" move east move east open crate
+```
+
+The terminal shows the player's view on arrival and after each action. On the grid, `@` marks the player, `?` a square out of sight, and `#` a wall. Opening the lid changes the crate's square from `C` to `c*` as the spoon comes into view. To carry it outside, append `take "wooden spoon" close crate move west move west close "bakery door" drop "wooden spoon"` to the same command. Each invocation starts a new bakery. Run `go test -v -count=1 -run '^TestBakery' ./internal/simulation` to check both reference layouts.
 
 ## Run the Linux CI checks locally
 

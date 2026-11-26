@@ -59,11 +59,15 @@ func (b *Bakery) applySpatial(actorID string, p Proposal) (spatialEffect, *actio
 		if !validID(args.Target) || args != (ActionArgs{Target: args.Target}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Choose one target."}
 		}
-		if p.Action == ActionOpen || p.Action == ActionClose {
-			return b.setOpen(actor.Placement.Cell, args.Target, p.Action == ActionOpen)
-		}
 	default:
 		return spatialEffect{}, &actionFailure{"invalid_request", "Unknown spatial action."}
+	}
+	view, err := b.observe(p.Scope, actorID)
+	if err != nil || !view.hasTarget(args.Target) || (p.Action == ActionPut && !view.hasTarget(args.Container)) {
+		return spatialEffect{}, targetUnavailable()
+	}
+	if p.Action == ActionOpen || p.Action == ActionClose {
+		return b.setOpen(actor.Placement.Cell, args.Target, p.Action == ActionOpen)
 	}
 	return b.transferItem(actorID, actor.Placement.Cell, p)
 }

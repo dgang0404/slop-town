@@ -4,6 +4,7 @@ package simulation
 import (
 	"fmt"
 	"maps"
+	"reflect"
 	"testing"
 )
 
@@ -96,7 +97,7 @@ func TestBakeryInventoryWalkthrough(t *testing.T) {
 					t.Fatalf("tick %d: unexpected event %+v", want.tick, e)
 				}
 			}
-			if got := submitUnchanged(t, c, playerID, take); got != receipt {
+			if got := submitUnchanged(t, c, playerID, take); !reflect.DeepEqual(got, receipt) {
 				t.Fatalf("late take retry returned %+v, want %+v", got, receipt)
 			}
 		})
@@ -111,7 +112,7 @@ func TestBakeryInventoryPutBack(t *testing.T) {
 	rejectBakeryAction(t, c, playerID, ActionTake, crate, "not_portable")
 	hidden := rejectBakeryAction(t, c, playerID, ActionTake, spoon, "target_unavailable")
 	missing := rejectBakeryAction(t, c, playerID, ActionTake, ActionArgs{Target: "town/absent"}, "target_unavailable")
-	if hidden != missing {
+	if !reflect.DeepEqual(hidden, missing) {
 		t.Fatal("closed crate disclosed its contents")
 	}
 	commitBakeryAction(t, c, playerID, ActionOpen, crate)
@@ -131,7 +132,7 @@ func TestBakeryInventoryPutBack(t *testing.T) {
 		t.Fatalf("unexpected put event: %+v", e)
 	}
 	commitBakeryAction(t, c, playerID, ActionClose, crate)
-	if got := submitUnchanged(t, c, playerID, p); got != receipt {
+	if got := submitUnchanged(t, c, playerID, p); !reflect.DeepEqual(got, receipt) {
 		t.Fatalf("late put retry: %+v", got)
 	}
 	p.Args.Container = doorID

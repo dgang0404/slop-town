@@ -51,7 +51,7 @@ func TestPhase1Acceptance(t *testing.T) {
 		p := proposal(id)
 		p.Scope = s
 		want, transition := simulation.Resolve(s, live, uint64(len(history)), "player", p, nil)
-		if got != want || got.Status != "accepted" || transition == nil {
+		if !reflect.DeepEqual(got, want) || got.Status != "accepted" || transition == nil {
 			t.Fatalf("step %s: got %+v, want %+v", id, got, want)
 		}
 		live = transition.Clock
@@ -65,7 +65,7 @@ func TestPhase1Acceptance(t *testing.T) {
 		if state.clock != string(clock) || state.seq != int64(len(history)) {
 			t.Fatalf("step %s: reopened clock or sequence diverged: %+v", id, state)
 		}
-		if !slices.Equal(state.events, history) || !slices.Equal(state.receipts, receipts) {
+		if !slices.Equal(state.events, history) || !reflect.DeepEqual(state.receipts, receipts) {
 			t.Fatalf("step %s: reopened events or receipts diverged from uninterrupted execution: %+v", id, state)
 		}
 		return got
@@ -91,7 +91,7 @@ func TestPhase1Acceptance(t *testing.T) {
 
 	var retry simulation.Result
 	runJSON(&retry, "step", "-request", "r2")
-	if retry != second || !reflect.DeepEqual(before, inspectScope(t, path, s)) {
+	if !reflect.DeepEqual(retry, second) || !reflect.DeepEqual(before, inspectScope(t, path, s)) {
 		t.Fatal("duplicate request changed the receipt or saved state")
 	}
 	t.Log("retry r2 returned the original receipt; clock, streams and events matched the pre-retry save")

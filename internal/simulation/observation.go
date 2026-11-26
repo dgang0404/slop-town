@@ -1,0 +1,195 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+package simulation
+
+import (
+	"errors"
+	"maps"
+	"slices"
+	"strings"
+)
+
+// Observe reads the current scene without submitting a request or advancing time.
+func (c *Coordinator) Observe(actorID string) (Observation, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.bakery.observe(c.scope, actorID)
+}
+
+type cellMask [bakeryHeight][bakeryWidth]bool
+
+func sign(n int) int {
+	if n < 0 {
+		return -1
+	}
+	if n > 0 {
+		return 1
+	}
+	return 0
+}
+
+// Trace between cell centers. Crossing a corner is possible if either side
+// is clear. The first opaque cell itself is visible.
+func (opaque *cellMask) canSee(x, y, destX, destY int) bool {
+	stepX, stepY := sign(destX-x), sign(destY-y)
+	dx, dy := (destX-x)*stepX, (destY-y)*stepY
+	for crossedX, crossedY := 0, 0; x != destX || y != destY; {
+		// Compare the distances to the next vertical and horizontal edges.
+		order := (2*crossedX+1)*dy - (2*crossedY+1)*dx
+		if order == 0 && opaque[y][x+stepX] && opaque[y+stepY][x] {
+			return false
+		}
+		if order <= 0 {
+			x += stepX
+			crossedX++
+		}
+		if order >= 0 {
+			y += stepY
+			crossedY++
+		}
+		if (x != destX || y != destY) && opaque[y][x] {
+			return false
+		}
+	}
+	return true
+}
+
+func (b *Bakery) observe(scope Scope, actorID string) (Observation, error) {
+	if b == nil {
+		return Observation{}, errors.New("there is no spatial scene")
+	}
+	actor := b.Entities[actorID]
+	at := actor.Placement.Cell
+	if actor.Kind != Actor || actor.Placement.HolderID != "" || !b.isFloorCell(at) {
+		return Observation{}, errors.New("invalid observing character")
+	}
+	var opaque, visible cellMask
+	var tiles [bakeryHeight][bakeryWidth]string
+	for y, row := range b.Cells {
+		for x, cell := range row {
+			opaque[y][x] = cell.Wall
+		}
+	}
+	for _, e := range b.Entities {
+		if e.Kind == Door && !e.Open && b.isFloorCell(e.Placement.Cell) {
+			cell := e.Placement.Cell
+			opaque[cell.Y][cell.X] = true
+		}
+	}
+	for y, row := range b.Cells {
+		for x, cell := range row {
+			visible[y][x] = opaque.canSee(at.X, at.Y, x, y)
+			switch {
+			case !visible[y][x]:
+				tiles[y][x] = "?"
+			case cell.Wall:
+				tiles[y][x] = "#"
+			default:
+				tiles[y][x] = "."
+			}
+		}
+	}
+	tiles[at.Y][at.X] = "@"
+	view := Observation{Scope: scope, Version: contractVersion, ObserverID: actorID}
+	lines := []string{"You are in the bakery."}
+	if b.Cells[at.Y][at.X].SpaceID == b.StreetID {
+		lines[0] = "You are on the street."
+	}
+	for _, id := range slices.Sorted(maps.Keys(b.Entities)) {
+		if id == actorID {
+			continue
+		}
+		pos, err := b.PositionOf(id)
+		if err != nil || !visible[pos.Y][pos.X] || !b.contentsVisible(id, actorID) {
+			continue
+		}
+		e := b.Entities[id]
+		if pos == at && e.Kind == Door {
+			lines[0] = "You are in the bakery doorway."
+		}
+		view.Targets = append(view.Targets, ObservedTarget{Ref: id, Name: e.Name})
+		if e.Placement.HolderID == actorID {
+			lines = append(lines, "You carry the "+e.Name+".")
+			continue
+		}
+		label, glyph := appearance(e)
+		location := relativeLocation(at, pos)
+		if holder := e.Placement.HolderID; holder != "" {
+			location = "in the " + b.Entities[holder].Name
+		}
+		lines = append(lines, "You see the "+label+" "+location+".")
+		tile := &tiles[pos.Y][pos.X]
+		*tile = strings.TrimPrefix(*tile, ".") + glyph
+	}
+	view.Text = strings.Join(lines, "\n")
+	view.Grid = renderTiles(tiles)
+	return view, nil
+}
+
+// PositionOf has already validated this chain. Each enclosing lid must be
+// open, and only the observer can inspect their own inventory.
+func (b *Bakery) contentsVisible(id, actorID string) bool {
+	for holder := b.Entities[id].Placement.HolderID; holder != ""; holder = b.Entities[holder].Placement.HolderID {
+		if holder == actorID {
+			return true
+		}
+		e := b.Entities[holder]
+		if e.Kind != Container || !e.Open {
+			return false
+		}
+	}
+	return true
+}
+
+func appearance(e SpatialEntity) (label, glyph string) {
+	switch e.Kind {
+	case Door:
+		if e.Open {
+			return "open " + e.Name, "/"
+		}
+		return "closed " + e.Name, "+"
+	case Container:
+		if e.Open {
+			return "open " + e.Name, "c"
+		}
+		return "closed " + e.Name, "C"
+	case Actor:
+		return e.Name, "a"
+	default:
+		return e.Name, "*"
+	}
+}
+
+func relativeLocation(from, to CellPosition) string {
+	if from == to {
+		return "here"
+	}
+	ns := [...]string{"north", "", "south"}
+	ew := [...]string{"west", "", "east"}
+	return "to the " + ns[sign(to.Y-from.Y)+1] + ew[sign(to.X-from.X)+1]
+}
+
+// Keep all symbols on a shared tile, including a spoon dropped at the observer's feet.
+func renderTiles(tiles [bakeryHeight][bakeryWidth]string) string {
+	var widths [bakeryWidth]int
+	for _, row := range tiles {
+		for x, tile := range row {
+			widths[x] = max(widths[x], len(tile))
+		}
+	}
+	var lines []string
+	for _, row := range tiles {
+		var line strings.Builder
+		for x, tile := range row {
+			line.WriteString(tile)
+			if x+1 < len(row) {
+				line.WriteString(strings.Repeat(" ", widths[x]-len(tile)+1))
+			}
+		}
+		lines = append(lines, line.String())
+	}
+	return strings.Join(lines, "\n")
+}
+
+func (v Observation) hasTarget(ref string) bool {
+	return slices.ContainsFunc(v.Targets, func(t ObservedTarget) bool { return t.Ref == ref })
+}

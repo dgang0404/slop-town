@@ -126,7 +126,7 @@ func TestDurableStepRollbackAndRetry(t *testing.T) {
 	if !reflect.DeepEqual(after.events, memory.History()) || after.seq != 4 || len(after.receipts) != 2 {
 		t.Fatal("committed events or receipts differ from expected history")
 	}
-	if accept(t, path, "first") != first {
+	if !reflect.DeepEqual(accept(t, path, "first"), first) {
 		t.Fatal("late retry lost original receipt")
 	}
 	p := proposal("first")
@@ -156,7 +156,7 @@ func TestConcurrentDurableRetry(t *testing.T) {
 		<-done
 	}
 	for i, r := range results {
-		if errs[i] != nil || r.Status != "accepted" || r != results[0] {
+		if errs[i] != nil || r.Status != "accepted" || !reflect.DeepEqual(r, results[0]) {
 			t.Fatalf("concurrent command %d: %+v, %v", i, r, errs[i])
 		}
 	}

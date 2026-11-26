@@ -15,6 +15,34 @@ import (
 
 var quiet = slog.New(slog.DiscardHandler)
 
+func TestBakeryCommand(t *testing.T) {
+	call := func(wantExit int, actions ...string) (string, string) {
+		t.Helper()
+		var out, diag bytes.Buffer
+		if code := run(append([]string{"bakery", "-seed", "42"}, actions...), &out, &diag); code != wantExit {
+			t.Fatalf("exit %d for %v: %s", code, actions, diag.String())
+		}
+		if strings.Contains(out.String(), "bakery/") || strings.Contains(out.String(), "tick") {
+			t.Fatalf("terminal printed internal identifiers: %s", out.String())
+		}
+		return out.String(), diag.String()
+	}
+	initial, _ := call(0)
+	if strings.Contains(initial, "crate") || strings.Contains(initial, "spoon") || !strings.Contains(initial, "@ + ?") {
+		t.Fatalf("unexpected street view: %s", initial)
+	}
+	_, hidden := call(1, "open", "crate")
+	_, missing := call(1, "open", "missing")
+	if hidden == "" || hidden != missing {
+		t.Fatal("name selection disclosed a hidden object")
+	}
+	out, _ := call(0, "open", "bakery door", "move", "east", "move", "east", "open", "crate", "take", "wooden spoon", "put", "wooden spoon", "crate")
+	if !strings.Contains(out, "You carry the wooden spoon.") || !strings.Contains(out, "You put the wooden spoon in the crate.") ||
+		!strings.Contains(out, "c*") {
+		t.Fatalf("visible targets did not work through the terminal: %s", out)
+	}
+}
+
 func TestStepCommand(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "timeline.sqlite")
 	args := []string{"step", "-db", path, "-request", "r1"}

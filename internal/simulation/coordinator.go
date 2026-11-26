@@ -48,9 +48,17 @@ type Proposal struct {
 
 type Observation struct {
 	Scope
-	Version    int    `json:"version"`
-	ObserverID string `json:"observer_id"`
-	Text       string `json:"text"`
+	Version    int              `json:"version"`
+	ObserverID string           `json:"observer_id"`
+	Text       string           `json:"text"`
+	Grid       string           `json:"grid,omitempty"`
+	Targets    []ObservedTarget `json:"targets,omitempty"`
+}
+
+// ObservedTarget is a reference the observer may select in the current view.
+type ObservedTarget struct {
+	Ref  string `json:"ref"`
+	Name string `json:"name"`
 }
 
 type Result struct {
@@ -136,6 +144,7 @@ func (c *Coordinator) Submit(actorID string, p Proposal) Result {
 		c.events = append(c.events, step.Events...)
 		c.receipts[key] = &Receipt{p, result}
 	}
+	result.Observation.Targets = slices.Clone(result.Observation.Targets)
 	return result
 }
 
@@ -207,7 +216,16 @@ func resolve(scope Scope, clock *Timeline, bakery *Bakery, lastSequence uint64, 
 	action := event(advanced.Sequence+1, kind, payload)
 	action.ParentID = advanced.ID
 	result.Status = "accepted"
-	result.Observation = Observation{Scope: scope, Version: contractVersion, ObserverID: actorID, Text: message}
+	if nextBakery == nil {
+		result.Observation = Observation{Scope: scope, Version: contractVersion, ObserverID: actorID, Text: message}
+	} else {
+		view, err := nextBakery.observe(scope, actorID)
+		if err != nil {
+			return reject("resolution_failed", "You cannot observe your surroundings."), nil
+		}
+		result.Observation = view
+		result.Message = message
+	}
 
 	return result, &Transition{Clock: &next, Bakery: nextBakery, Events: []Event{advanced, action}}
 }

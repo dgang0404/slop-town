@@ -100,7 +100,7 @@ func TestBakeryDoorWalk(t *testing.T) {
 					}
 				}
 			}
-			if r := submitUnchanged(t, c, actor, open); r != openResult {
+			if r := submitUnchanged(t, c, actor, open); !reflect.DeepEqual(r, openResult) {
 				t.Fatalf("late retry returned %+v, want %+v", r, openResult)
 			}
 			enter.Args.Direction = West

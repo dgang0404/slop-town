@@ -67,3 +67,11 @@ On seeds 42 and 43, the player opened the crate at tick 4 and took the spoon at 
 The separate return test put the carried spoon back into the open crate, closed the lid, and retried the put. The retry returned its original receipt. Attempts to lift the fixed crate, reach through a closed lid, put into a distant crate or drop an item carried by someone else preserved the placements, clock, events and receipts. A resident used the same take and drop actions as the player.
 
 On 25 November 2026, the inventory tests passed on Linux and under Node.js with WebAssembly. The full offline verification script and three runs of the simulation race tests passed locally. Run `go test -v -count=1 -run '^TestBakeryInventory' ./internal/simulation` to repeat the inventory checks. Checkpoint 4 adds actor-scoped descriptions, grid views and target selection.
+
+## Checkpoint 4 results
+
+The terminal now shows what the acting character can see on arrival and after each action. The description, grid and target references come from the same observation. The simulation checks both the item and the destination of a put against the current view. Looking costs no time and consumes no randomness.
+
+On both reference seeds, the closed bakery door was visible from the street and concealed the interior. Opening the crate revealed the wooden spoon in the description, on the grid and as a target. Back on the street with the door closed, the player could still select the carried spoon, and the previously seen crate had disappeared from all three. A stale crate reference and an unknown reference returned the same rejection. Two actors on opposite sides of the door saw different scenes. When they met inside, each actor's inventory remained private.
+
+On 25 November 2026, the bakery tests passed on Linux and under Node.js with WebAssembly, including sight across a single open corner and blocked sight between two touching opaque corners. The full offline verification script and three simulation race-test runs passed locally. The [terminal walkthrough](../../README.md#look-inside-the-bakery) runs in one process. Checkpoint 5 covers saving the bakery, reopening it and replaying the observations and actions.

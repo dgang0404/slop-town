@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"reflect"
 
 	"github.com/dgang0404/slop-town/internal/simulation"
 )
@@ -198,7 +199,7 @@ func replaySuffix(tx *sql.Tx, scope simulation.Scope, clock *simulation.Timeline
 			if step == nil {
 				return nil, fmt.Errorf("sequence %d: proposal version %d rejected (%s)", seq, receipt.Proposal.Version, result.Code)
 			}
-			if result != receipt.Result {
+			if !reflect.DeepEqual(result, receipt.Result) {
 				return nil, fmt.Errorf("sequence %d: recorded result differs from resolved result", seq)
 			}
 			clock, pending = step.Clock, step.Events

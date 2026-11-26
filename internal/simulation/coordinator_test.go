@@ -4,6 +4,7 @@ package simulation
 import (
 	"bytes"
 	"math"
+	"reflect"
 	"slices"
 	"testing"
 )
@@ -73,7 +74,7 @@ func TestScopedCommandRetry(t *testing.T) {
 		t.Fatal("each actor should be able to use the same request ID")
 	}
 	history, state := c.History(), snapshot(t, c.clock)
-	if got := c.Submit("player", p); got != first {
+	if got := c.Submit("player", p); !reflect.DeepEqual(got, first) {
 		t.Fatalf("retry returned %+v, want %+v", got, first)
 	}
 	p.Args.Stream = "movement"
@@ -152,7 +153,7 @@ func TestConcurrentCommandRetry(t *testing.T) {
 	close(start)
 	first := <-results
 	for i := 1; i < count; i++ {
-		if got := <-results; got != first {
+		if got := <-results; !reflect.DeepEqual(got, first) {
 			t.Fatalf("concurrent retry returned %+v, want %+v", got, first)
 		}
 	}
