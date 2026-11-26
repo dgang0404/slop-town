@@ -34,26 +34,38 @@ type actionFailure struct {
 	message string
 }
 
+func targetUnavailable() *actionFailure {
+	return &actionFailure{"target_unavailable", "You can't reach that target."}
+}
+
 // applySpatial operates on the staged entities owned by the coordinator.
 func (b *Bakery) applySpatial(actorID string, p Proposal) (spatialEffect, *actionFailure) {
 	actor := b.Entities[actorID]
 	if actor.Kind != Actor || actor.Placement.HolderID != "" || !b.isFloorCell(actor.Placement.Cell) {
 		return spatialEffect{}, &actionFailure{"invalid_request", "Invalid acting character."}
 	}
+	args := p.Args
 	switch p.Action {
 	case ActionMove:
-		if p.Args.Stream != "" || p.Args.Target != "" {
+		if args != (ActionArgs{Direction: args.Direction}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Movement takes one direction."}
 		}
-		return b.move(actorID, actor, p.Args.Direction)
-	case ActionOpen, ActionClose:
-		if p.Args.Stream != "" || p.Args.Direction != "" || !validID(p.Args.Target) {
+		return b.move(actorID, actor, args.Direction)
+	case ActionPut:
+		if !validID(args.Target) || !validID(args.Container) || args != (ActionArgs{Target: args.Target, Container: args.Container}) {
+			return spatialEffect{}, &actionFailure{"invalid_request", "Choose an item and a destination container."}
+		}
+	case ActionOpen, ActionClose, ActionTake, ActionDrop:
+		if !validID(args.Target) || args != (ActionArgs{Target: args.Target}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Choose one target."}
 		}
-		return b.setDoorOpen(actor.Placement.Cell, p.Args.Target, p.Action == ActionOpen)
+		if p.Action == ActionOpen || p.Action == ActionClose {
+			return b.setOpen(actor.Placement.Cell, args.Target, p.Action == ActionOpen)
+		}
 	default:
 		return spatialEffect{}, &actionFailure{"invalid_request", "Unknown spatial action."}
 	}
+	return b.transferItem(actorID, actor.Placement.Cell, p)
 }
 
 func (b *Bakery) move(actorID string, actor SpatialEntity, dir Direction) (spatialEffect, *actionFailure) {
@@ -90,24 +102,29 @@ func inReach(a, b CellPosition) bool {
 	return a.FloorID == b.FloorID && dx+dy <= 1
 }
 
-func (b *Bakery) setDoorOpen(actorCell CellPosition, target string, open bool) (spatialEffect, *actionFailure) {
-	door := b.Entities[target]
-	if door.Kind != Door || !inReach(actorCell, door.Placement.Cell) {
-		return spatialEffect{}, &actionFailure{"target_unavailable", "You can't reach that target."}
+func (b *Bakery) setOpen(actorCell CellPosition, target string, open bool) (spatialEffect, *actionFailure) {
+	entity := b.Entities[target]
+	if (entity.Kind != Door && entity.Kind != Container) || !inReach(actorCell, entity.Placement.Cell) {
+		return spatialEffect{}, targetUnavailable()
 	}
-	if door.Open == open {
-		return spatialEffect{}, &actionFailure{"already_in_state", "The door is already in that position."}
+	name := entity.Name
+	if entity.Kind == Door {
+		name = "door"
 	}
-	kind, message := "door_opened", "You open the door."
-	if !open {
-		for id, entity := range b.Entities {
-			if id != target && entity.Placement.Cell == door.Placement.Cell {
+	if entity.Open == open {
+		return spatialEffect{}, &actionFailure{"already_in_state", "The " + name + " is already in that position."}
+	}
+	if entity.Kind == Door && !open {
+		for id, occupant := range b.Entities {
+			if id != target && occupant.Placement.Cell == entity.Placement.Cell {
 				return spatialEffect{}, &actionFailure{"doorway_occupied", "The doorway is occupied."}
 			}
 		}
-		kind, message = "door_closed", "You close the door."
 	}
-	door.Open = open
-	b.Entities[target] = door
-	return spatialEffect{kind, EventPayload{Target: target}, message}, nil
+	entity.Open = open
+	b.Entities[target] = entity
+	if open {
+		return spatialEffect{string(entity.Kind) + "_opened", EventPayload{Target: target}, "You open the " + name + "."}, nil
+	}
+	return spatialEffect{string(entity.Kind) + "_closed", EventPayload{Target: target}, "You close the " + name + "."}, nil
 }

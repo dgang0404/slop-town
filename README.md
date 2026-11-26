@@ -13,7 +13,7 @@ See the [Phase 0 plan](docs/plans/phase-0.md) for the Go foundation milestones.
 
 The [Phase 0 acceptance report](docs/plans/phase-0-results.md) collects the foundation test evidence. The [Phase 1 plan](docs/plans/phase-1.md) covers time, events, saves and replay. Its [acceptance report](docs/plans/phase-1-results.md) gives the reproducible restart and rollback checks and the CI status.
 
-Phase 2 starts with an in-memory bakery. To check the seeded layouts, walk through the door on both seeds and test blocked moves, run `go test -v -count=1 -run '^TestBakery' ./internal/simulation`. The walkthrough and checkpoint results are in the [Phase 2 plan](docs/plans/phase-2.md).
+The Phase 2 tests walk a character into an in-memory bakery, open a crate, and carry a wooden spoon back outside. Run `go test -v -count=1 -run '^TestBakery' ./internal/simulation` to exercise both seeded layouts and the inventory rules. See the [Phase 2 plan](docs/plans/phase-2.md) for the walkthrough and checkpoint results.
 
 To validate a local content pack, run `go run ./cmd/packcheck PACK_DIRECTORY`. The [manifest guide](docs/content-packs.md) includes a bundled example.
 

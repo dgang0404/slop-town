@@ -99,6 +99,7 @@ func TestCommandRejections(t *testing.T) {
 	}{
 		{"version", "unsupported_version"}, {"actor", "invalid_request"}, {"request", "invalid_request"},
 		{"world", "invalid_request"}, {"timeline", "invalid_request"}, {"action", "invalid_request"}, {"stream", "invalid_request"},
+		{"container", "invalid_request"},
 	} {
 		t.Run(tc.field, func(t *testing.T) {
 			q, actor := p, "player"
@@ -117,6 +118,8 @@ func TestCommandRejections(t *testing.T) {
 				q.Action = "unknown"
 			case "stream":
 				q.Args.Stream = ""
+			case "container":
+				q.Args.Container = "world/crate"
 			}
 			before := snapshot(t, c.clock)
 			got := c.Submit(actor, q)

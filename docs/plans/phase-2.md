@@ -59,3 +59,11 @@ The in-memory coordinator accepts `move` with a cardinal direction and `open` or
 Walking into a wall, a closed door or the map edge cost no time. A diagonal door was out of reach. Closing the door while either the player or another actor occupied the doorway failed. Repeating the original open request after the door closed returned its original receipt and left the door closed. A failed clock advance also left the door and history intact.
 
 On 25 November 2026, the two walkthroughs and movement limit tests passed on Linux and under Node.js with WebAssembly. The full offline build, save and replay checks and three runs of the simulation race tests also passed. To run the walkthroughs from the repository root, use `go test -v -count=1 -run '^TestBakeryDoorWalk$' ./internal/simulation`. Checkpoint 3 adds crate and inventory actions.
+
+## Checkpoint 3 results
+
+On seeds 42 and 43, the player opened the crate at tick 4 and took the spoon at tick 5. The spoon kept its ID as the player closed the crate, walked back outside and closed the door. At tick 10 the player dropped it at `(1,1)` on seed 42 and `(1,2)` on seed 43. Each in-memory run finished with 20 events and one geography draw.
+
+The separate return test put the carried spoon back into the open crate, closed the lid, and retried the put. The retry returned its original receipt. Attempts to lift the fixed crate, reach through a closed lid, put into a distant crate or drop an item carried by someone else preserved the placements, clock, events and receipts. A resident used the same take and drop actions as the player.
+
+On 25 November 2026, the inventory tests passed on Linux and under Node.js with WebAssembly. The full offline verification script and three runs of the simulation race tests passed locally. Run `go test -v -count=1 -run '^TestBakeryInventory' ./internal/simulation` to repeat the inventory checks. Checkpoint 4 adds actor-scoped descriptions, grid views and target selection.

@@ -24,12 +24,16 @@ const (
 	ActionMove  ActionKind = "move"
 	ActionOpen  ActionKind = "open"
 	ActionClose ActionKind = "close"
+	ActionTake  ActionKind = "take"
+	ActionPut   ActionKind = "put"
+	ActionDrop  ActionKind = "drop"
 )
 
 type ActionArgs struct {
 	Stream    string    `json:"stream,omitempty"`
 	Direction Direction `json:"direction,omitempty"`
 	Target    string    `json:"target,omitempty"`
+	Container string    `json:"container,omitempty"` // Destination of a put.
 }
 
 type FixtureArgs = ActionArgs
@@ -75,13 +79,14 @@ type Event struct {
 	Payload        EventPayload
 }
 
-// Spatial events record the destination cell or the door's stable ID.
+// A transfer identifies the item in Target and its new parent in HolderID or Destination.
 type EventPayload struct {
 	Delta       int64
 	Stream      string
 	Value       uint64
 	Destination CellPosition `json:",omitzero"`
 	Target      string       `json:",omitempty"`
+	HolderID    string       `json:",omitempty"`
 }
 
 type requestKey struct{ actorID, requestID string }
@@ -165,7 +170,7 @@ func resolve(scope Scope, clock *Timeline, bakery *Bakery, lastSequence uint64, 
 		}
 		return saved.Result, nil
 	}
-	if bakery == nil && (p.Action != "fixture_step" || !validID(p.Args.Stream) || p.Args.Direction != "" || p.Args.Target != "") {
+	if bakery == nil && (p.Action != "fixture_step" || !validID(p.Args.Stream) || p.Args != (ActionArgs{Stream: p.Args.Stream})) {
 		return reject("invalid_request", "Expected a fixture step with a named stream."), nil
 	}
 	next := *clock
