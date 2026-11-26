@@ -227,6 +227,7 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 		return reject("resolution_failed", "The fixture could not advance."), nil
 	}
 	var nextBakery *Bakery
+	var primary spatialEffect
 	var engine, kind, message string
 	var payload EventPayload
 	if bakery == nil {
@@ -237,14 +238,16 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 		engine, kind, message = "fixture", "stream_drawn", "The fixture advanced."
 		payload = EventPayload{Stream: p.Args.Stream, Value: value}
 	} else {
-		staged := *bakery
-		staged.Entities = maps.Clone(bakery.Entities)
-		effect, failure := staged.applySpatial(actorID, p)
+		var failure *actionFailure
+		primary, failure = bakery.resolveSpatial(actorID, p)
 		if failure != nil {
 			return reject(failure.code, failure.message), nil
 		}
+		staged := *bakery
+		staged.Entities = maps.Clone(bakery.Entities)
+		staged.Notebooks = maps.Clone(bakery.Notebooks)
 		nextBakery = &staged
-		engine, kind, payload, message = "spatial", effect.kind, effect.payload, effect.message
+		engine, kind, payload, message = "spatial", primary.kind, primary.payload, primary.message
 	}
 	event := func(seq uint64, actor, kind string, payload EventPayload) Event {
 		id := fmt.Sprintf("%s/%s/%d", url.PathEscape(scope.WorldID), url.PathEscape(scope.TimelineID), seq)
@@ -259,11 +262,13 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 	if nextBakery == nil {
 		result.Observation = Observation{Scope: scope, Version: contractVersion, ObserverID: actorID, Text: message}
 	} else {
+		nextBakery.applySpatial(action, primary)
 		bakerID := url.PathEscape(scope.WorldID) + "/baker"
 		if nextBakery.ContentVersion >= residentContentVersion && actorID != bakerID {
 			if effect, ok := nextBakery.bakerTurn(scope, bakerID, next.Tick()); ok {
 				resident := event(action.Sequence+1, bakerID, effect.kind, effect.payload)
 				resident.ParentID = action.ID
+				nextBakery.applySpatial(resident, effect)
 				events = append(events, resident)
 			}
 		}

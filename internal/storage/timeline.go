@@ -154,6 +154,23 @@ func OpenBakerySceneWithSetup(path string, scope simulation.Scope, seed int64, a
 
 // BakeryActions reads the current committed scene, including actions by other sessions.
 func BakeryActions(path string, scope simulation.Scope, actor string) ([]simulation.ActionOption, error) {
+	bakery, err := readBakery(path, scope)
+	if err != nil {
+		return nil, err
+	}
+	return bakery.AvailableActions(scope, actor)
+}
+
+// BakeryNotebook is a developer read of the selected actor's saved sightings.
+func BakeryNotebook(path string, scope simulation.Scope, actor string) ([]simulation.NotebookEntry, error) {
+	bakery, err := readBakery(path, scope)
+	if err != nil {
+		return nil, err
+	}
+	return bakery.Notebook(actor)
+}
+
+func readBakery(path string, scope simulation.Scope) (*simulation.Bakery, error) {
 	db, err := openTimelineDB(path, true)
 	if err != nil {
 		return nil, err
@@ -168,7 +185,7 @@ func BakeryActions(path string, scope simulation.Scope, actor string) ([]simulat
 	if err != nil {
 		return nil, err
 	}
-	return state.Bakery.AvailableActions(scope, actor)
+	return state.Bakery, nil
 }
 
 // BakeryReceipt looks up one committed request when resuming an explicit batch.

@@ -1,6 +1,6 @@
 # Phase 4 — autonomous residents
 
-The first resident is a baker who follows a work routine. Later checkpoints give residents needs that can interrupt a shift, private notebooks and individual preferences. The terminal shows the people and objects the player can observe. The simulation chooses and validates resident actions offline. [Master design, sections 9 and 50](../design/Slop_Town_Master_Design_Revised_v7.docx) · [Phase 3 acceptance](phase-3-results.md)
+The baker follows a work routine and takes breaks. Residents keep private notebooks of what they witness. The next checkpoint introduces individual preferences. The terminal shows the people and objects the player can observe. The simulation chooses and validates resident actions offline. [Master design, sections 9, 11 and 50](../design/Slop_Town_Master_Design_Revised_v7.docx) · [Phase 3 acceptance](phase-3-results.md)
 
 ## Checkpoints
 
@@ -56,4 +56,29 @@ Repeat the focused checks from the repository root.
 
 ```sh
 go test -count=1 -v -run '^(TestBaker(WorkRoutine|WorksOutOfSight|RestAcrossRestart|RollbackAndReplay|TerminalSession)|TestRestChangesTheBakersNextChoice)$' ./internal/simulation ./internal/storage ./cmd/sloptown
+```
+
+The hosted Linux verification passed for checkpoint 2 at `a555e60`. [Hosted run](https://github.com/dgang0404/slop-town/actions/runs/45766498455)
+
+## Checkpoint 3 results
+
+New resident bakeries include a porter on the street. For this checkpoint each character keeps firsthand sightings of someone else sitting down or opening or closing a door or container. At each action the simulation checks whether the witness can see the person and, for object interactions, the object. Each entry stores the observed action and references, the tick, and the source event's sequence within that timeline. The developer notebook command reads one owner's entries. Player scenes, suggestions and receipts continue to use the character's current view. [Notebook rules](../../internal/simulation/notebook.go) · [Terminal walkthrough](../../README.md#inspect-the-residents-notebooks)
+
+On 26 November 2026, the following seed-42 walkthrough ran across process restarts.
+
+| Action | Source event | What the residents saw |
+| --- | ---: | --- |
+| Player sat outside on tick 1 | 2 | The porter saw the player sit. The baker was behind the closed door and opened it later that tick. |
+| Player sat inside on tick 4 | 11 | The baker saw the player sit. The bakery wall blocked the porter's view. |
+| Player opened the crate on tick 5 | 13 | The baker could see the player but could not see the crate until moving later that tick. Neither resident recorded the opening. |
+| Player closed the crate on tick 6 | 16 | From the doorway, the baker saw both the player and the crate. The porter missed it. |
+
+Resting a second time while already seated added no sighting. In a separate run the player saw the baker sit down at the back of the bakery on tick 12. The porter missed the break. [Observation tests](../../internal/simulation/notebook_test.go)
+
+Replaying the six-turn walkthrough from sequences 0 and 3 reproduced the same tick-6, sequence-17 digest, `b6ba766b3ae5505f6bc231b035a5a53873aefd2843c05791095b9b446d495a56`. Failing the receipt write rolled back the crate closure, its event and the baker's entry together. A retry recorded one sighting. A second timeline in the same save had an empty notebook. [Restart test](../../internal/storage/notebook_test.go)
+
+Notebook timelines use bakery content version 4. A version 3 save from checkpoint 2 reopened in the new runner, matched its tick-10 replay, and continued to the original tick-13 digest. The full offline Linux checks passed, along with three race-detector runs of the simulation, storage and terminal packages. Run the notebook checks with
+
+```sh
+go test -count=1 -v -run '^TestNotebook' ./internal/simulation ./internal/storage
 ```

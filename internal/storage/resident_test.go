@@ -13,17 +13,35 @@ import (
 	"github.com/dgang0404/slop-town/internal/storage"
 )
 
+// Recreate the tick-zero actor layout from checkpoints 1 and 2. Their
+// published replay hashes below pin both the saved content and its behavior.
+func legacyResidentSave(t *testing.T, path string, s simulation.Scope, version int) simulation.State {
+	t.Helper()
+	clock := simulation.NewTimeline(42)
+	b, err := simulation.GenerateBakery(s.WorldID, clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	station := b.Entities["bakery/door"].Placement
+	station.Cell.X++
+	b.Entities["bakery/baker"] = simulation.SpatialEntity{Name: "baker", Kind: simulation.Actor, Placement: station}
+	b.ContentVersion = version
+	data, err := b.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := storage.OpenBakery(path, s, 42, "bakery/player"); err != nil {
+		t.Fatal(err)
+	}
+	execSQL(t, path, "UPDATE timeline_state SET bakery=? WHERE world=? AND timeline=?", data, s.WorldID, s.TimelineID)
+	return simulation.State{Clock: clock, Bakery: b}
+}
+
 func TestBakerRollbackAndReplay(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "resident.sqlite")
 	s := simulation.Scope{WorldID: "bakery", TimelineID: "main"}
 	const player = "bakery/player"
-	_, err := storage.OpenBakerySceneWithSetup(path, s, 42, player, simulation.BakerySetup{Resident: true})
-	if err != nil {
-		t.Fatal(err)
-	}
-	// At tick zero the work-only fixture differs from the new bakery just
-	// by its content version. Preserve the published checkpoint 1 digest.
-	execSQL(t, path, `UPDATE timeline_state SET bakery=json_set(CAST(bakery AS TEXT), '$.bakery.ContentVersion', 2)`)
+	legacyResidentSave(t, path, s, 2)
 	initial, err := storage.SaveCheckpoint(path, s)
 	if err != nil {
 		t.Fatal(err)
@@ -77,15 +95,9 @@ func TestBakerRollbackAndReplay(t *testing.T) {
 func TestBakerRestAcrossRestart(t *testing.T) {
 	s := simulation.Scope{WorldID: "bakery", TimelineID: "main"}
 	const player = "bakery/player"
-	setup := simulation.BakerySetup{Resident: true}
 	path := filepath.Join(t.TempDir(), "rest.sqlite")
-	live, err := setup.NewCoordinator(s, 42)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := storage.OpenBakerySceneWithSetup(path, s, 42, player, setup); err != nil {
-		t.Fatal(err)
-	}
+	live := legacyResidentSave(t, path, s, 3)
+	var history []simulation.Event
 	if _, err := storage.SaveCheckpoint(path, s); err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +118,12 @@ func TestBakerRestAcrossRestart(t *testing.T) {
 			}
 			execSQL(t, path, "DROP TRIGGER fail_rest")
 		}
-		want := live.Submit(player, p)
+		want, step := live.Resolve(s, uint64(len(history)), player, p, nil)
+		if step == nil {
+			t.Fatal(want)
+		}
+		live = step.State
+		history = append(history, step.Events...)
 		got, repeated, err := storage.SubmitBakery(path, s, player, p)
 		if err != nil || repeated || want.Status != "accepted" || !reflect.DeepEqual(got, want) {
 			t.Fatalf("tick %d: reopened result %+v, uninterrupted %+v, %v", tick, got, want, err)
@@ -127,7 +144,7 @@ func TestBakerRestAcrossRestart(t *testing.T) {
 			}
 		}
 	}
-	if !reflect.DeepEqual(inspectScope(t, path, s).events, live.History()) {
+	if !reflect.DeepEqual(inspectScope(t, path, s).events, history) {
 		t.Fatal("reopened history differs from uninterrupted work, break and return")
 	}
 	const want = "8e2b1876a8e108382a11b3319e77e24f01d54220ba15932e9ab74f3f497ce535"

@@ -44,17 +44,13 @@ func targetUnavailable() *actionFailure {
 	return &actionFailure{"target_unavailable", "You can't reach that target."}
 }
 
-// applySpatial operates on the staged entities owned by the coordinator.
-func (b *Bakery) applySpatial(actorID string, p Proposal) (spatialEffect, *actionFailure) {
+// resolveSpatial plans an action against the actor's view before anyone moves.
+func (b *Bakery) resolveSpatial(actorID string, p Proposal) (spatialEffect, *actionFailure) {
 	view, err := b.Observe(p.Scope, actorID)
 	if err != nil {
 		return spatialEffect{}, &actionFailure{"invalid_request", "Invalid acting character."}
 	}
-	effect, failure := b.planSpatial(view, p)
-	if failure == nil {
-		b.Entities[effect.entityID] = effect.entity
-	}
-	return effect, failure
+	return b.planSpatial(view, p)
 }
 
 // planSpatial computes the effect without applying it. Discovery and submission

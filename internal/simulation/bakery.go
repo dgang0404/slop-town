@@ -64,6 +64,7 @@ type Bakery struct {
 	ContentVersion   int
 	Cells            [bakeryHeight][bakeryWidth]BakeryCell
 	Entities         map[string]SpatialEntity
+	Notebooks        map[string][]NotebookEntry `json:",omitempty"`
 }
 
 // BakerySetup selects the content of a new timeline. The save supplies the
@@ -75,6 +76,7 @@ type BakerySetup struct {
 const (
 	residentContentVersion = 2 // The original work routine.
 	restContentVersion     = 3
+	notebookContentVersion = 4
 	fatigueLimit           = 5 // Steps since the last rest, capped during a break.
 )
 
@@ -86,8 +88,11 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 	prefix := url.PathEscape(worldID) + "/"
 	station := b.Entities[prefix+"door"].Placement
 	station.Cell.X++
-	b.ContentVersion = restContentVersion
+	b.ContentVersion = notebookContentVersion
 	b.Entities[prefix+"baker"] = SpatialEntity{Name: "baker", Kind: Actor, Placement: station}
+	street := b.Entities[prefix+"player"].Placement
+	street.Cell.Y = bakeryHeight - 1
+	b.Entities[prefix+"porter"] = SpatialEntity{Name: "porter", Kind: Actor, Placement: street}
 	return b, nil
 }
 

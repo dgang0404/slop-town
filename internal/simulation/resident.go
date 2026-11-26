@@ -30,17 +30,17 @@ func (b *Bakery) bakerTurn(scope Scope, bakerID string, tick int64) (spatialEffe
 	case at.X > goalX:
 		dir = West
 	case takingBreak:
-		effect, failure := b.applySpatial(bakerID, Proposal{Scope: scope, Action: ActionRest})
+		effect, failure := b.resolveSpatial(bakerID, Proposal{Scope: scope, Action: ActionRest})
 		return effect, failure == nil
 	default:
 		return spatialEffect{}, false
 	}
 	p := Proposal{Scope: scope, Action: ActionMove, Args: ActionArgs{Direction: dir}}
-	effect, failure := b.applySpatial(bakerID, p)
+	effect, failure := b.resolveSpatial(bakerID, p)
 	if failure != nil && failure.code == "movement_blocked" {
 		if next, _ := at.neighbor(dir); next == door {
 			p.Action, p.Args = ActionOpen, ActionArgs{Target: doorID}
-			effect, failure = b.applySpatial(bakerID, p)
+			effect, failure = b.resolveSpatial(bakerID, p)
 		}
 	}
 	return effect, failure == nil

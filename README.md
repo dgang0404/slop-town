@@ -109,6 +109,20 @@ Keep waiting on the same spot to watch a full shift. On the twelfth turn you see
 
 To save this visit, add `-db resident.sqlite` when starting. Use a fresh save or a new `-timeline NAME` alongside an existing bakery. Each timeline remembers the content it started with, so you can omit `-resident` when resuming.
 
+### Inspect the residents' notebooks
+
+In a new resident bakery, a porter stands on the street. The porter and the baker can each record seeing someone sit down, open a door or crate, or close one. To compare their accounts, start a fresh save and sit down outside, then walk inside and sit down again. The developer command `notebook` reads one character's sightings from the save. Reading costs no game time.
+
+```sh
+save_dir=$(mktemp -d)
+save="$save_dir/notebooks.sqlite"
+go run ./cmd/sloptown bakery -resident -seed 42 -db "$save" rest move east move east rest
+go run ./cmd/sloptown notebook -db "$save" -actor bakery/porter
+go run ./cmd/sloptown notebook -db "$save" -actor bakery/baker
+```
+
+The porter saw the player sit on the street at tick 1. The baker saw the player sit in the prep area at tick 4. Each entry gives the sequence number of the event the character witnessed. [Phase 4 checkpoint results](docs/plans/phase-4.md#checkpoint-3-results)
+
 ### Save and replay the bakery
 
 Use a fresh temporary directory for the reference walkthrough. Each command runs in a new process.
