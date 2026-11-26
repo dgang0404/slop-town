@@ -143,6 +143,13 @@ type Receipt struct {
 	Input    *CommandInput `json:"input,omitempty"`
 }
 
+// AcceptedFor checks that this receipt belongs to the requested bakery observer.
+func (r *Receipt) AcceptedFor(scope Scope, actor, request string) bool {
+	return r != nil && r.Proposal.Scope == scope && r.Proposal.RequestID == request &&
+		r.Result.Status == "accepted" && r.Result.RequestID == request &&
+		r.Result.Observation.Scope == scope && r.Result.Observation.ObserverID == actor
+}
+
 // Coordinator serializes submissions and owns a timeline's in-memory state.
 type Coordinator struct {
 	mu       sync.Mutex
@@ -312,11 +319,7 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 		// The notebook records visibility at the instant of each effect, even
 		// if a later effect moves its subject out of the final scene.
 		for _, entry := range nextBakery.Notebooks[actorID][len(bakery.Notebooks[actorID]):] {
-			sighting := WitnessedAction{Actor: ObservedTarget{Ref: entry.Subject, Name: nextBakery.Entities[entry.Subject].Name}, Action: entry.Action}
-			if entry.Target != "" {
-				sighting.Target = ObservedTarget{Ref: entry.Target, Name: nextBakery.Entities[entry.Target].Name}
-			}
-			scene.Witnessed = append(scene.Witnessed, sighting)
+			scene.Witnessed = append(scene.Witnessed, nextBakery.witnessedAction(entry))
 		}
 		result.Message = message
 		interrupted := false

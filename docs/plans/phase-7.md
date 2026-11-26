@@ -51,6 +51,18 @@ A seed-42 visit opened the door, stepped east twice, opened the crate, took the 
 
 In an interactive Linux terminal, selecting `narration story` with the arrows and Enter left the opening save at tick zero. The walkthrough then showed the new spoon in bold and reached the same replay hash as both plain-text runs. The full offline build and test suite, both seed-42 smoke runs, and three race-detector runs passed. [Walkthrough and interruption tests](../../cmd/sloptown/narration_test.go)
 
+## Checkpoint 3 — the player journal
+
+`journal` opens a first-person account of the selected bakery timeline. Each committed player turn can contribute an action, a change of place or feeling, or a description of a person or object the player could see. The description preserves where the observer saw the object at the time. The journal also records personally witnessed interactions and introductions addressed to the player, including on another actor’s turn. A run of waits can share a sentence. A named walk records its approach once and keeps its arrival or interruption. [Read your journal in the demo](../../README.md#read-your-journal)
+
+The simulation assembles the account from the player’s accepted receipts, addressed introductions and firsthand notebook sightings. The terminal writes the prose. SQLite reads one committed snapshot when the journal opens. The same projection serves in-memory play and existing bakery saves. Looking, browsing, reading, cancelling and rejected commands add no entries.
+
+### Checkpoint 3 results
+
+A seed-42 save created by the checkpoint 2 executable at `3ac9947` yielded the original seven-action visit. The journal remembered seeing the wooden spoon in the crate, picking it up and putting it back. Reading twice and retrying the visit preserved the entries. The old and new executables replayed to tick 7, sequence 14, with SHA-256 `600f08f071d98edc8191e6aaacd48ede82254884a5c491c723b6490efe985d17`. A failed receipt write added no entry. Opening a separate timeline in the same file produced an empty journal.
+
+In the practice bakery, the player who waited at the shopfront remembered both workers’ greetings. The player who walked down the street missed those greetings and the baker’s break. A separate visit verified that hearing the porter introduce themselves twice produced two memories, even though the player learned to recognize the porter only once. Up and Enter opened the journal in a Linux terminal without advancing the save. The offline build, test suite, both seed-42 smoke runs and three race-detector runs passed. [Journal walkthroughs](../../cmd/sloptown/journal_test.go)
+
 ## Later narrative work
 
-Build a player journal from what the character saw, heard and did. The chronicle can group witnessed events into chapters by day, season, or a significant occurrence. Dialogue and journal entries draw on each participant’s knowledge, so a missed meeting can become a later discovery.
+Group the chronicle into chapters by day, season or a significant occurrence, and support exporting it as a readable story. Dialogue and journal entries draw on each participant’s knowledge, so a missed meeting can become a later discovery.

@@ -217,9 +217,7 @@ func BakeryReceipt(path string, scope simulation.Scope, actor, request string) (
 	if err != nil || receipt == nil {
 		return receipt, err
 	}
-	result := receipt.Result
-	if receipt.Proposal.Scope != scope || receipt.Proposal.RequestID != request || result.RequestID != request ||
-		result.Status != "accepted" || result.Observation.Scope != scope || result.Observation.ObserverID != actor {
+	if !receipt.AcceptedFor(scope, actor, request) {
 		return nil, fmt.Errorf("stored receipt does not match the requested actor and command")
 	}
 	return receipt, nil
