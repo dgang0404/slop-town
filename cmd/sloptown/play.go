@@ -16,6 +16,7 @@ import (
 const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use walk to NAME to approach a visible destination. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. Use introduce yourself to NAME when available. Short names work. Use it for the last object you acted on. Type actions for choices here, look to see the scene again or quit to leave."
 
 type bakerySession struct {
+	narrator  *turnNarrator
 	observe   func() (simulation.Scene, error)
 	available func() ([]simulation.ActionOption, error)
 	recall    func() (*simulation.Receipt, error)
@@ -79,7 +80,7 @@ func (s bakerySession) play(in io.Reader, out io.Writer) error {
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(out, scene.Text+"\n"+scene.Grid)
+			s.showScene(out, scene)
 			continue
 		}
 		if n := cmd.question(); n != nil {
@@ -151,6 +152,13 @@ func (s bakerySession) play(in io.Reader, out io.Writer) error {
 			}
 		}
 		cmd = bakeryCommand{}
+	}
+}
+
+func (s bakerySession) showScene(out io.Writer, scene simulation.Scene) {
+	fmt.Fprintln(out, scene.Text+"\n"+scene.Grid)
+	if s.narrator != nil {
+		s.narrator.previous = scene
 	}
 }
 

@@ -18,7 +18,29 @@ func (c *Coordinator) Observe(actorID string) (Observation, error) {
 // Scene carries live presentation details separately from the versioned observation in a receipt.
 type Scene struct {
 	Observation
-	Locations map[string]string
+	Self      ObserverDetail
+	Details   map[string]VisibleDetail
+	Witnessed []WitnessedAction // During this turn. Empty on a look.
+}
+
+// ObserverDetail contains only the surroundings and sensations described to the actor.
+type ObserverDetail struct {
+	Cell                      CellPosition
+	Place, Condition, Feeling string
+	Seated                    bool
+}
+
+// VisibleDetail describes a target in the observer's field of view.
+type VisibleDetail struct {
+	Label, State, Location, Holder string
+	Recognition, Expression        string
+	Cell                           CellPosition
+}
+
+// WitnessedAction identifies a firsthand sighting at the moment it occurred.
+type WitnessedAction struct {
+	Actor, Target ObservedTarget
+	Action        ActionKind
 }
 
 func (c *Coordinator) Scene(actorID string) (Scene, error) {
@@ -28,9 +50,10 @@ func (c *Coordinator) Scene(actorID string) (Scene, error) {
 }
 
 func (b *Bakery) Scene(scope Scope, actorID string) (Scene, error) {
-	locations := make(map[string]string)
-	view, err := b.observe(scope, actorID, locations)
-	return Scene{Observation: view, Locations: locations}, err
+	scene := Scene{Details: make(map[string]VisibleDetail)}
+	view, err := b.observe(scope, actorID, &scene)
+	scene.Observation = view
+	return scene, err
 }
 
 type cellMask [bakeryHeight][bakeryWidth]bool
@@ -91,7 +114,7 @@ func (b *Bakery) Observe(scope Scope, actorID string) (Observation, error) {
 	return b.observe(scope, actorID, nil)
 }
 
-func (b *Bakery) observe(scope Scope, actorID string, locations map[string]string) (Observation, error) {
+func (b *Bakery) observe(scope Scope, actorID string, scene *Scene) (Observation, error) {
 	if b == nil || !scope.Valid() || scope.WorldID != b.WorldID {
 		return Observation{}, errors.New("there is no spatial scene")
 	}
@@ -118,20 +141,27 @@ func (b *Bakery) observe(scope Scope, actorID string, locations map[string]strin
 	}
 	tiles[at.Y][at.X] = "@"
 	view := Observation{Scope: scope, Version: contractVersion, ObserverID: actorID}
-	lines := []string{"You are in the bakery."}
+	self := ObserverDetail{Cell: at, Place: "You are in the bakery.", Seated: actor.Seated}
 	if b.Cells[at.Y][at.X].SpaceID == b.StreetID {
-		lines[0] = "You are on the street."
+		self.Place = "You are on the street."
 	}
 	if actor.Seated {
-		lines = append(lines, "You are sitting down.")
+		self.Condition = "You are sitting down."
 	} else if b.ContentVersion >= practiceContentVersion && actor.Fatigue == fatigueLimit {
-		lines = append(lines, "Your legs feel tired.")
+		self.Condition = "Your legs feel tired."
 	}
 	switch actor.ReliefTurns {
 	case reliefDuration:
-		lines = append(lines, "You feel relieved.")
+		self.Feeling = "You feel relieved."
 	case 1, 2:
-		lines = append(lines, "A little of that relief lingers.")
+		self.Feeling = "A little of that relief lingers."
+	}
+	lines := []string{self.Place}
+	if self.Condition != "" {
+		lines = append(lines, self.Condition)
+	}
+	if self.Feeling != "" {
+		lines = append(lines, self.Feeling)
 	}
 	for _, id := range slices.Sorted(maps.Keys(b.Entities)) {
 		if id == actorID {
@@ -143,33 +173,40 @@ func (b *Bakery) observe(scope Scope, actorID string, locations map[string]strin
 		}
 		e := b.Entities[id]
 		if pos == at && e.Kind == Door {
-			lines[0] = "You are in the bakery doorway."
+			self.Place = "You are in the bakery doorway."
+			lines[0] = self.Place
 		}
 		view.Targets = append(view.Targets, ObservedTarget{Ref: id, Name: e.Name})
 		if e.Placement.HolderID == actorID {
-			if locations != nil {
-				locations[id] = "in your inventory"
+			if scene != nil {
+				scene.Details[id] = VisibleDetail{Label: e.Name, Location: "in your inventory", Holder: actorID}
 			}
 			lines = append(lines, "You carry the "+e.Name+".")
 			continue
 		}
-		label, glyph := appearance(e)
+		label, glyph, state := appearance(e)
 		location := relativeLocation(at, pos)
 		if holder := e.Placement.HolderID; holder != "" {
 			location = "in the " + b.Entities[holder].Name
 		}
-		if locations != nil {
-			locations[id] = location
-		}
 		lines = append(lines, "You see the "+label+" "+location+".")
+		detail := VisibleDetail{Label: label, State: state, Location: location, Holder: e.Placement.HolderID, Cell: pos}
 		if b.ContentVersion >= relationshipContentVersion && e.Kind == Actor && b.recognizes(actorID, id) {
-			lines = append(lines, "You recognize the "+e.Name+" from their introduction.")
+			detail.Recognition = "You recognize the " + e.Name + " from their introduction."
+			lines = append(lines, detail.Recognition)
 		}
 		if e.ReliefTurns == reliefDuration {
-			lines = append(lines, "The "+e.Name+"'s shoulders look relaxed.")
+			detail.Expression = "The " + e.Name + "'s shoulders look relaxed."
+			lines = append(lines, detail.Expression)
+		}
+		if scene != nil {
+			scene.Details[id] = detail
 		}
 		tile := &tiles[pos.Y][pos.X]
 		*tile = strings.TrimPrefix(*tile, ".") + glyph
+	}
+	if scene != nil {
+		scene.Self = self
 	}
 	view.Text = strings.Join(lines, "\n")
 	view.Grid = renderTiles(tiles)
@@ -191,25 +228,25 @@ func (b *Bakery) contentsVisible(id, actorID string) bool {
 	return true
 }
 
-func appearance(e SpatialEntity) (label, glyph string) {
+func appearance(e SpatialEntity) (label, glyph, state string) {
 	switch e.Kind {
 	case Door:
 		if e.Open {
-			return "open " + e.Name, "/"
+			return "open " + e.Name, "/", "open"
 		}
-		return "closed " + e.Name, "+"
+		return "closed " + e.Name, "+", "closed"
 	case Container:
 		if e.Open {
-			return "open " + e.Name, "c"
+			return "open " + e.Name, "c", "open"
 		}
-		return "closed " + e.Name, "C"
+		return "closed " + e.Name, "C", "closed"
 	case Actor:
 		if e.Seated {
-			return e.Name + " sitting", "a"
+			return e.Name + " sitting", "a", "sitting"
 		}
-		return e.Name, "a"
+		return e.Name, "a", "standing"
 	default:
-		return e.Name, "*"
+		return e.Name, "*", ""
 	}
 }
 

@@ -16,35 +16,41 @@ import (
 // Submit resolves one proposal against the latest committed state on disk.
 // seed initializes a new timeline; existing timelines keep their saved seed.
 func Submit(path string, scope simulation.Scope, seed int64, actor string, p simulation.Proposal) (simulation.Result, error) {
-	result, _, err := submit(path, scope, seed, actor, p, false, nil)
-	return result, err
+	turn, err := submit(path, scope, seed, actor, p, false, nil)
+	return turn.Result, err
 }
 
 // SubmitBakery requires an initialized bakery. The boolean identifies an old
 // receipt, so a client need not display its historical scene as a new action.
 func SubmitBakery(path string, scope simulation.Scope, actor string, p simulation.Proposal) (simulation.Result, bool, error) {
-	return submit(path, scope, 0, actor, p, true, nil)
+	return SubmitBakeryInput(path, scope, actor, p, nil)
 }
 
 // SubmitBakeryInput commits the accepted terminal input with its authoritative receipt.
 func SubmitBakeryInput(path string, scope simulation.Scope, actor string, p simulation.Proposal, input *simulation.CommandInput) (simulation.Result, bool, error) {
+	turn, err := SubmitBakeryTurn(path, scope, actor, p, input)
+	return turn.Result, turn.Repeated, err
+}
+
+// SubmitBakeryTurn also returns the actor's presentation details from the committed step.
+func SubmitBakeryTurn(path string, scope simulation.Scope, actor string, p simulation.Proposal, input *simulation.CommandInput) (simulation.Turn, error) {
 	return submit(path, scope, 0, actor, p, true, input)
 }
 
-func submit(path string, scope simulation.Scope, seed int64, actor string, p simulation.Proposal, requireBakery bool, input *simulation.CommandInput) (simulation.Result, bool, error) {
-	var empty simulation.Result
+func submit(path string, scope simulation.Scope, seed int64, actor string, p simulation.Proposal, requireBakery bool, input *simulation.CommandInput) (simulation.Turn, error) {
+	var empty simulation.Turn
 	db, err := openTimelineDB(path, false)
 	if err != nil {
-		return empty, false, err
+		return empty, err
 	}
 	defer db.Close()
 	tx, err := db.Begin()
 	if err != nil {
-		return empty, false, err
+		return empty, err
 	}
 	defer tx.Rollback()
 	if err := migrate(tx); err != nil {
-		return empty, false, fmt.Errorf("migrate save: %w", err)
+		return empty, fmt.Errorf("migrate save: %w", err)
 	}
 	state, err := committedState(tx, scope, 4)
 	if !requireBakery && errors.Is(err, sql.ErrNoRows) {
@@ -52,26 +58,26 @@ func submit(path string, scope simulation.Scope, seed int64, actor string, p sim
 		err = nil
 	}
 	if err != nil {
-		return empty, false, err
+		return empty, err
 	}
 	if requireBakery && state.Bakery == nil {
-		return empty, false, fmt.Errorf("timeline contains a different fixture")
+		return empty, fmt.Errorf("timeline contains a different fixture")
 	}
 	prior, err := loadReceipt(tx, scope, actor, p.RequestID)
 	if err != nil {
-		return empty, false, err
+		return empty, err
 	}
 	result, step := state.Resolve(scope, state.sequence, actor, p, prior)
 	if step == nil {
-		return result, prior != nil && result.Status == "accepted", nil
+		return simulation.Turn{Result: result, Repeated: prior != nil && result.Status == "accepted"}, nil
 	}
 	if err := writeStep(tx, scope, actor, step, simulation.Receipt{Proposal: p, Result: result, Input: input}); err != nil {
-		return empty, false, fmt.Errorf("save step: %w", err)
+		return empty, fmt.Errorf("save step: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
-		return empty, false, err
+		return empty, err
 	}
-	return result, false, nil
+	return simulation.Turn{Result: result, Scene: step.Scene}, nil
 }
 
 type timelineState struct {

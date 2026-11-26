@@ -21,8 +21,9 @@ type nounChoice struct {
 type bakeryCommand struct {
 	simulation.Proposal
 	target, container nounChoice
-	locations         map[string]string
+	details           map[string]simulation.VisibleDetail
 	receipt           *simulation.Receipt
+	continuation      bool
 }
 
 func (s bakerySession) command(action simulation.ActionKind, args simulation.ActionArgs, last string) (bakeryCommand, string, error) {
@@ -78,7 +79,7 @@ func (cmd *bakeryCommand) input() *simulation.CommandInput {
 }
 
 func prepareCommand(action simulation.ActionKind, args simulation.ActionArgs, scene simulation.Scene, last string) (bakeryCommand, string) {
-	cmd := bakeryCommand{Proposal: simulation.Proposal{Action: action, Args: args, ByName: args.Target != ""}, locations: scene.Locations}
+	cmd := bakeryCommand{Proposal: simulation.Proposal{Action: action, Args: args, ByName: args.Target != ""}, details: scene.Details}
 	match := func(phrase string) nounChoice {
 		n := nounChoice{phrase: phrase}
 		if phrase == "it" {
@@ -129,7 +130,7 @@ func (cmd *bakeryCommand) prompt(out io.Writer, n *nounChoice) {
 	}
 	fmt.Fprintf(out, "Which %s do you mean? Enter a number or type cancel.\n", n.phrase)
 	for i, t := range n.options {
-		fmt.Fprintf(out, "  %d. %s %s\n", i+1, t.Name, cmd.locations[t.Ref])
+		fmt.Fprintf(out, "  %d. %s %s\n", i+1, t.Name, cmd.details[t.Ref].Location)
 	}
 }
 
@@ -152,6 +153,7 @@ func (s bakerySession) execute(cmd bakeryCommand) (simulation.Result, error) {
 			return r, err
 		}
 		cmd.receipt = nil
+		cmd.continuation = true
 		cmd.Observed = simulation.NameBindings{}
 		cmd.ByName = false
 		cmd.target.ref = r.SelectedTarget

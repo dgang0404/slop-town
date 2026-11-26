@@ -42,7 +42,10 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	setup := simulation.BakerySetup{Resident: *resident, Practice: *practice}
 	const player = "bakery/player"
 	var session bakerySession
-	var submit func(simulation.Proposal, *simulation.CommandInput) (simulation.Result, bool, error)
+	if *play {
+		session.narrator = &turnNarrator{bold: terminalBold(stdout)}
+	}
+	var submit func(simulation.Proposal, *simulation.CommandInput) (simulation.Turn, error)
 	request := 1
 	requestID := func() string { return *batch + "/" + strconv.Itoa(request) }
 	if *path == "" {
@@ -53,16 +56,16 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		}
 		session.observe = func() (simulation.Scene, error) { return c.Scene(player) }
 		session.available = func() ([]simulation.ActionOption, error) { return c.AvailableActions(player) }
-		submit = func(p simulation.Proposal, _ *simulation.CommandInput) (simulation.Result, bool, error) {
-			return c.Submit(player, p), false, nil
+		submit = func(p simulation.Proposal, _ *simulation.CommandInput) (simulation.Turn, error) {
+			return c.SubmitTurn(player, p), nil
 		}
 	} else {
 		session.observe = func() (simulation.Scene, error) {
 			return storage.OpenBakerySceneWithSetup(*path, scope, *seed, player, setup)
 		}
 		session.available = func() ([]simulation.ActionOption, error) { return storage.BakeryActions(*path, scope, player) }
-		submit = func(p simulation.Proposal, input *simulation.CommandInput) (simulation.Result, bool, error) {
-			return storage.SubmitBakeryInput(*path, scope, player, p, input)
+		submit = func(p simulation.Proposal, input *simulation.CommandInput) (simulation.Turn, error) {
+			return storage.SubmitBakeryTurn(*path, scope, player, p, input)
 		}
 		if *batch != "" && *play {
 			session.recall = func() (*simulation.Receipt, error) { return storage.BakeryReceipt(*path, scope, player, requestID()) }
@@ -76,30 +79,31 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return 1
 	}
-	fmt.Fprintln(stdout, scene.Text+"\n"+scene.Grid)
+	session.showScene(stdout, scene)
 	session.act = func(cmd bakeryCommand) (simulation.Result, error) {
-		var result simulation.Result
-		repeated := cmd.receipt != nil
-		if repeated {
-			result = cmd.receipt.Result
+		var turn simulation.Turn
+		if cmd.receipt != nil {
+			turn = simulation.Turn{Result: cmd.receipt.Result, Repeated: true}
 		} else {
 			p := cmd.proposal()
 			p.Scope, p.Version, p.RequestID = scope, 1, requestID()
 			var err error
-			result, repeated, err = submit(p, cmd.input())
-			if err != nil || result.Status != "accepted" {
-				return result, err
+			turn, err = submit(p, cmd.input())
+			if err != nil || turn.Status != "accepted" {
+				return turn.Result, err
 			}
 		}
 		// A rejected action has no receipt. Its correction takes the same slot
 		// so retrying the transcript cannot insert an extra action before it.
 		request++
-		if repeated {
+		if session.narrator != nil {
+			session.narrator.write(stdout, cmd, turn)
+		} else if turn.Repeated {
 			fmt.Fprintln(stdout, "This action was already completed.")
 		} else {
-			fmt.Fprintf(stdout, "\n%s\n%s\n%s\n", result.Message, result.Observation.Text, result.Observation.Grid)
+			fmt.Fprintf(stdout, "\n%s\n%s\n%s\n", turn.Message, turn.Observation.Text, turn.Observation.Grid)
 		}
-		return result, nil
+		return turn.Result, nil
 	}
 	if *play {
 		if err := session.play(stdin, stdout); err != nil {

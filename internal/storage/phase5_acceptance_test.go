@@ -33,7 +33,7 @@ func TestPhase5Acceptance(t *testing.T) {
 	const recovered = atCrate + "rest\n"
 	const visit = recovered + "south\nsouth\nwest\nnorth\nnorth\neast\n"
 	play(clean, visit, "")
-	if out := play(interrupted, atCrate, ""); strings.Count(out, "You walk toward the crate.") != 3 || !strings.Contains(out, "You are within reach of the crate.") {
+	if out := play(interrupted, atCrate, ""); strings.Count(out, "You walk toward the crate.") != 1 || !strings.Contains(out, "You are within reach of the crate.") {
 		t.Fatal(out)
 	}
 
@@ -53,7 +53,7 @@ func TestPhase5Acceptance(t *testing.T) {
 	}
 	execSQL(t, interrupted, "DROP TRIGGER fail_recovery")
 
-	if out := play(interrupted, recovered, ""); strings.Count(out, "already completed") != 16 || !strings.Contains(out, "You feel relieved.") {
+	if out := play(interrupted, recovered, ""); strings.Count(out, "already completed") != 14 || !strings.Contains(out, "You feel relieved.") {
 		t.Fatal(out)
 	}
 	afterRest, err := storage.SaveCheckpoint(interrupted, scope)
@@ -61,7 +61,7 @@ func TestPhase5Acceptance(t *testing.T) {
 		t.Fatalf("after successful recovery: %+v, %v", afterRest, err)
 	}
 	play(interrupted, visit, "")
-	if out := play(interrupted, visit, ""); strings.Count(out, "already completed") != 23 {
+	if out := play(interrupted, visit, ""); strings.Count(out, "already completed") != 21 {
 		t.Fatal(out)
 	}
 

@@ -33,7 +33,7 @@ func TestWalkToCrateAcrossRestart(t *testing.T) {
 		}
 	}
 	out := run(clean, named, false)
-	if strings.Count(out, "You walk toward the crate.") != 3 || !strings.Contains(out, "You open the crate.") {
+	if strings.Count(out, "You walk toward the crate.") != 1 || !strings.Contains(out, "You open the crate.") {
 		t.Fatal(out)
 	}
 	run(manual, prefix+"north\nnorth\nnorth\nopen crate\n", false)
@@ -64,10 +64,10 @@ func TestWalkToCrateAcrossRestart(t *testing.T) {
 	if _, err = db.Exec("DROP TRIGGER fail_walk"); err != nil {
 		t.Fatal(err)
 	}
-	if out := run(interrupted, named, false); strings.Count(out, "You walk toward the crate.") != 2 || head(interrupted) != want {
+	if out := run(interrupted, named, false); strings.Count(out, "You walk toward the crate.") != 1 || head(interrupted) != want {
 		t.Fatal("resumed walk diverged", out)
 	}
-	if out := run(interrupted, named+"walk to crate\n", false); strings.Count(out, "already completed") != 10 || !strings.Contains(out, "already within reach") || head(interrupted) != want {
+	if out := run(interrupted, named+"walk to crate\n", false); strings.Count(out, "already completed") != 8 || !strings.Contains(out, "already within reach") || head(interrupted) != want {
 		t.Fatal(out)
 	}
 	t.Logf("both paths reached tick %d, sequence %d, sha256 %s", want.Tick, want.Sequence, want.Hash)

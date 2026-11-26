@@ -174,19 +174,37 @@ func (c *Coordinator) History() []Event {
 // Submit binds the actor from the caller's context. A committed request can
 // be retried after later submissions and still returns its original result.
 func (c *Coordinator) Submit(actorID string, p Proposal) Result {
+	return c.SubmitTurn(actorID, p).Result
+}
+
+// Turn carries the receipt result and the live actor view from the same commit.
+// A retry supplies the original result with an empty scene.
+type Turn struct {
+	Result
+	Scene    Scene
+	Repeated bool
+}
+
+func (c *Coordinator) SubmitTurn(actorID string, p Proposal) Turn {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	key := requestKey{actorID, p.RequestID}
 	result, step := (State{Clock: c.clock, Bakery: c.bakery}).Resolve(c.scope, uint64(len(c.events)), actorID, p, c.receipts[key])
+	turn := Turn{Repeated: step == nil && result.Status == "accepted"}
 	if step != nil {
+		turn.Scene = step.Scene
 		c.clock = step.Clock
 		c.bakery = step.Bakery
 		c.events = append(c.events, step.Events...)
 		c.receipts[key] = &Receipt{Proposal: p, Result: result}
 	}
 	result.Observation.Targets = slices.Clone(result.Observation.Targets)
-	return result
+	turn.Result = result
+	if step != nil && step.Bakery != nil {
+		turn.Scene.Observation = result.Observation
+	}
+	return turn
 }
 
 // State is the authoritative simulation state at one point in a timeline.
@@ -198,6 +216,7 @@ type State struct {
 // Transition holds the staged state and events for a single commit.
 type Transition struct {
 	State
+	Scene  Scene
 	Events []Event
 }
 
@@ -272,6 +291,7 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 	action := advanced.child(advanced.Sequence+1, actorID, engine, kind, payload)
 	events := []Event{advanced, action}
 	result.Status = "accepted"
+	var scene Scene
 	if nextBakery == nil {
 		result.Observation = Observation{Scope: scope, Version: contractVersion, ObserverID: actorID, Text: message}
 	} else {
@@ -284,11 +304,20 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 		if nextBakery.ContentVersion >= emotionContentVersion {
 			nextBakery.advanceRelief(events)
 		}
-		view, err := nextBakery.Observe(scope, actorID)
+		scene, err = nextBakery.Scene(scope, actorID)
 		if err != nil {
 			return reject("resolution_failed", "You cannot observe your surroundings."), nil
 		}
-		result.Observation = view
+		result.Observation = scene.Observation
+		// The notebook records visibility at the instant of each effect, even
+		// if a later effect moves its subject out of the final scene.
+		for _, entry := range nextBakery.Notebooks[actorID][len(bakery.Notebooks[actorID]):] {
+			sighting := WitnessedAction{Actor: ObservedTarget{Ref: entry.Subject, Name: nextBakery.Entities[entry.Subject].Name}, Action: entry.Action}
+			if entry.Target != "" {
+				sighting.Target = ObservedTarget{Ref: entry.Target, Name: nextBakery.Entities[entry.Target].Name}
+			}
+			scene.Witnessed = append(scene.Witnessed, sighting)
+		}
 		result.Message = message
 		interrupted := false
 		for _, e := range residents {
@@ -305,7 +334,7 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 			switch {
 			case interrupted:
 				result.Message += "\nYou pause your walk."
-			case !view.hasTarget(ref):
+			case !scene.hasTarget(ref):
 				result.Message += "\nYou lose sight of your destination."
 			default:
 				dest, _ := nextBakery.PositionOf(ref)
@@ -322,5 +351,5 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 		}
 	}
 
-	return result, &Transition{State: State{Clock: &next, Bakery: nextBakery}, Events: events}
+	return result, &Transition{State: State{Clock: &next, Bakery: nextBakery}, Scene: scene, Events: events}
 }

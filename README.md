@@ -21,7 +21,7 @@ In Phase 4 the baker and porter follow work routines, choose where to rest and k
 
 In Phase 5, the player and residents build endurance, feel relief after a tiring walk, and recognize people who have introduced themselves. [Phase 5 plan](docs/plans/phase-5.md) · [Acceptance results](docs/plans/phase-5-results.md)
 
-Phase 7 covers narrative and dialogue. Its planned terminal readability checkpoint will shorten routine turn descriptions, bold newly observed changes, and keep the full scene available through `look`. [Phase 7 presentation plan](docs/plans/phase-7.md)
+The first Phase 7 checkpoint is playable in the bakery. Each turn describes what your character notices, with new details in bold on supported terminals. [Phase 7 presentation plan](docs/plans/phase-7.md)
 
 To validate a local content pack, run `go run ./cmd/packcheck PACK_DIRECTORY`. The [manifest guide](docs/content-packs.md) includes a bundled example.
 
@@ -91,7 +91,9 @@ Ask `What can I do here?` or type `actions` for commands you can use from where 
 
 You can use a short name such as `door` or `spoon`. If several visible objects match, the game lists them by name and location. Enter a number to choose one or type `cancel`. Asking and cancelling take no game time. In `put it in the crate`, `it` refers to the spoon you just picked up. The terminal remembers the primary object of your last successful interaction for the rest of that session.
 
-Type `look` to see the current scene, `help` for the command forms, or `quit` to leave. Add `-db bakery.sqlite` to the launch command to resume the same town on your next visit.
+Opening the crate gives you “You open the crate. Inside lies **a wooden spoon**.” If you wait there and nothing changes, you get “You wait.” Type `look` whenever you want the full description and grid. To turn off bold, start the game with `NO_COLOR=1`. Redirected output is always plain text.
+
+Type `help` for the command forms or `quit` to leave. Add `-db bakery.sqlite` to resume the same town on your next visit. Each visit opens with the full current scene.
 
 From the repository root, run the street-to-crate walkthrough in a fresh, in-memory session.
 
@@ -99,7 +101,7 @@ From the repository root, run the street-to-crate walkthrough in a fresh, in-mem
 go run ./cmd/sloptown bakery -seed 42 open "bakery door" move east move east open crate
 ```
 
-The terminal shows the player's view on arrival and after each action. On the grid, `@` marks the player, `?` a square out of sight, and `#` a wall. Opening the lid changes the crate's square from `C` to `c*` as the spoon comes into view. Omit `-db` for a fresh in-memory session.
+This command-line walkthrough prints the full player view after each action. On the grid, `@` marks the player, `?` a square out of sight, and `#` a wall. Opening the lid changes the crate's square from `C` to `c*` as the spoon comes into view. Omit `-db` for a fresh in-memory session.
 
 ### Browse actions and walk to a destination
 
