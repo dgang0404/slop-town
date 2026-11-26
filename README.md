@@ -11,7 +11,7 @@ For tested devices, hardware targets and offline play, see the [player system re
 
 See the [Phase 0 plan](docs/plans/phase-0.md) for the Go foundation milestones.
 
-The [Phase 0 acceptance report](docs/plans/phase-0-results.md) collects the test evidence. The [approved Phase 1 plan](docs/plans/phase-1.md) covers time, events, saves and replay.
+The [Phase 0 acceptance report](docs/plans/phase-0-results.md) collects the foundation test evidence. The [Phase 1 plan](docs/plans/phase-1.md) covers time, events, saves and replay. Its [acceptance report](docs/plans/phase-1-results.md) gives the reproducible restart and rollback checks and the CI status.
 
 To validate a local content pack, run `go run ./cmd/packcheck PACK_DIRECTORY`. The [manifest guide](docs/content-packs.md) includes a bundled example.
 
@@ -66,6 +66,8 @@ sh scripts/check-phase-0.sh
 ```
 
 The script disables Go downloads, runs vet and the full test suite, builds both commands, and validates the sample pack. It runs seed 42 twice against the same temporary save and checks both outputs against the reference hash. It removes the temporary binaries and save on exit.
+
+In the test output, `TestPhase1Acceptance` shows the runner reopening a separate temporary timeline, retrying a request and recovering from a failed receipt write. It logs the replay hash before and after rollback.
 
 ## License
 

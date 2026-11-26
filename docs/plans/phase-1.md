@@ -60,7 +60,9 @@ Replay starts at an explicitly saved bookmark. It reads the selected timeline th
 
 On 25 November 2026, the Linux CLI replayed the two seed-42 weather steps across process restarts. Starting at sequence 2 yielded tick 2 and sequence 4 with SHA-256 `d508c6d2e9416be9d60c32bbc51cb36d2c2be7e13c146057d74dad10c525554d`, also reproduced independently from the specified JSON. The storage tests checked an empty suffix, two independent timelines, missing and reordered events, an altered draw, a missing receipt, version mismatches and a changed head. [Reproduce the CLI run](../../README.md#replay-a-timeline-from-a-checkpoint).
 
-Checkpoint 5 will exercise the full restart, replay, retry and rollback demonstration in hosted CI and collect Phase 1 handoff evidence.
+## Checkpoint 5 handoff
+
+The Linux verification suite now runs the built headless runner in separate processes, compares the reopened state with uninterrupted execution, and checks replay before and after a forced receipt-write failure. The [acceptance report](phase-1-results.md) records commands, observed hashes, local and hosted verification status, and review items for Phase 2.
 
 ## Rules to settle in implementation
 
