@@ -78,4 +78,4 @@ On 25 November 2026, the bakery tests passed on Linux and under Node.js with Web
 
 ## Checkpoint 5 handoff
 
-The seed-42 bakery reopened across process restarts and replayed from the tick-5 checkpoint to the same tick-10 state as the uninterrupted run. The failed pickup rolled back. Retrying committed one transfer, and a second timeline diverged independently. The acceptance test runs in the existing Linux workflow on push. Hosted verification is pending the owner's push. [Acceptance results](phase-2-results.md) · [Reproduce the walkthrough](../../README.md#save-and-replay-the-bakery)
+The seed-42 bakery reopened across process restarts and replayed from the tick-5 checkpoint to the same tick-10 state as the uninterrupted run. The failed pickup rolled back. Retrying committed one transfer, and a second timeline diverged independently. The hosted Linux acceptance job passed at `405b5f6` on 26 November 2026. [Acceptance results](phase-2-results.md) · [Reproduce the walkthrough](../../README.md#save-and-replay-the-bakery)

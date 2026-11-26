@@ -1,0 +1,80 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+package main
+
+import (
+	"bytes"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/dgang0404/slop-town/internal/simulation"
+	"github.com/dgang0404/slop-town/internal/storage"
+)
+
+func TestParseBakeryAction(t *testing.T) {
+	for _, tc := range []struct {
+		line string
+		want simulation.ActionKind
+		args simulation.ActionArgs
+	}{
+		{"open the bakery door", simulation.ActionOpen, simulation.ActionArgs{Target: "bakery door"}},
+		{"close a crate", simulation.ActionClose, simulation.ActionArgs{Target: "crate"}},
+		{"n", simulation.ActionMove, simulation.ActionArgs{Direction: simulation.North}},
+		{"go south", simulation.ActionMove, simulation.ActionArgs{Direction: simulation.South}},
+		{"move e", simulation.ActionMove, simulation.ActionArgs{Direction: simulation.East}},
+		{"walk west", simulation.ActionMove, simulation.ActionArgs{Direction: simulation.West}},
+		{"pick up the wooden spoon", simulation.ActionTake, simulation.ActionArgs{Target: "wooden spoon"}},
+		{"get wooden spoon", simulation.ActionTake, simulation.ActionArgs{Target: "wooden spoon"}},
+		{"put a wooden spoon into the crate", simulation.ActionPut, simulation.ActionArgs{Target: "wooden spoon", Container: "crate"}},
+		{"drop the wooden spoon", simulation.ActionDrop, simulation.ActionArgs{Target: "wooden spoon"}},
+	} {
+		action, args, err := parseBakeryAction(strings.Fields(tc.line))
+		if err != nil || action != tc.want || args != tc.args {
+			t.Errorf("%q produced %q %+v, %v", tc.line, action, args, err)
+		}
+	}
+	for _, line := range []string{"open the", "pick", "pick up", "go northeast", "east twice", "put spoon", "put the in crate", "put spoon in", "dance"} {
+		if _, _, err := parseBakeryAction(strings.Fields(line)); err == nil {
+			t.Errorf("accepted malformed command %q", line)
+		}
+	}
+}
+
+func TestBakeryPlaySession(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "town.sqlite")
+	scope := simulation.Scope{WorldID: "bakery", TimelineID: "main"}
+	play := func(batch, input string) string {
+		t.Helper()
+		var out, diag bytes.Buffer
+		code := runBakery([]string{"-play", "-seed", "42", "-db", path, "-batch", batch}, strings.NewReader(input), &out, &diag)
+		if code != 0 || diag.Len() != 0 {
+			t.Fatalf("session exited %d: %s", code, diag.String())
+		}
+		return out.String()
+	}
+	// A fresh session can recover from syntax errors and rejected proposals.
+	street := play("errors", "help\nlook\nflap\neast\nopen the crate\nopen the cupboard\nquit\nopen the bakery door\n")
+	if !strings.Contains(street, "I don't understand") || !strings.Contains(street, "You can't move there") ||
+		strings.Count(street, "You can't reach that target.") != 2 || strings.Contains(street, "crate") || strings.Contains(street, "spoon") {
+		t.Fatalf("unexpected response from the street: %s", street)
+	}
+	cp, err := storage.SaveCheckpoint(path, scope)
+	if err != nil || cp.Tick != 0 || cp.Sequence != 0 {
+		t.Fatalf("queries or rejected input advanced the save: %+v, %v", cp, err)
+	}
+	play("pickup", "east\n OPEN   the bakery door.\r\nGO East\ne\nopen the crate\npick up the wooden spoon\n")
+	// Canonically equivalent phrases use the existing receipts across sessions.
+	retry := play("pickup", "east\nopen bakery door\nwalk east\nmove east\nopen crate\nget wooden spoon\n")
+	if strings.Count(retry, "already completed") != 5 {
+		t.Fatalf("retry did not reuse all five receipts: %s", retry)
+	}
+	out := play("return", "close the crate\nwest\nw\nclose the bakery door\ndrop the wooden spoon\nlook\n")
+	if !strings.Contains(out, "You see the wooden spoon here.") {
+		t.Fatalf("unexpected final scene: %s", out)
+	}
+	head, err := storage.Replay(path, scope, cp.Sequence)
+	const want = "9f421909302942c47ba2ac7c46c627591ef95360749cff544ce23d206bafe58b"
+	if err != nil || head.Hash != want || head.Tick != 10 || head.Sequence != 20 {
+		t.Fatalf("parsed walkthrough diverged from Phase 2: %+v, %v", head, err)
+	}
+}

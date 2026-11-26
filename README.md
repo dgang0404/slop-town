@@ -15,6 +15,8 @@ The [Phase 0 acceptance report](docs/plans/phase-0-results.md) collects the foun
 
 Phase 2 follows a wooden spoon from a bakery crate to the street. The runner can reopen the town and replay that journey. See the [Phase 2 plan](docs/plans/phase-2.md) and [acceptance results](docs/plans/phase-2-results.md).
 
+Phase 3 starts with a playable text-command session. The [Phase 3 plan](docs/plans/phase-3.md) covers command parsing, discovering available actions and clarifying targets.
+
 To validate a local content pack, run `go run ./cmd/packcheck PACK_DIRECTORY`. The [manifest guide](docs/content-packs.md) includes a bundled example.
 
 ## Run the Phase 0 fixture
@@ -59,6 +61,25 @@ save_dir=$(mktemp -d)
 Use the sequence printed by `checkpoint` when trying an existing timeline. Replay opens the save read-only, checks each subsequent event, and compares the reconstructed state with the committed head. The example ends at tick 2 and sequence 4 with SHA-256 `d508c6d2e9416be9d60c32bbc51cb36d2c2be7e13c146057d74dad10c525554d`.
 
 ## Look inside the bakery
+
+To play one line at a time, start a session from the repository root.
+
+```sh
+go run ./cmd/sloptown bakery -play -seed 42
+```
+
+Try these commands when the street appears.
+
+```text
+open the bakery door
+go east
+e
+open the crate
+pick up the wooden spoon
+put the wooden spoon in the crate
+```
+
+Type `look` to see the current scene, `help` for the command forms, or `quit` to leave. Use the full names in the description. Add `-db bakery.sqlite` to the launch command to resume the same town on your next visit.
 
 From the repository root, run the street-to-crate walkthrough in a fresh, in-memory session.
 

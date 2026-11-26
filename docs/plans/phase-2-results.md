@@ -21,4 +21,4 @@ Local verification passed on Linux with Go 1.27.4. The runner, storage and simul
 
 Run `sh scripts/check-phase-0.sh` from the repository root after restoring Go dependencies. The script builds and tests offline, runs both process-restart acceptance cases, and checks the original seed-42 smoke hash twice. To repeat just the new acceptance case, run `go test -count=1 -v -run '^TestPhase2Acceptance$' ./internal/storage`. [Terminal walkthrough](../../README.md#save-and-replay-the-bakery)
 
-Hosted verification is pending the owner's push. The Linux workflow runs the same acceptance test on Ubuntu and prints both bakery hashes in the job log. [Linux workflow](../../.github/workflows/phase-0.yml)
+On 26 November 2026 the hosted Linux job passed at `405b5f6`. Its log records the failed pickup and successful reopen at tick 4, the tick-5 checkpoint digest and the matching tick-10 digest for both replays. [GitHub Actions run 45758907911](https://github.com/dgang0404/slop-town/actions/runs/45758907911/job/139703985542)

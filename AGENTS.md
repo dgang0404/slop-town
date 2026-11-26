@@ -1,6 +1,6 @@
 # Working on Slop Town
 
-Read the [master design](docs/design/Slop_Town_Master_Design_Revised_v7.docx) and [current Phase 2 plan](docs/plans/phase-2.md) before coding. The [Go decision](docs/decisions/0001-go-simulation.md) governs the implementation stack. Phase 2 covers the seeded bakery, movement, containers, actor observations and replay of spatial actions.
+Read the [master design](docs/design/Slop_Town_Master_Design_Revised_v7.docx) and [current Phase 3 plan](docs/plans/phase-3.md) before coding. The [Go decision](docs/decisions/0001-go-simulation.md) governs the implementation stack. Phase 3 covers player command parsing, contextual actions and resolution using the seeded bakery.
 
 Keep simulation rules in `internal/simulation`. The simulation owns world state and must run offline. SQLite belongs in `internal/storage`. The terminal composes the two packages. Future UI and AI adapters submit proposals for the simulation to validate. Record accepted AI proposals as events.
 

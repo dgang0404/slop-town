@@ -46,7 +46,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) > 0 {
 		switch args[0] {
 		case "bakery":
-			return runBakery(args[1:], stdout, stderr)
+			return runBakery(args[1:], os.Stdin, stdout, stderr)
 		case "step":
 			return runStep(args[1:], stdout, stderr)
 		case "checkpoint", "replay":
