@@ -39,6 +39,7 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	scope := simulation.Scope{WorldID: "bakery", TimelineID: *timeline}
 	const player = "bakery/player"
 	var observe func() (simulation.Observation, error)
+	var available func() ([]simulation.ActionOption, error)
 	var submit func(simulation.Proposal) (simulation.Result, bool, error)
 	if *path == "" {
 		c, err := simulation.NewBakeryCoordinator(scope, *seed)
@@ -47,11 +48,13 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			return 1
 		}
 		observe = func() (simulation.Observation, error) { return c.Observe(player) }
+		available = func() ([]simulation.ActionOption, error) { return c.AvailableActions(player) }
 		submit = func(p simulation.Proposal) (simulation.Result, bool, error) { return c.Submit(player, p), false, nil }
 	} else {
 		observe = func() (simulation.Observation, error) {
 			return storage.OpenBakery(*path, scope, *seed, player)
 		}
+		available = func() ([]simulation.ActionOption, error) { return storage.BakeryActions(*path, scope, player) }
 		submit = func(p simulation.Proposal) (simulation.Result, bool, error) {
 			return storage.SubmitBakery(*path, scope, player, p)
 		}
@@ -93,7 +96,7 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return "", nil
 	}
 	if *play {
-		if err := playBakery(stdin, stdout, look, act); err != nil {
+		if err := playBakery(stdin, stdout, look, available, act); err != nil {
 			fmt.Fprintln(stderr, err)
 			return 1
 		}

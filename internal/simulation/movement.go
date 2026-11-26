@@ -24,9 +24,11 @@ func NewBakeryCoordinator(scope Scope, seed int64) (*Coordinator, error) {
 }
 
 type spatialEffect struct {
-	kind    string
-	payload EventPayload
-	message string
+	kind     string
+	payload  EventPayload
+	message  string
+	entityID string
+	entity   SpatialEntity
 }
 
 type actionFailure struct {
@@ -40,17 +42,27 @@ func targetUnavailable() *actionFailure {
 
 // applySpatial operates on the staged entities owned by the coordinator.
 func (b *Bakery) applySpatial(actorID string, p Proposal) (spatialEffect, *actionFailure) {
-	actor := b.Entities[actorID]
-	if actor.Kind != Actor || actor.Placement.HolderID != "" || !b.isFloorCell(actor.Placement.Cell) {
+	view, err := b.Observe(p.Scope, actorID)
+	if err != nil {
 		return spatialEffect{}, &actionFailure{"invalid_request", "Invalid acting character."}
 	}
-	args := p.Args
-	switch p.Action {
+	effect, failure := b.planSpatial(view, p.Action, p.Args, p.ByName)
+	if failure == nil {
+		b.Entities[effect.entityID] = effect.entity
+	}
+	return effect, failure
+}
+
+// planSpatial computes the effect without applying it. Discovery and submission
+// use the same target selection, movement and interaction rules.
+func (b *Bakery) planSpatial(view Observation, action ActionKind, args ActionArgs, byName bool) (spatialEffect, *actionFailure) {
+	actor := b.Entities[view.ObserverID]
+	switch action {
 	case ActionMove:
-		if p.ByName || args != (ActionArgs{Direction: args.Direction}) {
+		if byName || args != (ActionArgs{Direction: args.Direction}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Movement takes one direction."}
 		}
-		return b.move(actorID, actor, args.Direction)
+		return b.move(view.ObserverID, actor, args.Direction)
 	case ActionPut:
 		if !validID(args.Target) || !validID(args.Container) || args != (ActionArgs{Target: args.Target, Container: args.Container}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Choose an item and a destination container."}
@@ -62,25 +74,21 @@ func (b *Bakery) applySpatial(actorID string, p Proposal) (spatialEffect, *actio
 	default:
 		return spatialEffect{}, &actionFailure{"invalid_request", "Unknown spatial action."}
 	}
-	view, err := b.Observe(p.Scope, actorID)
-	if err != nil {
-		return spatialEffect{}, targetUnavailable()
-	}
 	var failure *actionFailure
-	p.Args.Target, failure = view.selectTarget(args.Target, p.ByName)
+	args.Target, failure = view.selectTarget(args.Target, byName)
 	if failure != nil {
 		return spatialEffect{}, failure
 	}
-	if p.Action == ActionPut {
-		p.Args.Container, failure = view.selectTarget(args.Container, p.ByName)
+	if action == ActionPut {
+		args.Container, failure = view.selectTarget(args.Container, byName)
 		if failure != nil {
 			return spatialEffect{}, failure
 		}
 	}
-	if p.Action == ActionOpen || p.Action == ActionClose {
-		return b.setOpen(actor.Placement.Cell, p.Args.Target, p.Action == ActionOpen)
+	if action == ActionOpen || action == ActionClose {
+		return b.setOpen(actor.Placement.Cell, args.Target, action == ActionOpen)
 	}
-	return b.transferItem(actorID, actor.Placement.Cell, p)
+	return b.transferItem(view.ObserverID, actor.Placement.Cell, action, args)
 }
 
 func (b *Bakery) move(actorID string, actor SpatialEntity, dir Direction) (spatialEffect, *actionFailure) {
@@ -107,8 +115,8 @@ func (b *Bakery) move(actorID string, actor SpatialEntity, dir Direction) (spati
 		}
 	}
 	actor.Placement.Cell = dest
-	b.Entities[actorID] = actor
-	return spatialEffect{"actor_moved", EventPayload{Destination: dest}, "You move " + string(dir) + "."}, nil
+	return spatialEffect{kind: "actor_moved", payload: EventPayload{Destination: dest},
+		message: "You move " + string(dir) + ".", entityID: actorID, entity: actor}, nil
 }
 
 func inReach(a, b CellPosition) bool {
@@ -137,9 +145,10 @@ func (b *Bakery) setOpen(actorCell CellPosition, target string, open bool) (spat
 		}
 	}
 	entity.Open = open
-	b.Entities[target] = entity
+	verb, kind := "close", string(entity.Kind)+"_closed"
 	if open {
-		return spatialEffect{string(entity.Kind) + "_opened", EventPayload{Target: target}, "You open the " + name + "."}, nil
+		verb, kind = "open", string(entity.Kind)+"_opened"
 	}
-	return spatialEffect{string(entity.Kind) + "_closed", EventPayload{Target: target}, "You close the " + name + "."}, nil
+	return spatialEffect{kind: kind, payload: EventPayload{Target: target},
+		message: "You " + verb + " the " + name + ".", entityID: target, entity: entity}, nil
 }

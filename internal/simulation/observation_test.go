@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -110,6 +111,46 @@ func TestBakeryObservationIsActorScoped(t *testing.T) {
 	}
 	if _, err := c.Observe(crateID); err == nil {
 		t.Fatal("a crate observed the scene")
+	}
+}
+
+func TestBakeryActionsAreActorScoped(t *testing.T) {
+	c := bakeryCoordinator(t, 42)
+	const baker = "town/baker"
+	b := c.bakery
+	b.Entities[baker] = SpatialEntity{Name: "baker", Kind: Actor, Placement: b.Entities[crateID].Placement}
+	commitBakeryAction(t, c, baker, ActionOpen, ActionArgs{Target: crateID})
+	actions := func(actor string) []ActionOption {
+		t.Helper()
+		got, err := c.AvailableActions(actor)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	take := ActionOption{ActionTake, ActionArgs{Target: "wooden spoon"}}
+	if !slices.Contains(actions(baker), take) || slices.Contains(actions(playerID), take) {
+		t.Fatal("the baker alone can reach the spoon from inside the closed bakery")
+	}
+	enterBakery(t, c, playerID)
+	if !slices.Contains(actions(playerID), take) {
+		t.Fatal("the player beside the open crate should be able to take the spoon")
+	}
+	commitBakeryAction(t, c, baker, ActionTake, ActionArgs{Target: spoonID})
+	drop := ActionOption{ActionDrop, take.Args}
+	if !slices.Contains(actions(baker), drop) {
+		t.Fatal("the baker cannot drop the carried spoon")
+	}
+	for _, option := range actions(playerID) {
+		if option.Args.Target == take.Args.Target {
+			t.Fatalf("another actor's inventory appeared in the player's choices: %+v", option)
+		}
+	}
+	// The previously offered command is validated against the new scene.
+	p := spatialProposal(c, "take-after-baker", take.Action, take.Args)
+	p.ByName = true
+	if r := submitUnchanged(t, c, playerID, p); r.Code != "target_unavailable" {
+		t.Fatalf("stale command returned %+v", r)
 	}
 }
 

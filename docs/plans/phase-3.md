@@ -22,3 +22,15 @@ The bakery supplies movement, door and container actions for this phase. Residen
 On 26 November 2026, the terminal played the seed-42 walkthrough one line at a time. `look`, `help`, an unknown verb, a blocked move and two unavailable targets left the initial checkpoint at tick 0 and sequence 0. Across sessions using the same SQLite save, five equivalent pickup commands under the same batch ID returned their original receipts. After the player dropped the spoon on the street, replay from sequence 0 reached tick 10 and sequence 20 with the Phase 2 digest `9f421909302942c47ba2ac7c46c627591ef95360749cff544ce23d206bafe58b`.
 
 The full offline Linux verification script and three race-detector runs of the terminal package passed locally. Use `go test -v -count=1 -run '^(TestParseBakeryAction|TestBakeryPlaySession)$' ./cmd/sloptown` to repeat the focused checks. [Play the bakery](../../README.md#look-inside-the-bakery)
+
+## Checkpoint 2 results
+
+On 26 November 2026, `What can I do here?` and `actions` listed commands using the simulation's movement, visibility, reach and inventory rules. In the seed-42 doorway the player could see the crate, but had to step closer to open it. Opening the lid offered `take the wooden spoon`. Picking it up offered `drop the wooden spoon` and `put the wooden spoon in the crate`. Walking back to the street removed the crate from the list.
+
+The in-memory and SQLite sessions produced the same menus. Repeated queries on the street left the save at tick 0 and event sequence 0. When a second actor took the spoon, the player's next query omitted it and the simulation rejected the previously offered command. A SQLite save created by checkpoint 1 reopened with the correct choices at tick 5. Replay from sequence 0 matched the reference digests at ticks 5 and 10.
+
+The offline Linux verification script passed, as did three race-detector runs of the simulation and terminal packages. Run the focused checks with
+
+```sh
+go test -v -count=1 -run '^(TestBakeryActionDiscovery|TestBakeryActionsAreActorScoped|TestBakeryPlaySession)$' ./cmd/sloptown ./internal/simulation
+```

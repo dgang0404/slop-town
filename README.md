@@ -71,13 +71,17 @@ go run ./cmd/sloptown bakery -play -seed 42
 Try these commands when the street appears.
 
 ```text
+What can I do here?
 open the bakery door
 go east
 e
 open the crate
+actions
 pick up the wooden spoon
 put the wooden spoon in the crate
 ```
+
+Ask `What can I do here?` or type `actions` for commands you can use from where you stand. On the street, the list offers to open the bakery door. Beside the open crate, it offers to take the wooden spoon. Asking takes no game time.
 
 Type `look` to see the current scene, `help` for the command forms, or `quit` to leave. Use the full names in the description. Add `-db bakery.sqlite` to the launch command to resume the same town on your next visit.
 

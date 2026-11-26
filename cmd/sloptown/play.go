@@ -12,13 +12,13 @@ import (
 	"github.com/dgang0404/slop-town/internal/simulation"
 )
 
-const bakeryHelp = "Type a direction, or use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. Use the names in your view. Type look to see it again or quit to leave."
+const bakeryHelp = "Type a direction, or use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. Use the names in your view. Type actions for choices here, look to see the scene again or quit to leave."
 
-func playBakery(in io.Reader, out io.Writer, look func() error, act func(simulation.ActionKind, simulation.ActionArgs) (string, error)) error {
-	fmt.Fprintln(out, "Enter one command per line. Type help for commands or quit to leave.")
+func playBakery(in io.Reader, out io.Writer, look func() error, available func() ([]simulation.ActionOption, error), act func(simulation.ActionKind, simulation.ActionArgs) (string, error)) error {
+	fmt.Fprintln(out, "Enter one command per line. Ask “What can I do here?” for choices, type help for commands or quit to leave.")
 	lines := bufio.NewScanner(in)
 	for lines.Scan() {
-		line := strings.TrimSuffix(strings.ToLower(strings.TrimSpace(lines.Text())), ".")
+		line := strings.TrimSuffix(strings.Join(strings.Fields(strings.ToLower(lines.Text())), " "), ".")
 		switch line {
 		case "":
 			continue
@@ -26,6 +26,20 @@ func playBakery(in io.Reader, out io.Writer, look func() error, act func(simulat
 			return nil
 		case "help", "?":
 			fmt.Fprintln(out, bakeryHelp)
+			continue
+		case "actions", "what can i do here", "what can i do here?":
+			options, err := available()
+			if err != nil {
+				return err
+			}
+			if len(options) == 0 {
+				fmt.Fprintln(out, "There are no actions available here.")
+				continue
+			}
+			fmt.Fprintln(out, "Available actions")
+			for _, option := range options {
+				fmt.Fprintln(out, "  "+actionCommand(option))
+			}
 			continue
 		case "look", "l":
 			if err := look(); err != nil {
@@ -47,6 +61,17 @@ func playBakery(in io.Reader, out io.Writer, look func() error, act func(simulat
 		}
 	}
 	return lines.Err()
+}
+
+func actionCommand(option simulation.ActionOption) string {
+	switch option.Action {
+	case simulation.ActionMove:
+		return "go " + string(option.Args.Direction)
+	case simulation.ActionPut:
+		return "put the " + option.Args.Target + " in the " + option.Args.Container
+	default:
+		return string(option.Action) + " the " + option.Args.Target
+	}
 }
 
 func direction(word string) simulation.Direction {

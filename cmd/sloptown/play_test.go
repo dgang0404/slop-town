@@ -53,7 +53,7 @@ func TestBakeryPlaySession(t *testing.T) {
 		return out.String()
 	}
 	// A fresh session can recover from syntax errors and rejected proposals.
-	street := play("errors", "help\nlook\nflap\neast\nopen the crate\nopen the cupboard\nquit\nopen the bakery door\n")
+	street := play("errors", "help\nlook\nWhat can I do here?\nactions\nflap\neast\nopen the crate\nopen the cupboard\nquit\nopen the bakery door\n")
 	if !strings.Contains(street, "I don't understand") || !strings.Contains(street, "You can't move there") ||
 		strings.Count(street, "You can't reach that target.") != 2 || strings.Contains(street, "crate") || strings.Contains(street, "spoon") {
 		t.Fatalf("unexpected response from the street: %s", street)
@@ -62,7 +62,7 @@ func TestBakeryPlaySession(t *testing.T) {
 	if err != nil || cp.Tick != 0 || cp.Sequence != 0 {
 		t.Fatalf("queries or rejected input advanced the save: %+v, %v", cp, err)
 	}
-	play("pickup", "east\n OPEN   the bakery door.\r\nGO East\ne\nopen the crate\npick up the wooden spoon\n")
+	play("pickup", "east\n OPEN   the bakery door.\r\nGO East\ne\nopen the crate\nactions\npick up the wooden spoon\n")
 	// Canonically equivalent phrases use the existing receipts across sessions.
 	retry := play("pickup", "east\nopen bakery door\nwalk east\nmove east\nopen crate\nget wooden spoon\n")
 	if strings.Count(retry, "already completed") != 5 {
@@ -76,5 +76,60 @@ func TestBakeryPlaySession(t *testing.T) {
 	const want = "9f421909302942c47ba2ac7c46c627591ef95360749cff544ce23d206bafe58b"
 	if err != nil || head.Hash != want || head.Tick != 10 || head.Sequence != 20 {
 		t.Fatalf("parsed walkthrough diverged from Phase 2: %+v, %v", head, err)
+	}
+}
+
+func TestBakeryActionDiscovery(t *testing.T) {
+	const allMoves = "go north|go east|go south|go west"
+	steps := []struct {
+		input string
+		menu  string
+	}{
+		{"", "go north|go south|go west|open the bakery door"},
+		{"open the bakery door", allMoves + "|close the bakery door"},
+		{"go east", "go east|go west"}, // The doorway is occupied. The visible crate is out of reach.
+		{"go east", allMoves + "|open the crate|close the bakery door"},
+		{"open the crate", allMoves + "|close the crate|close the bakery door|take the wooden spoon"},
+		{"take the wooden spoon", allMoves + "|close the crate|close the bakery door|drop the wooden spoon|put the wooden spoon in the crate"},
+		{"put the wooden spoon in the crate", allMoves + "|close the crate|close the bakery door|take the wooden spoon"},
+		{"go west\ngo west", allMoves + "|close the bakery door"},
+	}
+	for _, mode := range []string{"memory", "sqlite"} {
+		t.Run(mode, func(t *testing.T) {
+			args := []string{"-play", "-seed", "42"}
+			path := filepath.Join(t.TempDir(), "bakery.sqlite")
+			if mode == "sqlite" {
+				args = append(args, "-db", path)
+			}
+			var input strings.Builder
+			for _, s := range steps {
+				input.WriteString(s.input + "\nWhat  CAN I do here?\n")
+			}
+			run := func(lines string) string {
+				t.Helper()
+				var out, diag bytes.Buffer
+				if code := runBakery(args, strings.NewReader(lines), &out, &diag); code != 0 {
+					t.Fatalf("session exited %d: %s", code, diag.String())
+				}
+				return out.String()
+			}
+			menus := strings.Split(run(input.String()), "Available actions\n")[1:]
+			if len(menus) != len(steps) {
+				t.Fatalf("got %d menus, want %d", len(menus), len(steps))
+			}
+			for i, menu := range menus {
+				got, _, _ := strings.Cut(strings.TrimSuffix(menu, "\n"), "\n\n")
+				want := "  " + strings.ReplaceAll(steps[i].menu, "|", "\n  ")
+				if got != want {
+					t.Errorf("step %d after %q:\ngot\n%s\nwant\n%s", i, steps[i].input, got, want)
+				}
+			}
+			if mode == "sqlite" {
+				reopened := run("actions\n")
+				if !strings.HasSuffix(reopened, "Available actions\n"+menus[len(menus)-1]) {
+					t.Fatalf("reopened street offered different actions: %s", reopened)
+				}
+			}
+		})
 	}
 }

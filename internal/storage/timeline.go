@@ -137,6 +137,25 @@ func OpenBakery(path string, scope simulation.Scope, seed int64, actor string) (
 	return view, nil
 }
 
+// BakeryActions reads the current committed scene, including actions by other sessions.
+func BakeryActions(path string, scope simulation.Scope, actor string) ([]simulation.ActionOption, error) {
+	db, err := openTimelineDB(path, true)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+	tx, err := db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	state, err := committedState(tx, scope, 4)
+	if err != nil {
+		return nil, err
+	}
+	return state.Bakery.AvailableActions(scope, actor)
+}
+
 func loadReceipt(tx *sql.Tx, scope simulation.Scope, actor, request string) (*simulation.Receipt, error) {
 	var data []byte
 	err := tx.QueryRow("SELECT receipt FROM request_receipt WHERE world=? AND timeline=? AND actor=? AND request=?", scope.WorldID, scope.TimelineID, actor, request).Scan(&data)
