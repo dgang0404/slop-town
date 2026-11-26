@@ -13,7 +13,7 @@ import (
 	"github.com/dgang0404/slop-town/internal/simulation"
 )
 
-const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. Use introduce yourself to NAME when available. Short names work. Use it for the last object you acted on. Type actions for choices here, look to see the scene again or quit to leave."
+const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use walk to NAME to approach a visible destination. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. Use introduce yourself to NAME when available. Short names work. Use it for the last object you acted on. Type actions for choices here, look to see the scene again or quit to leave."
 
 type bakerySession struct {
 	observe   func() (simulation.Scene, error)
@@ -26,9 +26,32 @@ func (s bakerySession) play(in io.Reader, out io.Writer) error {
 	fmt.Fprintln(out, "Enter one command per line. Ask “What can I do here?” for choices, type help for commands or quit to leave.")
 	var cmd bakeryCommand
 	var last string
+	readKeys, closeKeys := keyboardReader(in, out)
+	if readKeys != nil {
+		defer closeKeys()
+		fmt.Fprintln(out, "Up/Down: browse · Enter: choose · Esc: return to typing")
+	}
 	lines := bufio.NewScanner(in)
-	for lines.Scan() {
-		line := strings.TrimSuffix(strings.Join(strings.Fields(strings.ToLower(lines.Text())), " "), ".")
+	for {
+		var input string
+		var selectedScene *simulation.Scene
+		if readKeys != nil {
+			var err error
+			question := cmd.question()
+			input, selectedScene, err = readKeys(func() ([]menuChoice, *simulation.Scene, error) { return s.menu(cmd) }, question != nil && question.repeatNumber > 0)
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+		} else {
+			if !lines.Scan() {
+				return lines.Err()
+			}
+			input = lines.Text()
+		}
+		line := strings.TrimSuffix(strings.Join(strings.Fields(strings.ToLower(input)), " "), ".")
 		switch line {
 		case "":
 			continue
@@ -90,7 +113,11 @@ func (s bakerySession) play(in io.Reader, out io.Writer) error {
 				continue
 			}
 			var rejection string
-			cmd, rejection, err = s.command(action, args, last)
+			if selectedScene != nil {
+				cmd, rejection = prepareCommand(action, args, *selectedScene, last)
+			} else {
+				cmd, rejection, err = s.command(action, args, last)
+			}
 			if err != nil {
 				return err
 			}
@@ -103,12 +130,15 @@ func (s bakerySession) play(in io.Reader, out io.Writer) error {
 			cmd.prompt(out, n)
 			continue
 		}
-		result, err := s.act(cmd)
+		result, err := s.execute(cmd)
 		if err != nil {
 			return err
 		}
 		if result.Status != "accepted" {
 			fmt.Fprintln(out, result.Message)
+			if result.Code == "within_reach" {
+				last = cmd.target.ref
+			}
 		} else if cmd.Args.Target != "" {
 			last = cmd.target.ref
 			if result.SelectedTarget != "" {
@@ -122,7 +152,6 @@ func (s bakerySession) play(in io.Reader, out io.Writer) error {
 		}
 		cmd = bakeryCommand{}
 	}
-	return lines.Err()
 }
 
 func actionCommand(option simulation.ActionOption) string {
@@ -131,6 +160,8 @@ func actionCommand(option simulation.ActionOption) string {
 		return string(option.Action)
 	case simulation.ActionMove:
 		return "go " + string(option.Args.Direction)
+	case simulation.ActionApproach:
+		return "walk to the " + option.Args.Target
 	case simulation.ActionIntroduce:
 		return "introduce yourself to the " + option.Args.Target
 	case simulation.ActionPut:
@@ -180,6 +211,13 @@ func parseBakeryAction(words []string) (simulation.ActionKind, simulation.Action
 		}
 		return simulation.ActionKind(verb), args, nil
 	case "go", "walk", "move":
+		if verb == "walk" && len(rest) > 0 && rest[0] == "to" {
+			target := noun(rest[1:])
+			if target == "" {
+				return "", args, errors.New("Walk to whom or what?")
+			}
+			return simulation.ActionApproach, simulation.ActionArgs{Target: target}, nil
+		}
 		if len(rest) != 1 || direction(rest[0]) == "" {
 			return "", args, errors.New("Choose north, south, east or west.")
 		}

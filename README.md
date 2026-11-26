@@ -99,9 +99,15 @@ go run ./cmd/sloptown bakery -seed 42 open "bakery door" move east move east ope
 
 The terminal shows the player's view on arrival and after each action. On the grid, `@` marks the player, `?` a square out of sight, and `#` a wall. Opening the lid changes the crate's square from `C` to `c*` as the spoon comes into view. Omit `-db` for a fresh in-memory session.
 
-### Planned demo controls
+### Browse actions and walk to a destination
 
-The next terminal checkpoint will let you press Up or Down to browse actions available where you stand, then Enter to choose one. You’ll be able to type or select `walk to the porter` to get within speaking distance, or `walk to the crate` to approach it. Compass directions will still help distinguish routes to different places. In the current demo, type `actions` to see your choices and enter a direction to take a step. [Demo controls plan](docs/plans/phase-5.md#checkpoint-4-demo-controls-planned)
+Start `go run ./cmd/sloptown bakery -practice -play -seed 42`. In an interactive terminal, press **Up** or **Down** to browse actions and **Enter** to choose. Escape restores what you were typing. You can use the arrows and Enter for numbered choices too. Typed commands and piped scripts still work.
+
+Try `walk to the porter` from the starting street. When the crate is visible along a clear route, `walk to the crate` brings you within reach so you can open it. If two objects match, choose one by location. You can still choose a compass direction for an individual step.
+
+**Time passes one step at a time.** A three-square walk costs three ticks. Choosing `rest` or `wait` costs one tick each. Looking, browsing, cancelling, or asking to approach something already within reach costs none. Residents act after each step. If someone introduces themselves to you on the way, the walk pauses and gives you the turn. You can choose another action or select the destination again to continue.
+
+To see a moving destination interrupt a walk, start a fresh seed-42 practice session. Wait three turns, step west, step north, then enter `walk to the baker`. You take one step before the baker slips out of sight. [Checkpoint results](docs/plans/phase-5.md#checkpoint-4-demo-controls)
 
 ### Meet the baker
 

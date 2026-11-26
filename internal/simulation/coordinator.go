@@ -30,6 +30,7 @@ const (
 	ActionPut       ActionKind = "put"
 	ActionDrop      ActionKind = "drop"
 	ActionIntroduce ActionKind = "introduce"
+	ActionApproach  ActionKind = "approach"
 )
 
 type ActionArgs struct {
@@ -81,6 +82,7 @@ type Result struct {
 	Message        string      `json:"message,omitempty"`
 	Observation    Observation `json:"observation,omitzero"`
 	SelectedTarget string      `json:"selected_target,omitempty"`
+	ContinueWalk   bool        `json:"continue_walk,omitempty"`
 }
 
 // Event is a developer-facing record. ParentID points to an earlier event
@@ -288,12 +290,36 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 		}
 		result.Observation = view
 		result.Message = message
+		interrupted := false
 		for _, e := range residents {
 			if e.Kind == "actor_introduced" && e.Payload.Target == actorID {
+				interrupted = true
 				result.Message += "\nThe " + nextBakery.Entities[e.ActorID].Name + " introduces themselves to you."
 			}
 		}
 		result.SelectedTarget = p.Observed.Target
+		if p.Action == ActionApproach {
+			ref := primary.payload.Target
+			result.SelectedTarget = ref
+			// An addressed introduction leaves the next decision to the walker.
+			switch {
+			case interrupted:
+				result.Message += "\nYou pause your walk."
+			case !view.hasTarget(ref):
+				result.Message += "\nYou lose sight of your destination."
+			default:
+				dest, _ := nextBakery.PositionOf(ref)
+				was, _ := bakery.PositionOf(ref)
+				switch {
+				case inReach(nextBakery.Entities[actorID].Placement.Cell, dest):
+					result.Message += "\nYou are within reach of the " + nextBakery.Entities[ref].Name + "."
+				case dest != was:
+					result.Message += "\nYour destination moved. You pause."
+				default:
+					result.ContinueWalk = true
+				}
+			}
+		}
 	}
 
 	return result, &Transition{State: State{Clock: &next, Bakery: nextBakery}, Events: events}

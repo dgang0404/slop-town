@@ -71,6 +71,22 @@ func (opaque *cellMask) canSee(x, y, destX, destY int) bool {
 	return true
 }
 
+func (b *Bakery) opaqueCells() cellMask {
+	var opaque cellMask
+	for y, row := range b.Cells {
+		for x, cell := range row {
+			opaque[y][x] = cell.Wall
+		}
+	}
+	for _, e := range b.Entities {
+		if e.Kind == Door && !e.Open && b.isFloorCell(e.Placement.Cell) {
+			cell := e.Placement.Cell
+			opaque[cell.Y][cell.X] = true
+		}
+	}
+	return opaque
+}
+
 func (b *Bakery) Observe(scope Scope, actorID string) (Observation, error) {
 	return b.observe(scope, actorID, nil)
 }
@@ -84,19 +100,9 @@ func (b *Bakery) observe(scope Scope, actorID string, locations map[string]strin
 	if actor.Kind != Actor || actor.Placement.HolderID != "" || !b.isFloorCell(at) {
 		return Observation{}, errors.New("invalid observing character")
 	}
-	var opaque, visible cellMask
+	opaque := b.opaqueCells()
+	var visible cellMask
 	var tiles [bakeryHeight][bakeryWidth]string
-	for y, row := range b.Cells {
-		for x, cell := range row {
-			opaque[y][x] = cell.Wall
-		}
-	}
-	for _, e := range b.Entities {
-		if e.Kind == Door && !e.Open && b.isFloorCell(e.Placement.Cell) {
-			cell := e.Placement.Cell
-			opaque[cell.Y][cell.X] = true
-		}
-	}
 	for y, row := range b.Cells {
 		for x, cell := range row {
 			visible[y][x] = opaque.canSee(at.X, at.Y, x, y)

@@ -7,7 +7,7 @@ The player and residents develop through what they do and experience. The simula
 | 1. Endurance through practice | A demanding walk followed by recovery contributes to a small lasting improvement. Player and resident movement use the same rule. |
 | 2. Temporary emotion | A personally experienced event changes an actor's temporary emotional state. Its effects subside with time while the actor's baseline personality persists. |
 | 3. Directional relationships | A concrete interaction can change how one participant regards the other. Test both directions and a resident who missed it. |
-| 4. Demo controls | Browse available actions with Up and Down. Walk up to a visible person or object by name. [Walkthrough and checks](#checkpoint-4-demo-controls-planned) |
+| 4. Demo controls | Browse available actions with Up and Down. Walk up to a visible person or object by name. [Walkthrough and checks](#checkpoint-4-demo-controls) |
 | 5. Acceptance | Follow the consequences through ordinary play, an interrupted save, restart and replay. Compare character views, developer history and local and hosted results. |
 
 ## Checkpoint 1 results
@@ -63,10 +63,9 @@ go test -count=1 -v -run Introduction ./internal/simulation ./internal/storage
 
 The full offline Linux check passed with Go 1.27.4, including both seed-42 smoke runs. The terminal, simulation and storage packages passed three race-detector runs. Hosted verification for checkpoint 3 is pending its push. [Offline verification script](../../scripts/check-phase-0.sh)
 
+## Checkpoint 4 demo controls
 
-## Checkpoint 4 demo controls (planned)
-
-This is the next implementation checkpoint after introductions. It brings the master design’s named destinations and interruptible movement into the terminal bakery. [Master design](../design/Slop_Town_Master_Design_Revised_v7.docx)
+This checkpoint brings the master design’s named destinations and interruptible movement into the terminal bakery. [Master design](../design/Slop_Town_Master_Design_Revised_v7.docx)
 
 **Browse actions.** At the interactive prompt, Up and Down cycle through actions the player can take in the current scene, including approaching a visible target. The prompt shows the selected command. Enter submits it once. Escape returns to the previous input. Browsing, cancelling and asking for actions take no game time. Use the same choices and validation as the typed prompt so a selection still refers to the person or object the player picked. Keep typed commands and plain line input for players using text-only terminals and for saved walkthroughs.
 
@@ -80,3 +79,14 @@ This is the next implementation checkpoint after introductions. It brings the ma
 | Walk to a visible crate, then open it. Repeat the approach while beside it. | The player arrives within reach and can open the crate. The second approach costs no turn. |
 | Choose between two visible objects with the same name. During another walk, let the selected resident leave sight. | Only visible matches appear. The walk keeps the chosen identity and stops when the player loses the resident. |
 | Compare a named walk with the same individual steps, including a stop partway through. | Time, worker routines and positions agree for the steps completed. Reopening the save retains the stopping position. |
+
+
+### Verification
+
+A Linux terminal session used Up, Down and Escape to browse and cancel. Its tick-zero replay hash stayed the same. Enter on “walk to the porter” committed one step. On a separate three-square walk to the crate, named travel and three individual northward steps followed by opening the crate both ended at tick 10, sequence 36, SHA-256 `d790f982bcc900b02f0408bf021660595ba8cfbf561a54a499e315987426d20c`. Failing the second step’s SQLite receipt write left the first step saved. Resuming the batch finished the two outstanding steps. [Terminal and restart test](../../cmd/sloptown/walk_test.go)
+
+In a seed-42 test with the crate placed across the street, a worker at the shopfront introduced themselves on the second step. The walk paused there on tick 4. The player chose the crate again and arrived on tick 5. In the ordinary bakery a player who lost sight of the moving baker stopped on tick 6. [Simulation checks](../../internal/simulation/approach_test.go) · [Playable walkthrough](../../README.md#browse-actions-and-walk-to-a-destination)
+
+Longer travel to known town destinations, such as a bakery down the road, follows the same design. Each leg advances the simulation and an en-route event can return control to the player. The current demo covers destinations visible on the bakery map. Elapsed time in this demo is measured in simulation turns.
+
+The offline Linux suite and three race-detector runs passed. The Windows amd64 and macOS arm64 executables cross-built successfully. Interactive arrow input was exercised on Linux. Hosted checks for checkpoints 3 and 4 will start with the push.

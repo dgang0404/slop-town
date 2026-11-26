@@ -134,7 +134,7 @@ func TestBakeryActionDiscovery(t *testing.T) {
 	}{
 		{"", "go north|go south|go west|open the bakery door"},
 		{"open the bakery door", allMoves + "|close the bakery door"},
-		{"go east", "go east|go west"}, // The doorway is occupied. The visible crate is out of reach.
+		{"go east", "go east|go west|walk to the crate"}, // The doorway is occupied. The visible crate is out of reach.
 		{"go east", allMoves + "|open the crate|close the bakery door"},
 		{"open the crate", allMoves + "|close the crate|close the bakery door|take the wooden spoon"},
 		{"take the wooden spoon", allMoves + "|close the crate|close the bakery door|drop the wooden spoon|put the wooden spoon in the crate"},

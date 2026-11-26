@@ -86,7 +86,7 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 		if !validID(args.Target) || !validID(args.Container) || args != (ActionArgs{Target: args.Target, Container: args.Container}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Choose an item and a destination container."}
 		}
-	case ActionOpen, ActionClose, ActionTake, ActionDrop, ActionIntroduce:
+	case ActionOpen, ActionClose, ActionTake, ActionDrop, ActionIntroduce, ActionApproach:
 		if !validID(args.Target) || args != (ActionArgs{Target: args.Target}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Choose one target."}
 		}
@@ -103,6 +103,9 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 		if failure != nil {
 			return spatialEffect{}, failure
 		}
+	}
+	if action == ActionApproach {
+		return b.approach(view.ObserverID, args.Target)
 	}
 	if action == ActionIntroduce {
 		if b.ContentVersion < relationshipContentVersion {

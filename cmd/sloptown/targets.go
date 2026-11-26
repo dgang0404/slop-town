@@ -142,3 +142,18 @@ func (cmd *bakeryCommand) proposal() simulation.Proposal {
 	}
 	return p
 }
+
+// A walk commits one step per request. Each receipt records whether this
+// command should take another step, including when replaying a batch prefix.
+func (s bakerySession) execute(cmd bakeryCommand) (simulation.Result, error) {
+	for {
+		r, err := s.act(cmd)
+		if err != nil || !r.ContinueWalk {
+			return r, err
+		}
+		cmd.receipt = nil
+		cmd.Observed = simulation.NameBindings{}
+		cmd.ByName = false
+		cmd.target.ref = r.SelectedTarget
+	}
+}
