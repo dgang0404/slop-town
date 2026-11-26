@@ -51,3 +51,11 @@ Dependencies follow table order. Checkpoints 2 and 3 can use developer state ins
 On 25 November 2026, two generations per seed produced identical cells, entity IDs, placements and stream counters. Seed 42 placed the door at `(2,1)` and seed 43 at `(2,2)`. Each town started at tick zero with one geography draw. An extra weather draw left the layout identical. The spoon started inside the closed crate. When the test placed it in the player's inventory and moved the player, the same spoon resolved to the player's new cell.
 
 The bakery tests passed on Linux and under Node.js with WebAssembly. They also covered invalid references, conflicting parents, cycles, walls and out-of-bounds placements. To reproduce the fixture checks, run `go test -count=1 -run '^TestBakery' ./internal/simulation`. The full offline check (`sh scripts/check-phase-0.sh`) and the simulation race tests passed locally. Checkpoint 2 adds movement and door interactions.
+
+## Checkpoint 2 results
+
+The in-memory coordinator accepts `move` with a cardinal direction and `open` or `close` with a door ID. For seeds 42 and 43, the actor opened the door at tick 1, stood in the doorway at tick 2, and reached the interior at tick 3. Walking back and closing the door finished at tick 6 with 12 ordered events and the original single geography draw.
+
+Walking into a wall, a closed door or the map edge cost no time. A diagonal door was out of reach. Closing the door while either the player or another actor occupied the doorway failed. Repeating the original open request after the door closed returned its original receipt and left the door closed. A failed clock advance also left the door and history intact.
+
+On 25 November 2026, the two walkthroughs and movement limit tests passed on Linux and under Node.js with WebAssembly. The full offline build, save and replay checks and three runs of the simulation race tests also passed. To run the walkthroughs from the repository root, use `go test -v -count=1 -run '^TestBakeryDoorWalk$' ./internal/simulation`. Checkpoint 3 adds crate and inventory actions.

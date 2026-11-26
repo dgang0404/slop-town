@@ -18,16 +18,28 @@ type Scope struct {
 	TimelineID string `json:"timeline_id"`
 }
 
-type FixtureArgs struct {
-	Stream string `json:"stream"`
+type ActionKind string
+
+const (
+	ActionMove  ActionKind = "move"
+	ActionOpen  ActionKind = "open"
+	ActionClose ActionKind = "close"
+)
+
+type ActionArgs struct {
+	Stream    string    `json:"stream,omitempty"`
+	Direction Direction `json:"direction,omitempty"`
+	Target    string    `json:"target,omitempty"`
 }
+
+type FixtureArgs = ActionArgs
 
 type Proposal struct {
 	Scope
-	Version   int         `json:"version"`
-	RequestID string      `json:"request_id"`
-	Action    string      `json:"action"`
-	Args      FixtureArgs `json:"args"`
+	Version   int        `json:"version"`
+	RequestID string     `json:"request_id"`
+	Action    ActionKind `json:"action"`
+	Args      ActionArgs `json:"args"`
 }
 
 type Observation struct {
@@ -63,11 +75,13 @@ type Event struct {
 	Payload        EventPayload
 }
 
-// tick_advanced carries Delta. stream_drawn carries Stream and Value.
+// Spatial events record the destination cell or the door's stable ID.
 type EventPayload struct {
-	Delta  int64
-	Stream string
-	Value  uint64
+	Delta       int64
+	Stream      string
+	Value       uint64
+	Destination CellPosition `json:",omitzero"`
+	Target      string       `json:",omitempty"`
 }
 
 type requestKey struct{ actorID, requestID string }
@@ -82,6 +96,7 @@ type Coordinator struct {
 	mu       sync.Mutex
 	scope    Scope
 	clock    *Timeline
+	bakery   *Bakery
 	events   []Event
 	receipts map[requestKey]*Receipt
 }
@@ -109,24 +124,30 @@ func (c *Coordinator) Submit(actorID string, p Proposal) Result {
 	defer c.mu.Unlock()
 
 	key := requestKey{actorID, p.RequestID}
-	result, step := Resolve(c.scope, c.clock, uint64(len(c.events)), actorID, p, c.receipts[key])
+	result, step := resolve(c.scope, c.clock, c.bakery, uint64(len(c.events)), actorID, p, c.receipts[key])
 	if step != nil {
 		c.clock = step.Clock
+		c.bakery = step.Bakery
 		c.events = append(c.events, step.Events...)
 		c.receipts[key] = &Receipt{p, result}
 	}
 	return result
 }
 
-// Transition contains the next clock and newly generated events for a single commit.
+// Transition holds all state and events staged for a single commit.
 type Transition struct {
 	Clock  *Timeline
+	Bakery *Bakery
 	Events []Event
 }
 
-// Resolve stages a command against committed state. A nil transition denotes
+// Resolve stages a Phase 1 fixture command. A nil transition denotes
 // a rejection or an identical retry. Callers publish only after commit.
 func Resolve(scope Scope, clock *Timeline, lastSequence uint64, actorID string, p Proposal, saved *Receipt) (Result, *Transition) {
+	return resolve(scope, clock, nil, lastSequence, actorID, p, saved)
+}
+
+func resolve(scope Scope, clock *Timeline, bakery *Bakery, lastSequence uint64, actorID string, p Proposal, saved *Receipt) (Result, *Transition) {
 	result := Result{Version: contractVersion, RequestID: p.RequestID}
 	reject := func(code, message string) Result {
 		result.Status, result.Code, result.Message = "rejected", code, message
@@ -144,30 +165,44 @@ func Resolve(scope Scope, clock *Timeline, lastSequence uint64, actorID string, 
 		}
 		return saved.Result, nil
 	}
-	if p.Action != "fixture_step" || !validID(p.Args.Stream) {
+	if bakery == nil && (p.Action != "fixture_step" || !validID(p.Args.Stream) || p.Args.Direction != "" || p.Args.Target != "") {
 		return reject("invalid_request", "Expected a fixture step with a named stream."), nil
 	}
-
 	next := *clock
-	next.draws = maps.Clone(clock.draws)
 	if err := next.Advance(1); err != nil {
 		return reject("resolution_failed", "The fixture could not advance."), nil
 	}
-	value, err := next.Draw(p.Args.Stream)
-	if err != nil {
-		return reject("resolution_failed", "The fixture could not draw a value."), nil
+	var nextBakery *Bakery
+	var engine, kind, message string
+	var payload EventPayload
+	if bakery == nil {
+		next.draws = maps.Clone(clock.draws)
+		value, err := next.Draw(p.Args.Stream)
+		if err != nil {
+			return reject("resolution_failed", "The fixture could not draw a value."), nil
+		}
+		engine, kind, message = "fixture", "stream_drawn", "The fixture advanced."
+		payload = EventPayload{Stream: p.Args.Stream, Value: value}
+	} else {
+		staged := *bakery
+		staged.Entities = maps.Clone(bakery.Entities)
+		effect, failure := staged.applySpatial(actorID, p)
+		if failure != nil {
+			return reject(failure.code, failure.message), nil
+		}
+		nextBakery = &staged
+		engine, kind, payload, message = "spatial", effect.kind, effect.payload, effect.message
 	}
-
 	event := func(seq uint64, kind string, payload EventPayload) Event {
 		id := fmt.Sprintf("%s/%s/%d", url.PathEscape(scope.WorldID), url.PathEscape(scope.TimelineID), seq)
 		return Event{Scope: scope, ID: id, Sequence: seq, Tick: next.Tick(), Version: contractVersion,
-			RequestID: p.RequestID, ActorID: actorID, Engine: "fixture", Kind: kind, PayloadVersion: 1, Payload: payload}
+			RequestID: p.RequestID, ActorID: actorID, Engine: engine, Kind: kind, PayloadVersion: 1, Payload: payload}
 	}
 	advanced := event(lastSequence+1, "tick_advanced", EventPayload{Delta: 1})
-	drawn := event(advanced.Sequence+1, "stream_drawn", EventPayload{Stream: p.Args.Stream, Value: value})
-	drawn.ParentID = advanced.ID
+	action := event(advanced.Sequence+1, kind, payload)
+	action.ParentID = advanced.ID
 	result.Status = "accepted"
-	result.Observation = Observation{Scope: scope, Version: contractVersion, ObserverID: actorID, Text: "The fixture advanced."}
+	result.Observation = Observation{Scope: scope, Version: contractVersion, ObserverID: actorID, Text: message}
 
-	return result, &Transition{Clock: &next, Events: []Event{advanced, drawn}}
+	return result, &Transition{Clock: &next, Bakery: nextBakery, Events: []Event{advanced, action}}
 }

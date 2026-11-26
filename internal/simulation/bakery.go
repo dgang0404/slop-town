@@ -20,6 +20,12 @@ type BakeryCell struct {
 	Wall    bool
 }
 
+func (b *Bakery) isFloorCell(cell CellPosition) bool {
+	return cell.FloorID == b.FloorID &&
+		cell.X >= 0 && cell.X < bakeryWidth && cell.Y >= 0 && cell.Y < bakeryHeight &&
+		!b.Cells[cell.Y][cell.X].Wall
+}
+
 // Placement has one direct parent. A holder is either an inventory owner or
 // a container. Its contents derive their effective position from that holder.
 type Placement struct {
@@ -115,11 +121,8 @@ func (b *Bakery) PositionOf(id string) (CellPosition, error) {
 		p := entity.Placement
 		if p.HolderID == "" {
 			cell := p.Cell
-			if cell.FloorID != b.FloorID || cell.X < 0 || cell.X >= bakeryWidth || cell.Y < 0 || cell.Y >= bakeryHeight {
+			if !b.isFloorCell(cell) {
 				return CellPosition{}, fmt.Errorf("invalid floor cell for %q", id)
-			}
-			if b.Cells[cell.Y][cell.X].Wall {
-				return CellPosition{}, fmt.Errorf("entity %q occupies a wall", id)
 			}
 			return cell, nil
 		}
