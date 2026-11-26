@@ -47,7 +47,7 @@ type diskState struct {
 	receipts []simulation.Receipt
 }
 
-func readRecords[T any](t *testing.T, db *sql.DB, query string) []T {
+func readRecords[T any](t *testing.T, db *sql.DB, scope simulation.Scope, query string) []T {
 	t.Helper()
 	rows, err := db.Query(query, scope.WorldID, scope.TimelineID)
 	if err != nil {
@@ -75,6 +75,11 @@ func readRecords[T any](t *testing.T, db *sql.DB, query string) []T {
 // Read each assertion through a fresh database handle, including after faults.
 func inspect(t *testing.T, path string) diskState {
 	t.Helper()
+	return inspectScope(t, path, scope)
+}
+
+func inspectScope(t *testing.T, path string, scope simulation.Scope) diskState {
+	t.Helper()
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		t.Fatal(err)
@@ -85,8 +90,8 @@ func inspect(t *testing.T, path string) diskState {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s.events = readRecords[simulation.Event](t, db, "SELECT event FROM timeline_event WHERE world=? AND timeline=? ORDER BY seq")
-	s.receipts = readRecords[simulation.Receipt](t, db, "SELECT receipt FROM request_receipt WHERE world=? AND timeline=? ORDER BY actor, request")
+	s.events = readRecords[simulation.Event](t, db, scope, "SELECT event FROM timeline_event WHERE world=? AND timeline=? ORDER BY seq")
+	s.receipts = readRecords[simulation.Receipt](t, db, scope, "SELECT receipt FROM request_receipt WHERE world=? AND timeline=? ORDER BY actor, request")
 	return s
 }
 

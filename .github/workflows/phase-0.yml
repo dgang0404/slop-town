@@ -1,4 +1,4 @@
-name: Phase 0 verification
+name: Linux verification
 
 on: [push, pull_request]
 
@@ -18,5 +18,5 @@ jobs:
           go-version-file: go.mod
       - name: Restore Go dependencies
         run: go mod download
-      - name: Verify Phase 0 with downloads disabled
+      - name: Verify Phase 0 fixtures and Phase 1 acceptance offline
         run: sh scripts/check-phase-0.sh
