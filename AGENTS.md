@@ -1,6 +1,6 @@
 # Working on Slop Town
 
-Read the [master design](docs/design/Slop_Town_Master_Design_Revised_v7.docx) and [current phase plan](docs/plans/phase-0.md) before coding. The [Go decision](docs/decisions/0001-go-simulation.md) governs the implementation stack. Phase 0 covers scaffolding and deterministic fixtures. Advancing to gameplay requires the owner's approval.
+Read the [master design](docs/design/Slop_Town_Master_Design_Revised_v7.docx) and [current Phase 1 plan](docs/plans/phase-1.md) before coding. The [Go decision](docs/decisions/0001-go-simulation.md) governs the implementation stack. Phase 1 covers authoritative time, events, saves and replay through a synthetic action. Advancing to gameplay requires the owner's approval.
 
 Keep simulation rules in `internal/simulation`. The simulation owns world state and must run offline. SQLite belongs in `internal/storage`. The terminal composes the two packages. Future UI and AI adapters submit proposals for the simulation to validate. Record accepted AI proposals as events.
 

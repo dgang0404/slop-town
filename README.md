@@ -9,9 +9,9 @@ For tested devices, hardware targets and offline play, see the [player system re
 - [Master Design and Architecture, revision 7](docs/design/Slop_Town_Master_Design_Revised_v7.docx) describes the town, its residents, player commands, and how the simulation resolves actions.
 - [Phase 0 Development Foundation](docs/design/Slop_Town_Phase_0_Development_Foundation.docx) outlines the first development milestone, including the headless runner, persistence, and tests.
 
-See the [current Phase 0 plan](docs/plans/phase-0.md) for the Go implementation milestones.
+See the [Phase 0 plan](docs/plans/phase-0.md) for the Go foundation milestones.
 
-The [Phase 0 acceptance report](docs/plans/phase-0-results.md) collects the test evidence. The [Phase 1 proposal](docs/plans/phase-1.md) covers time, events, saves and replay.
+The [Phase 0 acceptance report](docs/plans/phase-0-results.md) collects the test evidence. The [approved Phase 1 plan](docs/plans/phase-1.md) covers time, events, saves and replay.
 
 To validate a local content pack, run `go run ./cmd/packcheck PACK_DIRECTORY`. The [manifest guide](docs/content-packs.md) includes a bundled example.
 

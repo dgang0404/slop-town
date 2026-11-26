@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Package simulation owns the deterministic Phase 0 smoke fixture.
+// Package simulation owns deterministic simulation state and the smoke fixture.
 package simulation
 
 import (

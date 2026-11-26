@@ -1,6 +1,6 @@
-# Phase 1 proposal — authoritative time, events and replay
+# Phase 1 — authoritative time, events and replay
 
-**Draft for owner approval, 25 November 2026.** The first milestone is a timeline the player can quit and resume without changing what happens next. Demonstrate it through the headless runner with a small synthetic action. Phase 2 introduces generated space and objects. Conversation choices, residents, rendering and AI have their own later milestones. [Master roadmap, section 50](../design/Slop_Town_Master_Design_Revised_v7.docx) · [Phase 0 acceptance](phase-0-results.md)
+**Approved by the owner, 25 November 2026.** The first milestone is a timeline the player can quit and resume without changing what happens next. Demonstrate it through the headless runner with a small synthetic action. Phase 2 introduces generated space and objects. Conversation choices, residents, rendering and AI have their own later milestones. [Master roadmap, section 50](../design/Slop_Town_Master_Design_Revised_v7.docx) · [Phase 0 acceptance](phase-0-results.md)
 
 ## End-to-end demonstration
 
@@ -17,6 +17,14 @@ Resubmit the second request. It must return the committed result and leave the t
 | 3. Transactional SQLite saves | 1 and 2 | Add a versioned migration for timeline state, stream positions, ordered events and receipts. Preserve existing Phase 0 fixtures and their reference hash. Publish results after commit. Inject a failure between writes, close and reopen the file, and verify that state, events, receipt, tick and RNG all rolled back. Competing submissions of the same request must produce one committed result. |
 | 4. Replay from a checkpoint | 2 and 3 | Store a checkpoint with its world and timeline IDs, sequence position, engine/content versions and deterministic state. Replay subsequent records in sequence. Compare event history and hashes with uninterrupted execution. Test an empty suffix, a missing or reordered event, incompatible versions and two independent timelines. Report the first failing sequence or version in developer diagnostics. |
 | 5. Headless acceptance and handoff | 1–4 | Run the demonstration above across process restarts in Linux CI using a temporary database. Keep the Phase 0 command and reference fixture passing. Record repeatable commands, actual hashes, rollback evidence and review items for Phase 2. |
+
+## Checkpoint 1 results
+
+The in-memory timeline starts at tick zero. A positive advance adds that many ticks. Zero, negative and overflowing advances fail without changing the timeline. Each named stream has its own unsigned 64-bit draw counter. For example, extra weather draws leave the next movement draw unchanged.
+
+Version 1 snapshots use UTF-8 JSON with `version`, signed 64-bit `seed` and `tick`, and a `draws` object containing the count for each used stream. An unused stream starts at index zero. To reproduce a draw, concatenate the seed's 64-bit two's-complement representation and the zero-based draw index (both eight bytes, big-endian), followed by the UTF-8 name. Read the first eight SHA-256 digest bytes as an unsigned big-endian integer. Store the new count after a successful draw. This makes resuming a stream independent of the number of past draws. Future changes to the draw algorithm require a new snapshot version.
+
+On 25 November 2026, `sh scripts/check-phase-0.sh` passed locally with Go downloads disabled, including the existing seed-42 SQLite smoke check. All five new timeline tests also passed as WebAssembly under Node. The resume test takes a snapshot at tick 1 and compares subsequent draws and serialized state at tick 2 with an uninterrupted run. This checkpoint covers clock and stream state in memory. Checkpoint 2 will resolve a synthetic action and record its events.
 
 ## Rules to settle in implementation
 
