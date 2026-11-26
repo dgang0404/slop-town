@@ -26,7 +26,7 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	practice := flags.Bool("practice", false, "create a resident bakery with use-based endurance")
 	flags.Usage = func() {
 		fmt.Fprintln(stderr, "Usage: sloptown bakery [-seed N] [-resident] [-practice] [-db PATH] [-timeline NAME] [-batch ID] [-play | ACTION ...]")
-		fmt.Fprintln(stderr, "Actions: wait | rest | move DIRECTION | open NAME | close NAME | take NAME | drop NAME | put ITEM CONTAINER")
+		fmt.Fprintln(stderr, "Actions: wait | rest | move DIRECTION | open NAME | close NAME | take NAME | drop NAME | put ITEM CONTAINER | introduce PERSON")
 	}
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -117,7 +117,7 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			count = 1
 		case simulation.ActionPut:
 			count = 3
-		case simulation.ActionMove, simulation.ActionOpen, simulation.ActionClose, simulation.ActionTake, simulation.ActionDrop:
+		case simulation.ActionMove, simulation.ActionOpen, simulation.ActionClose, simulation.ActionTake, simulation.ActionDrop, simulation.ActionIntroduce:
 		default:
 			flags.Usage()
 			return 2

@@ -21,14 +21,15 @@ type Scope struct {
 type ActionKind string
 
 const (
-	ActionWait  ActionKind = "wait"
-	ActionRest  ActionKind = "rest"
-	ActionMove  ActionKind = "move"
-	ActionOpen  ActionKind = "open"
-	ActionClose ActionKind = "close"
-	ActionTake  ActionKind = "take"
-	ActionPut   ActionKind = "put"
-	ActionDrop  ActionKind = "drop"
+	ActionWait      ActionKind = "wait"
+	ActionRest      ActionKind = "rest"
+	ActionMove      ActionKind = "move"
+	ActionOpen      ActionKind = "open"
+	ActionClose     ActionKind = "close"
+	ActionTake      ActionKind = "take"
+	ActionPut       ActionKind = "put"
+	ActionDrop      ActionKind = "drop"
+	ActionIntroduce ActionKind = "introduce"
 )
 
 type ActionArgs struct {
@@ -287,6 +288,11 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 		}
 		result.Observation = view
 		result.Message = message
+		for _, e := range residents {
+			if e.Kind == "actor_introduced" && e.Payload.Target == actorID {
+				result.Message += "\nThe " + nextBakery.Entities[e.ActorID].Name + " introduces themselves to you."
+			}
+		}
 		result.SelectedTarget = p.Observed.Target
 	}
 

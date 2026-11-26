@@ -44,6 +44,8 @@ func (b *Bakery) AvailableActions(scope Scope, actorID string) ([]ActionOption, 
 	for _, target := range view.Targets {
 		args := ActionArgs{Target: target.Ref}
 		switch b.Entities[target.Ref].Kind {
+		case Actor:
+			offer(ActionIntroduce, args)
 		case Door, Container:
 			offer(ActionOpen, args)
 			offer(ActionClose, args)

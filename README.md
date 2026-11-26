@@ -19,7 +19,7 @@ Phase 3 adds a playable text-command session, contextual actions and numbered ch
 
 In Phase 4 the baker and porter follow work routines, choose where to rest and keep private notebooks. The acceptance walkthrough follows a break the porter witnesses while the player is down the street. [Phase 4 plan](docs/plans/phase-4.md) · [Acceptance results](docs/plans/phase-4-results.md)
 
-Phase 5 begins with use-based endurance for the player and residents. [Phase 5 plan](docs/plans/phase-5.md)
+In Phase 5, the player and residents build endurance, feel relief after a tiring walk, and recognize people who have introduced themselves. [Phase 5 plan](docs/plans/phase-5.md)
 
 To validate a local content pack, run `go run ./cmd/packcheck PACK_DIRECTORY`. The [manifest guide](docs/content-packs.md) includes a bundled example.
 
@@ -99,6 +99,10 @@ go run ./cmd/sloptown bakery -seed 42 open "bakery door" move east move east ope
 
 The terminal shows the player's view on arrival and after each action. On the grid, `@` marks the player, `?` a square out of sight, and `#` a wall. Opening the lid changes the crate's square from `C` to `c*` as the spoon comes into view. Omit `-db` for a fresh in-memory session.
 
+### Planned demo controls
+
+The next terminal checkpoint will let you press Up or Down to browse actions available where you stand, then Enter to choose one. You’ll be able to type or select `walk to the porter` to get within speaking distance, or `walk to the crate` to approach it. Compass directions will still help distinguish routes to different places. In the current demo, type `actions` to see your choices and enter a direction to take a step. [Demo controls plan](docs/plans/phase-5.md#checkpoint-4-demo-controls-planned)
+
 ### Meet the baker
 
 ```sh
@@ -141,6 +145,19 @@ rest
 When you sit after a tiring walk, you feel relieved. The feeling lingers for two more turns. To see how it looks from the outside, start a fresh practice bakery and wait at the shopfront. On turn 10 you can see the porter’s shoulders relax, and on turn 12 you can see the same change in the baker. Walk two steps south at the start and you’ll miss the baker’s break.
 
 To keep the visit, add `-db practice.sqlite` when creating the timeline and use the same path when returning.
+
+### Introduce yourself
+
+In a fresh seed-42 `-practice -play` session, try these commands.
+
+```text
+south
+actions
+introduce yourself to the porter
+wait
+```
+
+The porter remembers meeting you. On the next turn the porter introduces themselves to the baker at the shopfront. The baker then recognizes the porter. To experience an introduction as the listener, start another fresh session and wait four turns at the shopfront. Your scene tells you who spoke to you and who you recognize.
 
 ### Inspect the residents' notebooks
 

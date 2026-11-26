@@ -156,6 +156,9 @@ func (b *Bakery) observe(scope Scope, actorID string, locations map[string]strin
 			locations[id] = location
 		}
 		lines = append(lines, "You see the "+label+" "+location+".")
+		if b.ContentVersion >= relationshipContentVersion && e.Kind == Actor && b.recognizes(actorID, id) {
+			lines = append(lines, "You recognize the "+e.Name+" from their introduction.")
+		}
 		if e.ReliefTurns == reliefDuration {
 			lines = append(lines, "The "+e.Name+"'s shoulders look relaxed.")
 		}

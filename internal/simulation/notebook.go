@@ -28,6 +28,14 @@ func (b *Bakery) applySpatial(event Event, effect spatialEffect) {
 func (b *Bakery) recordWitnesses(event Event) {
 	entry := NotebookEntry{Tick: event.Tick, SourceSequence: event.Sequence, Subject: event.ActorID, Target: event.Payload.Target}
 	switch event.Kind {
+	case "actor_introduced":
+		// Familiarity starts with the person addressed. Keep the source of
+		// their first introduction even if the speaker repeats it later.
+		if !b.recognizes(entry.Target, entry.Subject) {
+			entry.Action = ActionIntroduce
+			b.appendSighting(entry.Target, entry)
+		}
+		return
 	case "actor_rested":
 		if b.Entities[event.ActorID].Seated {
 			return // Only sitting down is observable.
@@ -48,12 +56,23 @@ func (b *Bakery) recordWitnesses(event Event) {
 		if err != nil || !view.hasTarget(entry.Subject) || (entry.Target != "" && !view.hasTarget(entry.Target)) {
 			continue
 		}
-		if b.Notebooks == nil {
-			b.Notebooks = make(map[string][]NotebookEntry)
-		}
-		// A staged timeline shares its old pages with the committed one.
-		b.Notebooks[id] = append(slices.Clip(b.Notebooks[id]), entry)
+		b.appendSighting(id, entry)
 	}
+}
+
+func (b *Bakery) appendSighting(owner string, entry NotebookEntry) {
+	if b.Notebooks == nil {
+		b.Notebooks = make(map[string][]NotebookEntry)
+	}
+	// A staged timeline shares its old pages with the committed one.
+	b.Notebooks[owner] = append(slices.Clip(b.Notebooks[owner]), entry)
+}
+
+// The listener's first introduction is the durable source of familiarity.
+func (b *Bakery) recognizes(listener, speaker string) bool {
+	return slices.ContainsFunc(b.Notebooks[listener], func(e NotebookEntry) bool {
+		return e.Action == ActionIntroduce && e.Subject == speaker
+	})
 }
 
 // Notebook returns one actor's own observations for read-only inspection.
@@ -72,6 +91,7 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 		if b.ContentVersion < notebookContentVersion || b.Entities[owner].Kind != Actor || len(entries) == 0 {
 			return fmt.Errorf("invalid saved notebook for %q", owner)
 		}
+		introduced := make(map[string]bool)
 		var prev NotebookEntry
 		for _, e := range entries {
 			if e.Tick <= 0 || e.Tick < prev.Tick || e.Tick > tick || e.SourceSequence <= prev.SourceSequence ||
@@ -79,6 +99,11 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 				return fmt.Errorf("invalid notebook sighting for %q at sequence %d", owner, e.SourceSequence)
 			}
 			switch e.Action {
+			case ActionIntroduce:
+				if b.ContentVersion < relationshipContentVersion || e.Target != owner || introduced[e.Subject] {
+					return fmt.Errorf("invalid introduction for %q at sequence %d", owner, e.SourceSequence)
+				}
+				introduced[e.Subject] = true
 			case ActionRest:
 				if e.Target != "" {
 					return fmt.Errorf("unexpected target in a rest sighting")

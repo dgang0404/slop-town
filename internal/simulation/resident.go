@@ -56,6 +56,9 @@ func (b *Bakery) residentTurn(scope Scope, role string, clock *Timeline) (spatia
 	}
 	actor := b.Entities[id]
 	if b.ContentVersion < restContentVersion || actor.Fatigue < fatigueLimit {
+		if b.ContentVersion >= relationshipContentVersion && actor.Placement.Cell == goal && goal.X == door.X-1 && !actor.Seated {
+			return b.shopfrontIntroduction(scope, id), nil, nil
+		}
 		return b.stepToward(scope, id, goal, doorID), nil, nil
 	}
 	goal.X = door.X + 2 // The resting place behind the prep area.
@@ -114,5 +117,25 @@ func (b *Bakery) stepToward(scope Scope, id string, goal CellPosition, doorID st
 			effect, _ = b.resolveSpatial(id, p)
 		}
 	}
+	return effect
+}
+
+// A worker with a free turn at the shopfront can introduce themselves to
+// someone sharing the spot. Work, travel and fatigue keep their priority.
+func (b *Bakery) shopfrontIntroduction(scope Scope, speaker string) spatialEffect {
+	at := b.Entities[speaker].Placement
+	var listener string
+	for id, e := range b.Entities {
+		if id == speaker || e.Kind != Actor || e.Placement != at || e.Seated || b.recognizes(speaker, id) || b.recognizes(id, speaker) {
+			continue
+		}
+		if listener == "" || id < listener {
+			listener = id
+		}
+	}
+	if listener == "" {
+		return spatialEffect{}
+	}
+	effect, _ := b.resolveSpatial(speaker, Proposal{Scope: scope, Action: ActionIntroduce, Args: ActionArgs{Target: listener}})
 	return effect
 }

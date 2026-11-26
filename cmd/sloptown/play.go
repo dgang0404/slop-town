@@ -13,7 +13,7 @@ import (
 	"github.com/dgang0404/slop-town/internal/simulation"
 )
 
-const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. Short names work. Use it for the last object you acted on. Type actions for choices here, look to see the scene again or quit to leave."
+const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. Use introduce yourself to NAME when available. Short names work. Use it for the last object you acted on. Type actions for choices here, look to see the scene again or quit to leave."
 
 type bakerySession struct {
 	observe   func() (simulation.Scene, error)
@@ -131,6 +131,8 @@ func actionCommand(option simulation.ActionOption) string {
 		return string(option.Action)
 	case simulation.ActionMove:
 		return "go " + string(option.Args.Direction)
+	case simulation.ActionIntroduce:
+		return "introduce yourself to the " + option.Args.Target
 	case simulation.ActionPut:
 		return "put the " + option.Args.Target + " in the " + option.Args.Container
 	default:
@@ -182,6 +184,11 @@ func parseBakeryAction(words []string) (simulation.ActionKind, simulation.Action
 			return "", args, errors.New("Choose north, south, east or west.")
 		}
 		return simulation.ActionMove, simulation.ActionArgs{Direction: direction(rest[0])}, nil
+	case "introduce":
+		if len(rest) < 3 || rest[0] != "yourself" || rest[1] != "to" || noun(rest[2:]) == "" {
+			return "", args, errors.New("Use introduce yourself to NAME.")
+		}
+		return simulation.ActionIntroduce, simulation.ActionArgs{Target: noun(rest[2:])}, nil
 	case "put":
 		i := slices.IndexFunc(rest, func(w string) bool { return w == "in" || w == "into" })
 		if i >= 0 {

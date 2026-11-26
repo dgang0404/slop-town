@@ -81,13 +81,14 @@ type BakerySetup struct {
 }
 
 const (
-	residentContentVersion    = 2 // The original work routine.
-	restContentVersion        = 3
-	notebookContentVersion    = 4
-	personalityContentVersion = 5
-	practiceContentVersion    = 6
-	emotionContentVersion     = 7
-	fatigueLimit              = 5 // Steps since the last rest, capped during a break.
+	residentContentVersion     = 2 // The original work routine.
+	restContentVersion         = 3
+	notebookContentVersion     = 4
+	personalityContentVersion  = 5
+	practiceContentVersion     = 6
+	emotionContentVersion      = 7
+	relationshipContentVersion = 8
+	fatigueLimit               = 5 // Steps since the last rest, capped during a break.
 )
 
 func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, error) {
@@ -113,7 +114,7 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 	}
 	b.ContentVersion = personalityContentVersion
 	if setup.Practice {
-		b.ContentVersion = emotionContentVersion
+		b.ContentVersion = relationshipContentVersion
 	}
 	*clock = staged
 	return b, nil

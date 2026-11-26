@@ -50,6 +50,10 @@ func runActorInspection(command string, args []string, stdout, stderr io.Writer)
 	}
 	for _, e := range entries {
 		saw := "sit down"
+		if e.Action == simulation.ActionIntroduce {
+			fmt.Fprintf(stdout, "Tick %d, event %d — %s introduced themselves to you.\n", e.Tick, e.SourceSequence, e.Subject)
+			continue
+		}
 		if e.Action != simulation.ActionRest {
 			saw = string(e.Action) + " " + e.Target
 		}

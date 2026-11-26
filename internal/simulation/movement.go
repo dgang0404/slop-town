@@ -86,7 +86,7 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 		if !validID(args.Target) || !validID(args.Container) || args != (ActionArgs{Target: args.Target, Container: args.Container}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Choose an item and a destination container."}
 		}
-	case ActionOpen, ActionClose, ActionTake, ActionDrop:
+	case ActionOpen, ActionClose, ActionTake, ActionDrop, ActionIntroduce:
 		if !validID(args.Target) || args != (ActionArgs{Target: args.Target}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Choose one target."}
 		}
@@ -103,6 +103,17 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 		if failure != nil {
 			return spatialEffect{}, failure
 		}
+	}
+	if action == ActionIntroduce {
+		if b.ContentVersion < relationshipContentVersion {
+			return spatialEffect{}, &actionFailure{"action_unavailable", "Introductions are unavailable here."}
+		}
+		listener := b.Entities[args.Target]
+		if listener.Kind != Actor || !inReach(actor.Placement.Cell, listener.Placement.Cell) {
+			return spatialEffect{}, targetUnavailable()
+		}
+		return spatialEffect{kind: "actor_introduced", payload: EventPayload{Target: args.Target},
+			entityID: view.ObserverID, entity: actor, message: "You introduce yourself to the " + listener.Name + "."}, nil
 	}
 	if action == ActionOpen || action == ActionClose {
 		return b.setOpen(actor.Placement.Cell, args.Target, action == ActionOpen)
