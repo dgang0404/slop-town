@@ -88,20 +88,20 @@ func TestResidentCheckInRequiresBothWorkers(t *testing.T) {
 		b.Entities[id] = e
 	}
 	turn := Event{Scope: c.scope, Tick: 4, ActorID: "bakery/player", Kind: "actor_waited"}
-	if got := b.residentCheckIn(turn); got.kind != "" {
+	if got := b.residentConversation(turn); got.kind != "" {
 		t.Fatal("strangers began a familiar check-in", got)
 	}
 	// Only the porter recognizes the baker, so the porter initiates.
 	b.appendSighting(porter, NotebookEntry{Tick: 1, SourceSequence: 2, Action: ActionIntroduce, Subject: baker, Target: porter})
-	if got := b.residentCheckIn(turn); got.entityID != porter || got.payload.Target != baker {
+	if got := b.residentConversation(turn); got.entityID != porter || got.payload.Target != baker {
 		t.Fatal(got)
 	}
 	turn.Kind, turn.Payload.Target = "actors_conversed", porter
-	if got := b.residentCheckIn(turn); got.kind != "" {
+	if got := b.residentConversation(turn); got.kind != "" {
 		t.Fatal("interrupted a player's exchange", got)
 	}
 	turn.Kind, turn.Tick = "actor_waited", 5
-	if got := b.residentCheckIn(turn); got.kind != "" {
+	if got := b.residentConversation(turn); got.kind != "" {
 		t.Fatal("skipped the trip to the prep area", got)
 	}
 }

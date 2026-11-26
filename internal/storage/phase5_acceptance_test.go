@@ -23,7 +23,7 @@ func TestPhase5Acceptance(t *testing.T) {
 		if _, err := storage.OpenBakerySceneWithSetup(path, scope, 42, player, simulation.BakerySetup{Practice: true}); err != nil {
 			t.Fatal(err)
 		}
-		usePhase5Routines(t, path, scope)
+		usePracticeVersion(t, path, scope, 8)
 		if _, err := storage.SaveCheckpoint(path, scope); err != nil {
 			t.Fatal(err)
 		}

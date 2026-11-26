@@ -15,7 +15,7 @@ type NotebookEntry struct {
 	Subject        string        `json:"subject"`
 	Action         ActionKind    `json:"action"`
 	Target         string        `json:"target,omitempty"`
-	Reported       uint64        `json:"reported,omitempty"`  // Firsthand entry the speaker described.
+	Reported       uint64        `json:"reported,omitempty"`  // Entry in the immediate teller's notebook.
 	Condition      workCondition `json:"condition,omitempty"` // Listener's answer during this owner's own exchange.
 	Asked          bool          `json:"asked,omitempty"`
 }
@@ -90,16 +90,24 @@ func (b *Bakery) appendSighting(owner string, entry NotebookEntry) {
 	b.Notebooks[owner] = append(slices.Clip(b.Notebooks[owner]), entry)
 }
 
-// firsthandAt looks up a participant or eyewitness memory by event sequence.
-func (b *Bakery) firsthandAt(owner string, sequence uint64) (NotebookEntry, bool) {
+func (b *Bakery) entryAt(owner string, sequence uint64) (NotebookEntry, bool) {
 	entries := b.Notebooks[owner]
 	i, found := slices.BinarySearchFunc(entries, sequence, func(entry NotebookEntry, seq uint64) int {
 		return cmp.Compare(entry.SourceSequence, seq)
 	})
-	if !found || entries[i].Reported != 0 {
+	if !found {
 		return NotebookEntry{}, false
 	}
 	return entries[i], true
+}
+
+// firsthandAt looks up a participant or eyewitness memory by event sequence.
+func (b *Bakery) firsthandAt(owner string, sequence uint64) (NotebookEntry, bool) {
+	e, found := b.entryAt(owner, sequence)
+	if e.Reported != 0 {
+		return NotebookEntry{}, false
+	}
+	return e, found
 }
 
 // The listener's first introduction is the durable source of familiarity.
@@ -143,7 +151,10 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 					}
 					break
 				}
-				fact, ok := b.firsthandAt(e.Subject, e.Reported)
+				fact, ok := b.entryAt(e.Subject, e.Reported)
+				if ok && fact.Reported != 0 {
+					_, ok = b.reportedObservation(fact)
+				}
 				if !ok || fact.Tick > e.Tick || e.Reported >= e.SourceSequence || e.Target != "" || b.ContentVersion < relationshipContentVersion {
 					return fmt.Errorf("invalid reported sighting for %q at sequence %d", owner, e.SourceSequence)
 				}

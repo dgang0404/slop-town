@@ -89,6 +89,7 @@ const (
 	emotionContentVersion      = 7
 	relationshipContentVersion = 8
 	conversationContentVersion = 9
+	reportContentVersion       = 10
 	fatigueLimit               = 5 // Steps since the last rest, capped during a break.
 )
 
@@ -115,7 +116,7 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 	}
 	b.ContentVersion = personalityContentVersion
 	if setup.Practice {
-		b.ContentVersion = conversationContentVersion
+		b.ContentVersion = reportContentVersion
 	}
 	*clock = staged
 	return b, nil

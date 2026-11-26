@@ -13,11 +13,11 @@ import (
 	"github.com/dgang0404/slop-town/internal/storage"
 )
 
-// These Phase 5 golden histories start from the version-eight practice layout.
-func usePhase5Routines(t *testing.T, path string, scope simulation.Scope) {
+// Replay historical practice histories from the original tick-zero rules.
+func usePracticeVersion(t *testing.T, path string, scope simulation.Scope, version int) {
 	t.Helper()
-	execSQL(t, path, `UPDATE timeline_state SET bakery=CAST(json_set(bakery, '$.bakery.ContentVersion', 8) AS BLOB)
-		WHERE world=? AND timeline=? AND last_sequence=0`, scope.WorldID, scope.TimelineID)
+	execSQL(t, path, `UPDATE timeline_state SET bakery=CAST(json_set(bakery, '$.bakery.ContentVersion', ?) AS BLOB)
+		WHERE world=? AND timeline=? AND last_sequence=0`, version, scope.WorldID, scope.TimelineID)
 }
 
 func TestIntroductionAcrossRestart(t *testing.T) {
@@ -38,7 +38,7 @@ func TestIntroductionAcrossRestart(t *testing.T) {
 	}
 	scope := simulation.Scope{WorldID: "bakery", TimelineID: "main"}
 	run("", "bakery", "-practice", "-seed", "42")
-	usePhase5Routines(t, path, scope)
+	usePracticeVersion(t, path, scope, 8)
 	run("", "checkpoint", "-world", "bakery")
 	play := func(script string) string { return run(script, "bakery", "-play", "-batch", "visit") }
 	if out := play("south\nactions\n"); !strings.Contains(out, "introduce yourself to the porter") {

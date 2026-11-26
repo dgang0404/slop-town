@@ -103,8 +103,20 @@ On seed 42, the player walked around a corner inside the bakery on turn four. Bo
 
 Interrupting the SQLite write for turn four rolled back the meeting and both memories. After reopening, retrying the visit recorded each exchange once. Replay from sequences 0, 12 and 15 reached tick 7, sequence 25, with SHA-256 `650517bfbf9fe414a7d2f57a937b520d75ef56fc99d0f7e3d0bf8eda05606a08`. A version-eight save created by `3d5aadc` retained its journal text and replay hash through reopening and retry. The offline build and test suite, both smoke runs and three race-detector runs passed. The terminal also cross-built for Windows amd64 and macOS arm64. [Restart and replay walkthrough](../../internal/storage/check_in_test.go)
 
+## Checkpoint 7 — news from an eyewitness
+
+In new practice bakeries (content version 10), familiar workers can use a lull to describe an act they personally saw. A report can cover someone sitting down, opening a door or container, or closing one. The worker chooses a sighting they have yet to share with that coworker. Work, rest, introductions and the eight-turn interval between routine conversations still govern when they can speak. When neither worker has news to share, they can check in as before. [Try the seed-42 visit](../../README.md#find-out-who-saw-you)
+
+“What have you seen around here?” draws on the listener's firsthand memories. “What have you heard from other people?” lets them repeat an eyewitness's account and name its source. A player can likewise pass on a report heard directly from a witness. This checkpoint covers one retelling. The recipient can confirm who told the story. The journal quotes the person who spoke to its owner.
+
+### Checkpoint 7 results
+
+The seed-42 porter saw the player sit down on turn one, then told the baker at the shopfront on turn four while the player was out of sight. The player first learned about that exchange by asking the baker on turn six. Their notebook links the baker's reply to the porter's report and then to the original sighting. In a separate test scene, the porter saw a miller open a crate that later closed. The baker could report who saw it open without claiming to have seen inside. [Simulation tests](../../internal/simulation/report_test.go)
+
+Interrupting the SQLite write at either conversation rolled back that turn. Retrying after reopening preserved one copy of each account. Replay from sequences 0, 12 and 19 reached tick 7, sequence 25, with SHA-256 `1e33ef756f4c08e5d5030fb8171d7ae1eecc493f0d4d07bfb0d8f8d8cfe693bc`. A save made by checkpoint 6 at `a169e8f` kept its original journal and replay hash. [Restart and replay test](../../internal/storage/report_test.go)
+
 ## Later narrative work
 
-The next conversation checkpoint is for a worker to pass along something they witnessed. If a second worker later tells the player, their account should name the original witness and preserve what that person actually knew.
+The next conversation checkpoint is to ask the named eyewitness about a particular report. The question should become available after the player hears the account, and the witness should answer from their own memory.
 
 A world calendar can supply day and season boundaries for longer chronicles. Illustrated export follows the plain-text edition.

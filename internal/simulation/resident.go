@@ -43,7 +43,7 @@ func (b *Bakery) advanceResidents(clock *Timeline, primary Event) ([]Event, erro
 	// A free spell belongs to the workers only when both finished their other
 	// business. Neither gives up movement, an introduction or a needed rest.
 	if b.ContentVersion >= conversationContentVersion && len(events) == 0 {
-		if effect := b.residentCheckIn(primary); effect.kind != "" {
+		if effect := b.residentConversation(primary); effect.kind != "" {
 			action := primary.child(primary.Sequence+1, effect.entityID, "spatial", effect.kind, effect.payload)
 			b.applySpatial(action, effect)
 			events = append(events, action)
@@ -154,9 +154,9 @@ func (b *Bakery) shopfrontIntroduction(scope Scope, speaker string) spatialEffec
 	return effect
 }
 
-// Familiar coworkers can check in during a lull. One conversation per pair in
+// Familiar coworkers can talk during a lull. One conversation per pair in
 // eight turns leaves room for the two four-turn legs of their work routine.
-func (b *Bakery) residentCheckIn(primary Event) spatialEffect {
+func (b *Bakery) residentConversation(primary Event) spatialEffect {
 	prefix := url.PathEscape(b.WorldID) + "/"
 	baker, porter := prefix+"baker", prefix+"porter"
 	if primary.ActorID == baker || primary.ActorID == porter {
@@ -177,10 +177,15 @@ func (b *Bakery) residentCheckIn(primary Event) spatialEffect {
 			return spatialEffect{}
 		}
 	}
-	entries := b.Notebooks[speaker]
-	for i := len(entries) - 1; i >= 0 && primary.Tick-entries[i].Tick < 8; i-- {
-		if entries[i].Condition != "" && entries[i].Subject == listener {
-			return spatialEffect{}
+	if b.recentConversation(speaker, listener, primary.Tick) || b.recentConversation(listener, speaker, primary.Tick) {
+		return spatialEffect{}
+	}
+	if b.ContentVersion >= reportContentVersion {
+		if effect := b.residentReport(primary.Scope, speaker, listener); effect.kind != "" {
+			return effect
+		}
+		if effect := b.residentReport(primary.Scope, listener, speaker); effect.kind != "" {
+			return effect
 		}
 	}
 	view, err := b.Observe(primary.Scope, speaker)
@@ -189,4 +194,15 @@ func (b *Bakery) residentCheckIn(primary Event) spatialEffect {
 	}
 	effect, _ := b.checkIn(view, listener)
 	return effect
+}
+
+func (b *Bakery) recentConversation(actor, other string, tick int64) bool {
+	entries := b.Notebooks[actor]
+	for i := len(entries) - 1; i >= 0 && tick-entries[i].Tick < 8; i-- {
+		e := entries[i]
+		if e.Subject == other && (e.Condition != "" || (b.ContentVersion >= reportContentVersion && e.Reported != 0)) {
+			return true
+		}
+	}
+	return false
 }

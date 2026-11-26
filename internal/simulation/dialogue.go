@@ -15,14 +15,15 @@ type DialogueChoice struct {
 	Words string
 }
 
-// Exchange keeps player-facing lines or the intent and answer of a background
-// check-in. Each report source points into the notebook of the person who spoke.
+// Exchange keeps player-facing lines or the intent of a background conversation.
+// Each report source points into the notebook of the person who spoke.
 type Exchange struct {
 	Words         string        `json:",omitempty"`
 	Reply         string        `json:",omitempty"`
 	SpeakerSource uint64        `json:",omitempty"`
 	ReplySource   uint64        `json:",omitempty"`
 	Question      SpeechLine    `json:",omitzero"`
+	Statement     SpeechLine    `json:",omitzero"`
 	Condition     workCondition `json:",omitempty"`
 }
 
@@ -52,42 +53,40 @@ func (b *Bakery) dialogueChoices(view Observation, listener string) []DialogueCh
 	const limit = 11
 	var choices []DialogueChoice
 	seen := make(map[string]bool)
-	add := func(topic, intent, tone string, source uint64, words string) {
-		if len(choices) < limit && !seen[words] {
-			choices = append(choices, DialogueChoice{SpeechLine{topic, intent, tone, source}, words})
+	add := func(line SpeechLine, words string) {
+		if words != "" && len(choices) < limit && !seen[words] {
+			choices = append(choices, DialogueChoice{line, words})
 			seen[words] = true
 		}
 	}
-	add("greeting", "greet", "warm", 0, "Hello.")
-	add(checkInQuestion.Topic, checkInQuestion.Intent, checkInQuestion.Tone, 0, checkInWords)
-	add("news", "ask", "curious", 0, "What have you seen around here?")
+	add(SpeechLine{Topic: "greeting", Intent: "greet", Tone: "warm"}, "Hello.")
+	add(checkInQuestion, checkInWords)
+	add(SpeechLine{Topic: "news", Intent: "ask", Tone: "curious"}, "What have you seen around here?")
 
 	// Most recent memories first. Only a report addressed to this speaker
 	// can unlock a question about what the listener told them.
 	entries := b.Notebooks[view.ObserverID]
-	for i := len(entries) - 1; i >= 0 && len(choices) < limit; i-- {
-		e := entries[i]
-		if e.Reported != 0 {
-			if e.Subject == listener {
-				if fact, ok := b.firsthandAt(listener, e.Reported); ok {
-					add(fact.Subject, "confirm", "careful", fact.SourceSequence, b.sightingWords(fact, view.ObserverID, true))
-				}
-			}
-		} else {
-			add(e.Subject, "share", "plain", e.SourceSequence, b.sightingWords(e, listener, false))
-		}
+	memoryLimit := limit
+	if b.ContentVersion >= reportContentVersion {
+		memoryLimit -= 2 // Keep the questions about conversations and secondhand news available.
+	}
+	for i := len(entries) - 1; i >= 0 && len(choices) < memoryLimit; i-- {
+		add(b.memoryLine(entries[i], view.ObserverID, listener))
 	}
 	if b.ContentVersion >= conversationContentVersion {
-		add("conversation", "ask", "curious", 0, "Have you had a chance to talk with anyone lately?")
+		add(SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}, "Have you had a chance to talk with anyone lately?")
+	}
+	if b.ContentVersion >= reportContentVersion {
+		add(SpeechLine{Topic: "hearsay", Intent: "ask", Tone: "curious"}, "What have you heard from other people?")
 	}
 	for _, obj := range view.Targets {
 		if obj.Ref == listener {
 			continue
 		}
 		if b.Entities[obj.Ref].Kind == Actor {
-			add(obj.Ref, "ask", "curious", 0, "Have you met the "+obj.Name+"?")
+			add(SpeechLine{Topic: obj.Ref, Intent: "ask", Tone: "curious"}, "Have you met the "+obj.Name+"?")
 		} else {
-			add(obj.Ref, "notice", "curious", 0, "Can you see the "+obj.Name+" from there?")
+			add(SpeechLine{Topic: obj.Ref, Intent: "notice", Tone: "curious"}, "Can you see the "+obj.Name+" from there?")
 		}
 	}
 	return choices
@@ -111,22 +110,10 @@ func (b *Bakery) sightingWords(fact NotebookEntry, hearer string, confirm bool) 
 		}
 		return "The " + name + " introduced themselves to me."
 	}
-	verb := "sit down"
-	if fact.Action != ActionRest {
-		verb = string(fact.Action) + " the " + b.Entities[fact.Target].Name
-	}
-	who := "the " + name
-	if fact.Subject == hearer {
-		if confirm {
-			who = "me"
-		} else {
-			who = "you"
-		}
-	}
 	if confirm {
-		return "You saw " + who + " " + verb + "?"
+		return "You saw " + b.observedAct(fact, hearer, "") + "?"
 	}
-	return "I saw " + who + " " + verb + "."
+	return "I saw " + b.observedAct(fact, "", hearer) + "."
 }
 
 func (b *Bakery) speak(view Observation, listener string, line SpeechLine) (spatialEffect, *actionFailure) {
@@ -147,6 +134,15 @@ func (b *Bakery) speak(view Observation, listener string, line SpeechLine) (spat
 		if choice.Line != line {
 			continue
 		}
+		if line.Intent == "share" || line.Intent == "relay" {
+			effect, failure := b.transferReport(view, listener, line)
+			if failure == nil {
+				x := &effect.payload.Dialogue
+				x.Words, x.Reply = choice.Words, reportThanks
+				effect.message = x.message(b.Entities[listener].Name)
+			}
+			return effect, failure
+		}
 		listening, err := b.Observe(view.Scope, listener)
 		if err != nil {
 			return spatialEffect{}, targetUnavailable()
@@ -164,8 +160,8 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 	line := choice.Line
 	x := Exchange{Words: choice.Words}
 	switch line.Intent {
-	case "share":
-		x.SpeakerSource, x.Reply = line.Source, "Thanks for telling me."
+	case "confirm_source":
+		x.Reply = "Yes. That's who told me."
 	case "confirm":
 		x.Reply = "Yes. That's what I said."
 	case "greet":
@@ -180,6 +176,8 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 		}
 	case "ask":
 		switch line.Topic {
+		case "hearsay":
+			x.Reply = "No one's told me what they saw."
 		case "news":
 			x.Reply = "Nothing comes to mind."
 		case "conversation":
@@ -190,6 +188,14 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 		entries := b.Notebooks[listener]
 		for i := len(entries) - 1; i >= 0; i-- {
 			fact := entries[i]
+			if line.Topic == "hearsay" {
+				if sight, ok := b.reportedObservation(fact); ok {
+					x.Reply = b.relayWords(fact, sight, listener, speaker, false)
+					x.ReplySource = fact.SourceSequence
+					break
+				}
+				continue
+			}
 			if (line.Topic == "news" && fact.Reported == 0) || (line.Topic == "conversation" && fact.Condition != "") ||
 				(fact.Action == ActionIntroduce && fact.Subject == line.Topic) {
 				x.Reply = b.sightingWords(fact, speaker, false)

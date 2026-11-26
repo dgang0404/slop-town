@@ -26,6 +26,7 @@ func TestMissedCheckInAcrossRestart(t *testing.T) {
 		}
 		return head
 	}
+	usePracticeVersion(t, path, scope, 9)
 	genesis := checkpoint()
 	play := newAcceptancePlayer(t, "visit")
 	const approach = "wait\neast\neast\n"
@@ -58,7 +59,7 @@ func TestMissedCheckInAcrossRestart(t *testing.T) {
 	head := checkpoint()
 	for _, from := range []uint64{genesis.Sequence, before.Sequence, after.Sequence} {
 		replayed, err := storage.Replay(path, scope, from)
-		if err != nil || replayed != head || head.Tick != 7 {
+		if err != nil || replayed != head || head.Tick != 7 || head.Hash != "650517bfbf9fe414a7d2f57a937b520d75ef56fc99d0f7e3d0bf8eda05606a08" {
 			t.Fatal(from, replayed, err)
 		}
 	}

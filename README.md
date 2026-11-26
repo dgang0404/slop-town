@@ -21,7 +21,7 @@ In Phase 4 the baker and porter follow work routines, choose where to rest and k
 
 In Phase 5, the player and residents build endurance, feel relief after a tiring walk, and recognize people who have introduced themselves. [Phase 5 plan](docs/plans/phase-5.md) · [Acceptance results](docs/plans/phase-5-results.md)
 
-The Phase 7 bakery narrator offers brief and story settings. Both describe what your character notices, with new details in bold on supported terminals. In the practice bakery, workers can talk while you are elsewhere. You can ask either person about the conversation later. The player journal recalls the visit and its conversations in chapters and can be exported as plain text. [Phase 7 presentation plan](docs/plans/phase-7.md)
+The Phase 7 bakery narrator offers brief and story settings. Both describe what your character notices, with new details in bold on supported terminals. In the practice bakery, workers can talk while you are elsewhere. Ask what someone has heard and they can tell you who witnessed it. The player journal recalls the visit and its conversations in chapters and can be exported as plain text. [Phase 7 presentation plan](docs/plans/phase-7.md)
 
 To validate a local content pack, run `go run ./cmd/packcheck PACK_DIRECTORY`. The [manifest guide](docs/content-packs.md) includes a bundled example.
 
@@ -129,6 +129,12 @@ talk to porter
 Stepping south takes you around a corner inside the bakery. While you are out of sight, the baker checks in on the porter at the shopfront. Your first journal reading covers your walk. Back within reach, choose **“Have you had a chance to talk with anyone lately?”** The porter will tell you what they said. You can ask a follow-up or type `cancel` and read `journal` again to see the porter's account.
 
 This routine runs in newly created practice bakeries. To try it alongside an existing save, add `-practice -timeline coworker-visit` when starting a fresh timeline in that file.
+
+### Find out who saw you
+
+Start a fresh practice bakery with `go run ./cmd/sloptown bakery -practice -play -seed 42`. Enter `rest`, `east`, `east`, `south`, then `north`. The porter saw you sit down at the start of the visit. While you were around the corner, the porter told the baker.
+
+Enter `talk to baker` and choose **“What have you heard from other people?”** The baker answers, “The porter told me they saw you sit down.” Choose **“Did the porter tell you they saw me sit down?”** to confirm the source. Type `journal` to read the baker's account. On another fresh visit, use `wait` in place of `rest` and ask the same question to see how the answer changes.
 
 ### Read your journal
 
