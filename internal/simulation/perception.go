@@ -28,8 +28,8 @@ var receiptDescriptions = map[PerceptionKind]string{
 
 func (k PerceptionKind) Description() string { return receiptDescriptions[k] }
 
-// JournalObservation preserves what the observer read, including descriptions
-// of discoveries and any wording with no recognized personal perception.
+// JournalObservation preserves the observer's location or personal sensations,
+// including any wording with no recognized perception kind.
 type JournalObservation struct {
 	Kind PerceptionKind
 	Text string

@@ -28,7 +28,7 @@ type JournalEntry struct {
 	IntroducedTo ObservedTarget
 	Witnessed    []WitnessedAction
 	Observations []JournalObservation
-	FirstSeen    []ObservedTarget // From this character's saved observation.
+	FirstSeen    []Discovery // From this character's saved observation.
 }
 
 // Journal reads existing history on demand. Both backends visit committed events
@@ -132,7 +132,7 @@ type journalMemory struct {
 
 // A version-one receipt pairs its ordered selectable targets with one visible
 // description each. Preserve the wording and location the observer saw then.
-func (m *journalMemory) observe(v Observation) (place JournalObservation, observations []JournalObservation, firstSeen []ObservedTarget) {
+func (m *journalMemory) observe(v Observation) (place JournalObservation, observations []JournalObservation, firstSeen []Discovery) {
 	location, details, _ := strings.Cut(v.Text, "\n")
 	place = personalObservation(location)
 	var self, descriptions []string
@@ -153,12 +153,11 @@ func (m *journalMemory) observe(v Observation) (place JournalObservation, observ
 			continue
 		}
 		m.seen[target.Ref] = true
-		firstSeen = append(firstSeen, target)
-		description := "You see the " + target.Name + "."
+		var description string
 		if len(descriptions) == len(v.Targets) {
 			description = descriptions[i]
 		}
-		observations = append(observations, JournalObservation{Text: description})
+		firstSeen = append(firstSeen, discoveryFromReceipt(target, description))
 	}
 	return place, observations, firstSeen
 }

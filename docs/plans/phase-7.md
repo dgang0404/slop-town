@@ -200,3 +200,17 @@ The offline build, full test suite, two seed-42 smoke runs and three race-detect
 Phase 7 supplies the offline narrator. Phase 10 adds optional AI adapters, with a local model first and opt-in cloud providers after that. For a crate opening, either renderer should receive one scene packet containing the accepted action, the crate, and the spoon the character just saw. The model can phrase the discovery. The simulation decides what the crate contains and whether opening it revealed anything.
 
 Before showing generated prose, check its claims against the packet and the character’s knowledge. If the provider is unavailable or adds an unsupported detail, use the offline text. Record accepted output against the triggering event and timeline so reopening or replaying a visit can reuse the wording. [Master design, sections 3, 17, 38 and 50](../design/Slop_Town_Master_Design_Revised_v7.docx)
+
+## Checkpoint 14 — where I first saw it
+
+Opening the crate can now give the journal a firsthand discovery with the object’s reference, its visible label, and where the character saw it. The bakery distinguishes an object at the character’s feet, in a direction, in a named container, or in their own inventory. A version 1 receipt can name a container without identifying which of two identically named containers it was. The journal keeps exactly that much detail. A spoken mention stays with its speaker. A sketch appears at the first sighting of the illustrated object.
+
+The terminal calls the simulation’s journal API locally. With a save file, the storage layer reads the character’s receipts and events from SQLite. An in-memory session supplies the same facts directly. Both journal editions fill in the same bundled English phrases. For instance, “I saw the {object} in the {container}” can describe a spoon in a crate or a key in a box. The seven first-person phrases for places and sensations also live in that file. Rebuilding the game bundles any wording edits. [English journal phrases](../../cmd/sloptown/journal.en.json)
+
+### Checkpoint 14 results
+
+A seed-42 save made by `4c18125` reopened with the spoon still hidden. After opening the crate, taking the spoon outside and dropping it, the journal still placed the discovery inside the crate. The old and new builds produced byte-identical plain and illustrated books before and after the discovery. Replay from sequences 0 and 8 reached tick 9, sequence 18, with SHA-256 `d776e5add24b8b06b5bbca7384064bef640be6d271df2b50692fcfff4c20d646`. Brief and story walkthroughs also matched across builds when run from an empty directory without a save file.
+
+A separate test gave two wooden spoons the same name and placed one on the street and one inside the crate. Each kept its own first sighting. In an illustrated journal test, hearing about a spoon produced dialogue, and seeing it later produced the discovery paragraph and its sketch. [Discovery tests](../../internal/simulation/discovery_test.go) · [Illustrated journal tests](../../cmd/sloptown/journal_illustrated_test.go)
+
+The full offline build and tests, two seed-42 smoke runs and three race-detector runs passed. The terminal also cross-built for Windows amd64 and macOS arm64.

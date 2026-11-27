@@ -36,7 +36,7 @@
   {{range .Chapters}}<section>
     <h2><small>Chapter {{.Number}}</small> {{.Title}}</h2>
     {{range .Passages}}<div class="passage"><p>{{.Text}}</p>
-      <div class="sketches">{{range $target := .FirstSeen}}{{with sketch $target}}<figure><img width="600" height="400" src="{{.}}" alt="Ink sketch of the {{$target.Name}}."></figure>{{end}}{{end}}</div>
+      <div class="sketches">{{range $discovery := .FirstSeen}}{{with sketch $discovery.Target}}<figure><img width="600" height="400" src="{{.}}" alt="Ink sketch of the {{$discovery.Target.Name}}."></figure>{{end}}{{end}}</div>
     </div>{{end}}
   </section>
   {{else}}<p>{{.Empty}}</p>{{end}}

@@ -36,9 +36,9 @@ func TestJournalReadsPersonalPerceptionsFromVersionOne(t *testing.T) {
 		{Kind: SittingDown, Text: "You are sitting down."},
 		{Kind: LingeringRelief, Text: "A little of that relief lingers."},
 		{Text: "You hear rain."},
-		{Text: "You see the wooden spoon here."},
 	}
-	if place.Kind != InBakeryDoorway || !slices.Equal(changes, want) || !slices.Equal(seen, []ObservedTarget{spoon}) {
+	wantDiscovery := Discovery{Target: spoon, Label: spoon.Name, Location: LocationHere, Text: "You see the wooden spoon here."}
+	if place.Kind != InBakeryDoorway || !slices.Equal(changes, want) || !slices.Equal(seen, []Discovery{wantDiscovery}) {
 		t.Fatal(place, changes, seen)
 	}
 	if _, changes, seen = memory.observe(view); len(changes) != 0 || len(seen) != 0 {

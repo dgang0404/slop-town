@@ -83,8 +83,9 @@ func TestIllustratedJournalFollowsTheSpoon(t *testing.T) {
 func TestIllustratedJournalKeepsQuotedWordsAsText(t *testing.T) {
 	entries := []simulation.JournalEntry{{
 		Conversation: simulation.JournalSpeech{With: "baker", Words: "I heard about a wooden spoon.", Reply: "Ask Kit & <Jo>."},
-		FirstSeen: []simulation.ObservedTarget{
-			{Ref: "bakery/other", Name: "wooden spoon"}, {Ref: "bakery/spoon", Name: "wooden spoon rack"},
+		FirstSeen: []simulation.Discovery{
+			{Target: simulation.ObservedTarget{Ref: "bakery/other", Name: "wooden spoon"}, Label: "wooden spoon", Location: simulation.LocationHere},
+			{Target: simulation.ObservedTarget{Ref: "bakery/spoon", Name: "wooden spoon rack"}, Label: "wooden spoon rack", Location: simulation.LocationHere},
 		},
 	}}
 	var out bytes.Buffer
@@ -101,5 +102,32 @@ func TestIllustratedJournalKeepsQuotedWordsAsText(t *testing.T) {
 	defer w.Close()
 	if err := writeIllustratedJournal(w, entries); !errors.Is(err, io.ErrClosedPipe) {
 		t.Fatal(err)
+	}
+}
+
+func TestJournalHearsAboutSpoonBeforeSeeingIt(t *testing.T) {
+	entries := []simulation.JournalEntry{{
+		Conversation: simulation.JournalSpeech{With: "baker", Words: "I heard about a wooden spoon."},
+	}, {
+		Action: simulation.ActionWait,
+		FirstSeen: []simulation.Discovery{{
+			Target: simulation.ObservedTarget{Ref: "bakery/spoon", Name: "wooden spoon"},
+			Label:  "wooden spoon", Location: simulation.LocationContainer, Container: "blue crate",
+		}},
+	}}
+	var book bytes.Buffer
+	if err := writeIllustratedJournal(&book, entries[:1]); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(book.String(), "I heard about a wooden spoon.") || strings.Contains(book.String(), "<img ") || strings.Contains(book.String(), "I saw the wooden spoon") {
+		t.Fatal("the account should contain only the words heard")
+	}
+	book.Reset()
+	if err := writeIllustratedJournal(&book, entries); err != nil {
+		t.Fatal(err)
+	}
+	_, after, ok := strings.Cut(book.String(), "<p>I saw the wooden spoon in the blue crate.</p>")
+	if !ok || strings.Count(book.String(), "<img ") != 1 || !strings.Contains(after, "Ink sketch of the wooden spoon.") {
+		t.Fatal("expected the spoon sketch at the firsthand discovery during the wait")
 	}
 }

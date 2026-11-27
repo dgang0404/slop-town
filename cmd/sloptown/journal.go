@@ -19,7 +19,7 @@ type journalChapter struct {
 
 type journalPassage struct {
 	Text      string
-	FirstSeen []simulation.ObservedTarget
+	FirstSeen []simulation.Discovery
 }
 
 const emptyJournal = "I haven't recorded anything yet."
@@ -71,7 +71,7 @@ func writeJournal(dst io.Writer, entries []simulation.JournalEntry) error {
 // subjects first seen in each passage to choose accompanying artwork.
 func composeJournal(entries []simulation.JournalEntry) []journalChapter {
 	var book []journalChapter
-	addPassage := func(words string, firstSeen []simulation.ObservedTarget) {
+	addPassage := func(words string, firstSeen []simulation.Discovery) {
 		chapter := &book[len(book)-1]
 		chapter.Passages = append(chapter.Passages, journalPassage{words, firstSeen})
 	}
@@ -107,7 +107,7 @@ func composeJournal(entries []simulation.JournalEntry) []journalChapter {
 		if entry.ContinueWalk {
 			continuingTo = entry.WalkTarget
 		}
-		if entry.Action == simulation.ActionWait && len(entry.Witnessed) == 0 && len(entry.Observations) == 0 && entry.Conversation.With == "" {
+		if entry.Action == simulation.ActionWait && len(entry.Witnessed) == 0 && len(entry.Observations) == 0 && len(entry.FirstSeen) == 0 && entry.Conversation.With == "" {
 			quietWaits++
 			continue
 		}
@@ -144,6 +144,9 @@ func composeJournal(entries []simulation.JournalEntry) []journalChapter {
 			if entry.Action != simulation.ActionRest || sight.Kind != simulation.SittingDown {
 				lines = append(lines, rememberedObservation(sight))
 			}
+		}
+		for _, discovery := range entry.FirstSeen {
+			lines = append(lines, rememberedDiscovery(discovery))
 		}
 		if len(lines) != 0 {
 			// Place the next incident, skipping uneventful steps between settings.
@@ -214,29 +217,6 @@ func (c *journalChapters) begin(entry simulation.JournalEntry) (title string, na
 		c.number++
 	}
 	return title, namesPlace
-}
-
-// The journal gives the same personal perceptions as the live scene in the
-// character's own voice. Other observations keep the details in the receipt.
-func rememberedObservation(sight simulation.JournalObservation) string {
-	switch sight.Kind {
-	case simulation.OnStreet:
-		return "I was on the street."
-	case simulation.InBakeryDoorway:
-		return "I was in the bakery doorway."
-	case simulation.InBakery:
-		return "I was in the bakery."
-	case simulation.SittingDown:
-		return "I was sitting down."
-	case simulation.TiredLegs:
-		return "My legs felt tired."
-	case simulation.FeelingRelieved:
-		return "I felt relieved."
-	case simulation.LingeringRelief:
-		return "A little of that relief lingered."
-	default:
-		return remembered(sight.Text)
-	}
 }
 
 // These are the sentences in a saved action outcome or observation. Change

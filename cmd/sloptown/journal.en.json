@@ -1,0 +1,18 @@
+{
+  "perceptions": {
+    "on_street": "I was on the street.",
+    "in_bakery_doorway": "I was in the bakery doorway.",
+    "in_bakery": "I was in the bakery.",
+    "sitting_down": "I was sitting down.",
+    "tired_legs": "My legs felt tired.",
+    "feeling_relieved": "I felt relieved.",
+    "lingering_relief": "A little of that relief lingered."
+  },
+  "discoveries": {
+    "unspecified": "I saw the {object}.",
+    "here": "I saw the {object} here.",
+    "bearing": "I saw the {object} to the {bearing}.",
+    "container": "I saw the {object} in the {container}.",
+    "inventory": "I carried the {object}."
+  }
+}
