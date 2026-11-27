@@ -13,6 +13,8 @@ type JournalSpeech struct {
 	With         string
 	WithRef      string
 	Address      string // An address explicitly given to this reader.
+	Number       string
+	ByPhone      bool
 	IStarted     bool
 	Words, Reply string
 }
@@ -129,7 +131,7 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 				entryAt(e.Tick).OutcomeTarget = e.Payload.ItemID
 			}
 		}
-		if e.Kind == "actors_conversed" && (e.ActorID == actor || e.Payload.Target == actor) {
+		if (e.Kind == "actors_conversed" || e.Kind == "call_answered") && (e.ActorID == actor || e.Payload.Target == actor) {
 			page := entryAt(e.Tick)
 			other := e.ActorID
 			started := e.ActorID == actor
@@ -141,10 +143,10 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 			if err != nil {
 				return err
 			}
-			page.Conversation = JournalSpeech{WithRef: other, With: b.Entities[other].Name, IStarted: started,
+			page.Conversation = JournalSpeech{ByPhone: e.Kind == "call_answered", WithRef: other, With: b.Entities[other].Name, IStarted: started,
 				Words: words, Reply: reply}
-			if x := e.Payload.Dialogue; x.AddressGiver == other {
-				page.Conversation.Address = x.Address
+			if x := e.Payload.Dialogue; x.ContactGiver == other {
+				page.Conversation.Address, page.Conversation.Number = x.Address, x.Number
 			}
 		}
 		if e.Kind == "letter_delivered" && e.ActorID == actor {
@@ -161,9 +163,9 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 				page.Witnessed = append(page.Witnessed, WitnessedAction{
 					Action: ActionIntroduce, Actor: ObservedTarget{Ref: e.ActorID, Name: b.Entities[e.ActorID].Name},
 				})
-			case e.ActorID == actor && e.Tick == lastTick && len(entries) > 0 && entries[len(entries)-1].Action == ActionIntroduce:
+			case e.ActorID == actor:
 				target := e.Payload.Target
-				entries[len(entries)-1].IntroducedTo = ObservedTarget{Ref: target, Name: b.Entities[target].Name}
+				entryAt(e.Tick).IntroducedTo = ObservedTarget{Ref: target, Name: b.Entities[target].Name}
 			}
 		}
 		if len(sightings) > 0 && sightings[0].SourceSequence == e.Sequence {

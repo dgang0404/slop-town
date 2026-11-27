@@ -25,7 +25,7 @@ func usePracticeVersion(t *testing.T, path string, scope simulation.Scope, versi
 	b := &saved.Bakery
 	b.ContentVersion = version
 	for id, e := range b.Entities {
-		if e.Kind == simulation.Planter {
+		if e.Kind == simulation.Planter || e.Kind == simulation.Telephone {
 			delete(b.Entities, id)
 			continue
 		}

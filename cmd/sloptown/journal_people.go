@@ -11,7 +11,7 @@ import (
 )
 
 type personMemory struct {
-	name, meeting, detail, words, lastSeen, address string
+	name, meeting, detail, words, lastSeen, address, phone string
 }
 
 // Build the book from the reader's introductions, examinations, conversations
@@ -46,11 +46,14 @@ func writePeople(dst io.Writer, entries []simulation.JournalEntry, query string)
 			if talk.Address != "" {
 				p.address = "Mailing address: " + talk.Address + ". Shared on " + strings.ToLower(formatBakeryDate(page.Date)) + "."
 			}
+			if talk.Number != "" {
+				p.phone = "Telephone: " + talk.Number + ". Shared on " + strings.ToLower(formatBakeryDate(page.Date)) + "."
+			}
 			words := talk.Words
 			if talk.IStarted {
 				words = talk.Reply
 			}
-			if words != "" && talk.Address == "" {
+			if words != "" && talk.Address == "" && talk.Number == "" {
 				p.words = words
 			}
 		}
@@ -73,6 +76,9 @@ func writePeople(dst io.Writer, entries []simulation.JournalEntry, query string)
 		fmt.Fprintf(out, "\nThe %s\n%s\n", p.name, p.meeting)
 		if p.address != "" {
 			fmt.Fprintln(out, p.address)
+		}
+		if p.phone != "" {
+			fmt.Fprintln(out, p.phone)
 		}
 		if p.detail != "" {
 			fmt.Fprintf(out, "I noticed %s.\n", p.detail)

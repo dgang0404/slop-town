@@ -17,7 +17,7 @@ func (b *Bakery) advanceResidents(clock *Timeline, primary Event) ([]Event, []he
 	heard := b.soundsDuringAction(nil, primary, primary)
 	for _, role := range roles {
 		id := url.PathEscape(b.WorldID) + "/" + role
-		if id == primary.ActorID {
+		if id == primary.ActorID || (primary.Kind == "call_answered" && primary.Payload.Target == id) {
 			continue
 		}
 		effect, choice, err := b.residentTurn(primary.Scope, role, clock)
@@ -171,7 +171,7 @@ func (b *Bakery) residentConversation(primary Event) spatialEffect {
 	if primary.ActorID == baker || primary.ActorID == porter {
 		return spatialEffect{}
 	}
-	if (primary.Kind == "actors_conversed" || primary.Kind == "actor_introduced") &&
+	if (primary.Kind == "actors_conversed" || primary.Kind == "call_answered" || primary.Kind == "actor_introduced") &&
 		(primary.Payload.Target == baker || primary.Payload.Target == porter) {
 		return spatialEffect{}
 	}

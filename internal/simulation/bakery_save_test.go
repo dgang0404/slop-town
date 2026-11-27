@@ -12,7 +12,7 @@ import (
 func usePracticeVersion(b *Bakery, version int) {
 	b.ContentVersion = version
 	for id, e := range b.Entities {
-		if version < plantContentVersion && e.Kind == Planter {
+		if (version < plantContentVersion && e.Kind == Planter) || (version < phoneContentVersion && e.Kind == Telephone) {
 			delete(b.Entities, id)
 			continue
 		}

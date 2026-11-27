@@ -19,8 +19,8 @@ func (c *Coordinator) Observe(actorID string) (Observation, error) {
 // Scene carries live presentation details separately from the versioned observation in a receipt.
 type Scene struct {
 	Observation
-	MailContacts  []ObservedTarget // People whose mailing addresses this observer learned.
-	MailAddresses map[string]string
+	MailBook      ContactBook
+	PhoneBook     ContactBook
 	UnreadLetters int
 	ActionTarget  string // Resolved object of the observer's action. Empty on a look.
 	Date          BakeryDate
@@ -285,15 +285,8 @@ func (b *Bakery) observe(scope Scope, actorID string, scene *Scene) (Observation
 	}
 	if scene != nil {
 		scene.Self = self
-		scene.MailContacts = b.mailingTargets(actorID)
-		for _, c := range b.Addresses {
-			if c.Owner == actorID {
-				if scene.MailAddresses == nil {
-					scene.MailAddresses = make(map[string]string)
-				}
-				scene.MailAddresses[c.Person] = c.Address
-			}
-		}
+		scene.MailBook = b.contactBook(actorID, ActionPost)
+		scene.PhoneBook = b.contactBook(actorID, ActionCall)
 		for _, l := range b.Letters {
 			if l.To == actorID && l.Delivered && l.ReadTick == 0 {
 				scene.UnreadLetters++
@@ -322,6 +315,11 @@ func (b *Bakery) contentsVisible(id, actorID string) bool {
 
 func appearance(e SpatialEntity) (label, glyph, state string) {
 	switch e.Kind {
+	case Telephone:
+		if e.Disconnected {
+			return e.Name, "T", "disconnected"
+		}
+		return e.Name, "T", "in working order"
 	case Planter:
 		return e.Growth.condition().appearance(e.Name)
 	case Door:

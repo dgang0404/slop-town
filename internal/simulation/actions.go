@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package simulation
 
+import "slices"
+
 // ActionOption names its targets as they appear in the actor's current view.
 type ActionOption struct {
 	Action ActionKind
@@ -55,8 +57,15 @@ func (b *Bakery) AvailableActions(scope Scope, actorID string) ([]ActionOption, 
 			offer(ActionHarvest, args)
 		case Actor:
 			offer(ActionIntroduce, args)
-			if lines := b.dialogueChoices(view, target.Ref, false); len(lines) > 0 {
+			if lines := b.dialogueChoices(view, target.Ref, true); len(lines) > 0 {
 				add(ActionSpeak, ActionArgs{Target: target.Ref, Speech: lines[0].Line})
+				if b.ContentVersion >= phoneContentVersion {
+					for _, choice := range b.contactChoices(actorID, target.Ref) {
+						if choice.Line.Topic == "phone" && !slices.Contains(lines, choice) {
+							add(ActionSpeak, ActionArgs{Target: target.Ref, Speech: choice.Line})
+						}
+					}
+				}
 			}
 		case Door, Container:
 			offer(ActionOpen, args)
@@ -78,8 +87,14 @@ func (b *Bakery) AvailableActions(scope Scope, actorID string) ([]ActionOption, 
 			}
 		}
 	}
-	for _, person := range b.mailingTargets(actorID) {
+	for _, person := range b.contactBook(actorID, ActionPost).People {
 		add(ActionPost, ActionArgs{Target: person.Ref, Body: invitation})
+	}
+	for _, person := range b.contactBook(actorID, ActionCall).People {
+		_, destination := b.phoneLine(person.Ref)
+		if b.outgoingPhone(view, destination) != "" {
+			add(ActionCall, ActionArgs{Target: person.Ref})
+		}
 	}
 	if len(b.Letters) > 0 {
 		offer(ActionReadLetter, ActionArgs{})

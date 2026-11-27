@@ -61,6 +61,12 @@ func recordedCommand(r *simulation.Receipt, action simulation.ActionKind, args s
 	p := r.Proposal
 	cmd := bakeryCommand{Proposal: p, receipt: r}
 	if input := r.Input; input != nil {
+		if action == simulation.ActionSpeak && input.LineChoice == 0 && p.Args.Speech != args.Speech {
+			return bakeryCommand{}, false
+		}
+		if args.Speech != (simulation.SpeechLine{}) && input.LineChoice != 0 {
+			return bakeryCommand{}, false
+		}
 		if input.Target != args.Target || input.Container != args.Container ||
 			(args.Target == "it" && last != p.Args.Target) || (args.Container == "it" && last != p.Args.Container) {
 			return bakeryCommand{}, false
@@ -90,14 +96,20 @@ func prepareCommand(action simulation.ActionKind, args simulation.ActionArgs, sc
 		if phrase == "it" {
 			n.ref = last
 		} else {
-			view := scene.Observation
+			matches := scene.MatchingTargets(phrase)
 			if action == simulation.ActionPost {
-				view.Targets = scene.MailContacts
+				matches = scene.MailBook.MatchingTargets(phrase, action)
 			}
-			for _, t := range view.MatchingTargets(phrase) {
+			if action == simulation.ActionCall {
+				matches = scene.PhoneBook.MatchingTargets(phrase, action)
+			}
+			for _, t := range matches {
 				location := scene.ChoiceLocation(t.Ref)
 				if action == simulation.ActionPost {
-					location = "at " + scene.MailAddresses[t.Ref]
+					location = "at " + scene.MailBook.Details[t.Ref]
+				}
+				if action == simulation.ActionCall {
+					location = "on " + scene.PhoneBook.Details[t.Ref]
 				}
 				n.options = append(n.options, promptOption{ref: t.Ref, label: t.Name + " " + location})
 			}

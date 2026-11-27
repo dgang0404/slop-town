@@ -22,6 +22,7 @@ type Scope struct {
 type ActionKind string
 
 const (
+	ActionCall         ActionKind = "call"
 	ActionPost         ActionKind = "post"
 	ActionReadLetter   ActionKind = "read_letter"
 	ActionWait         ActionKind = "wait"
@@ -143,6 +144,7 @@ type EventPayload struct {
 	Address           string         `json:",omitempty"`
 	Body              string         `json:",omitempty"`
 	LetterSequence    uint64         `json:",omitempty"` // Original posting for a read, delivery, or reply.
+	Call              DialedLine     `json:",omitzero"`
 	PersonDetail      string         `json:",omitempty"` // Distinguishing detail actually seen during an examination.
 	EndurancePractice bool           `json:",omitempty"`
 	ReliefStarted     bool           `json:",omitempty"`

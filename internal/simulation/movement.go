@@ -59,6 +59,8 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 	actor := b.Entities[view.ObserverID]
 	action, args := p.Action, p.Args
 	switch action {
+	case ActionCall:
+		return b.phoneCall(view, p)
 	case ActionPost, ActionReadLetter:
 		if b.ContentVersion < mailContentVersion {
 			return spatialEffect{}, &actionFailure{"action_unavailable", "There is no mail service here."}

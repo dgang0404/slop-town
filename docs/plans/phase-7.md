@@ -470,6 +470,16 @@ Fresh practice towns use content version 24. A version 23 visit from `77771ec` r
 
 Down and Enter completed the full correspondence visit in a Linux terminal. The offline test suite and both seed-42 smoke runs passed. The CLI cross-built for Windows amd64 and macOS arm64.
 
-### Next correspondence checkpoint — place a phone call
+## Checkpoint 31 — place a phone call
 
-Let one character share a telephone number and record it in the listener’s people journal. At a working phone, a character can call a learned number. Whether the other person can answer depends on their location and current activity. Verify an answered call and a missed call through the ordinary player controls, including a save and restart.
+After an introduction, either character can offer their own number or ask for the other person’s. The listener’s people journal records the number and the date it was shared. A character who knows a number can dial it or choose the person by name at a working phone. In the practice town, extension 101 reaches the player at the street phone. Extensions 201 and 202 reach the baker and porter at the bakery phone. [Play both calls](../../README.md#call-the-porter)
+
+A call spends one turn. A recipient can answer if they can see and reach their working handset and are free to speak. Resting, seeking a break or hiding can leave a call unanswered. On an answered call, the caller identifies themselves and asks how the other person is doing. The reply uses the same check-in as an in-person conversation. Both participants remember the words. On a missed call, the caller hears the line ring out. The contact book continues to show the person’s last observed location.
+
+### Checkpoint 31 results
+
+On seed 42 the player learned the porter’s extension on turn 4 and got no answer on turn 5. The player then walked out of sight of the shop. On turn 8 the porter answered from inside the bakery. Both calls were available through the arrow controls. In a separate visit the porter used the bakery phone to call the player at the street phone. A disconnected handset, a stale contact selection and a number the caller hadn’t learned were also tested. [Simulation checks](../../internal/simulation/phone_test.go)
+
+Interrupting the SQLite receipt write during the number exchange, the missed call or the answered call preserved the preceding town and its history. Retrying the visit left one call of each kind. Replay from sequences 0, 15, 19 and 26 reached turn 8, sequence 28, with SHA-256 `08fce79c5b37c1f6705eb158e8cba5d47fd8330416c12df8fe1e7a1df3a5a649`. [SQLite restart test](../../internal/storage/phone_test.go)
+
+Fresh practice towns use content version 25. A version 24 save from `1a040cf` kept its letter walkthrough, journal and conversation choices. Both executables replayed the visit to the checkpoint 30 hash on turn 19.

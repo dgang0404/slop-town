@@ -39,7 +39,7 @@ func TestAddressesAndSealedLettersBelongToTheirRecipient(t *testing.T) {
 	}
 	for _, who := range []string{player, porter, baker} {
 		scene, err := c.Scene(who)
-		if err != nil || (scene.MailAddresses[porter] != "") != (who == player) || scene.MailAddresses[player] != "" {
+		if err != nil || (scene.MailBook.Details[porter] != "") != (who == player) || scene.MailBook.Details[player] != "" {
 			t.Fatal(who, scene, err)
 		}
 	}

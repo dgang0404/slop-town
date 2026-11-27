@@ -395,6 +395,27 @@ write to porter: Did your shift go well?
 
 You can also choose a ready-written note with the arrows and Enter. Posting takes one turn. Each envelope takes three more town turns to arrive. The porter opens it during a break in their routine and can send an acknowledgment if you shared your own address. On this route, wait ten turns after posting, then choose `read letter` to open the reply. You can quit and reopen the same save while the post is on its way. [Delivery and replay checks](docs/plans/phase-7.md#checkpoint-30--send-and-read-a-letter)
 
+### Call the porter
+
+Start a fresh town with `go run ./cmd/sloptown bakery -practice -play -seed 42 -db calls.sqlite`. There’s a street phone within reach of the starting spot and another phone inside the bakery.
+
+```text
+wait
+wait
+introduce yourself to porter
+ask porter for their number
+cancel
+journal people porter
+call 202
+south
+south
+call porter
+```
+
+The porter gives you extension **202**. The first call rings out. On the second call you’re down the street, still within reach of the street phone. The porter answers from inside the bakery. Each call takes one turn. Your journal remembers the exchange and keeps your last sighting of the porter in the doorway.
+
+To use only the arrows and Enter, choose **talk to the porter**, then **What number can I reach you on?** and **cancel**. Choose **call the porter** for either call. You can also give someone your own number with `give my number to NAME`. Mailing addresses and telephone numbers are shared separately. [Phone checkpoint and restart checks](docs/plans/phase-7.md#checkpoint-31--place-a-phone-call)
+
 ### Export an illustrated journal
 
 Type `export illustrated journal` or choose it with the arrows and Enter. Open `slop-town-journal.html` in a browser. The pictures travel with the file, so you can copy it to another device and read it offline. Later exports use the next available filename.

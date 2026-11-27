@@ -22,7 +22,8 @@ type Exchange struct {
 	Reply         string        `json:",omitempty"`
 	SpeakerSource uint64        `json:",omitempty"`
 	ReplySource   uint64        `json:",omitempty"`
-	AddressGiver  string        `json:",omitempty"`
+	ContactGiver  string        `json:"AddressGiver,omitempty"`
+	Number        string        `json:",omitempty"`
 	Address       string        `json:",omitempty"`
 	Question      SpeechLine    `json:",omitzero"`
 	Statement     SpeechLine    `json:",omitzero"`
@@ -68,8 +69,8 @@ func (b *Bakery) dialogueChoices(view Observation, listener string, includeWitne
 	// Most recent memories first. Only a report addressed to this speaker
 	// can unlock a question about what the listener told them.
 	entries := b.Notebooks[view.ObserverID]
-	mail := b.addressChoices(view.ObserverID, listener)
-	memoryLimit := limit - len(mail)
+	contactLines := b.contactChoices(view.ObserverID, listener)
+	memoryLimit := limit - min(2, len(contactLines)) // Preserve room for recent testimony as more contact methods become available.
 	if b.ContentVersion >= reportContentVersion {
 		memoryLimit -= 2 // Keep the questions about conversations and secondhand news available.
 		if b.ContentVersion >= soundAccountContentVersion {
@@ -93,7 +94,18 @@ func (b *Bakery) dialogueChoices(view Observation, listener string, includeWitne
 	if b.ContentVersion >= soundAccountContentVersion {
 		add(SpeechLine{Topic: "sounds", Intent: "ask", Tone: "curious"}, "What sounds have you heard lately?")
 	}
-	for _, choice := range mail {
+	if len(contactLines) > limit-len(choices) {
+		// A crowded exchange still offers one line for each contact method.
+		for _, topic := range []string{"mail", "phone"} {
+			for _, choice := range contactLines {
+				if choice.Line.Topic == topic {
+					add(choice.Line, choice.Words)
+					break
+				}
+			}
+		}
+	}
+	for _, choice := range contactLines {
 		add(choice.Line, choice.Words)
 	}
 	for _, obj := range view.Targets {
@@ -145,7 +157,16 @@ func (b *Bakery) speak(view Observation, listener string, line SpeechLine) (spat
 	}
 	// Check older proposals against the choices available before witness
 	// questions existed. A new menu slot must not invalidate a saved turn.
-	choices := b.dialogueChoices(view, listener, line.Intent == "ask_witness")
+	var choices []DialogueChoice
+	if line == AskPhoneNumber || line == OfferPhoneNumber {
+		// An explicit contact request can select a line omitted from a crowded general menu.
+		if !b.canTalk(view, listener) {
+			return spatialEffect{}, targetUnavailable()
+		}
+		choices = b.contactChoices(view.ObserverID, listener)
+	} else {
+		choices = b.dialogueChoices(view, listener, line.Intent == "ask_witness")
+	}
 	if len(choices) == 0 {
 		return spatialEffect{}, targetUnavailable()
 	}
@@ -179,11 +200,19 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 	line := choice.Line
 	x := Exchange{Words: choice.Words}
 	switch line.Intent {
+	case "ask_number":
+		x.ContactGiver = listener
+		x.Number, _ = b.phoneLine(listener)
+		x.Reply = b.shareNumberWords(listener)
+	case "offer_number":
+		x.ContactGiver = speaker
+		x.Number, _ = b.phoneLine(speaker)
+		x.Reply = "Thank you. I’ll keep your number."
 	case "ask_address":
-		x.AddressGiver, x.Address = listener, b.addressOf(listener)
+		x.ContactGiver, x.Address = listener, b.addressOf(listener)
 		x.Reply = "You can write to me at " + x.Address + "."
 	case "offer_address":
-		x.AddressGiver, x.Address = speaker, b.addressOf(speaker)
+		x.ContactGiver, x.Address = speaker, b.addressOf(speaker)
 		x.Reply = "Thank you. I’ll keep your address."
 	case "ask_witness":
 		account, _ := b.entryAt(speaker, line.Source)

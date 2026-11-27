@@ -37,6 +37,7 @@ type Placement struct {
 type EntityKind string
 
 const (
+	Telephone EntityKind = "telephone"
 	Actor     EntityKind = "actor"
 	Door      EntityKind = "door"
 	Container EntityKind = "container"
@@ -62,6 +63,7 @@ type SpatialEntity struct {
 	ProvidesCover      bool            `json:",omitempty"`
 	HiddenBehind       string          `json:",omitempty"` // Reference to the cover beside a crouching actor.
 	CloseDetail        string          `json:",omitempty"` // A visible distinguishing mark within arm's reach.
+	Disconnected       bool            `json:",omitempty"` // A fixed telephone whose line is out of service.
 	Growth             plantGrowth     `json:",omitzero"`
 }
 
@@ -77,7 +79,7 @@ type Bakery struct {
 	ContentVersion   int
 	Cells            [bakeryHeight][bakeryWidth]BakeryCell
 	Entities         map[string]SpatialEntity
-	Addresses        []sharedAddress            `json:",omitempty"`
+	Contacts         []sharedContact            `json:"Addresses,omitempty"` // Original save field for contact disclosures.
 	Letters          []letter                   `json:",omitempty"`
 	Notebooks        map[string][]NotebookEntry `json:",omitempty"`
 }
@@ -113,6 +115,7 @@ const (
 	harvestContentVersion         = 22
 	landmarkContentVersion        = 23
 	mailContentVersion            = 24
+	phoneContentVersion           = 25
 	fatigueLimit                  = 5 // Steps since the last rest, capped during a break.
 )
 
@@ -139,7 +142,7 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 	}
 	b.ContentVersion = personalityContentVersion
 	if setup.Practice {
-		b.ContentVersion = mailContentVersion
+		b.ContentVersion = phoneContentVersion
 		prefix := url.PathEscape(worldID) + "/"
 		for localID, detail := range bakeryCloseDetails {
 			id := prefix + localID
@@ -153,6 +156,12 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 		crate := b.Entities[prefix+"crate"]
 		crate.ProvidesCover = true
 		b.Entities[prefix+"crate"] = crate
+		streetPhone := b.Entities[prefix+"player"].Placement
+		streetPhone.Cell.Y++
+		insidePhone := b.Entities[prefix+"baker"].Placement
+		insidePhone.Cell.X++
+		b.Entities[prefix+"street-phone"] = SpatialEntity{Name: "street phone", Kind: Telephone, Placement: streetPhone}
+		b.Entities[prefix+"bakery-phone"] = SpatialEntity{Name: "bakery phone", Kind: Telephone, Placement: insidePhone}
 		at := b.Entities[prefix+"player"].Placement
 		at.Cell.X--
 		b.Entities[prefix+"mint"] = SpatialEntity{Name: "mint planter", Kind: Planter, Placement: at,
@@ -274,6 +283,12 @@ func (b *Bakery) Validate() error {
 		}
 		if _, err := b.PositionOf(id); err != nil {
 			return err
+		}
+		if e.Kind == Telephone && (b.ContentVersion < phoneContentVersion || e.Portable || e.Placement.HolderID != "") {
+			return fmt.Errorf("invalid telephone %q", id)
+		}
+		if e.Disconnected && e.Kind != Telephone {
+			return fmt.Errorf("unexpected telephone state for %q", id)
 		}
 		if e.Kind == Planter {
 			if b.ContentVersion < plantContentVersion || e.Portable || e.Placement.HolderID != "" ||

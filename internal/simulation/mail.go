@@ -12,12 +12,6 @@ import (
 const mailTurns = 3
 const invitation = "Please write back when you have a moment."
 
-type sharedAddress struct {
-	Owner, Person, Address string // Owner heard Person give this address.
-	Tick                   int64
-	Sequence               uint64
-}
-
 type letter struct {
 	Post                    uint64 // Sequence of the posting event, unique on this timeline.
 	From, To, Address, Body string
@@ -42,42 +36,6 @@ func (b *Bakery) addressOf(person string) string {
 	return ""
 }
 
-func (b *Bakery) contact(owner, person string) sharedAddress {
-	for _, c := range b.Addresses {
-		if c.Owner == owner && c.Person == person {
-			return c
-		}
-	}
-	return sharedAddress{}
-}
-
-func (b *Bakery) mailingTargets(owner string) []ObservedTarget {
-	var targets []ObservedTarget
-	for _, c := range b.Addresses {
-		if c.Owner == owner {
-			targets = append(targets, ObservedTarget{Ref: c.Person, Name: b.Entities[c.Person].Name})
-		}
-	}
-	return targets
-}
-
-var askAddress = SpeechLine{Topic: "mail", Intent: "ask_address", Tone: "curious"}
-var offerAddress = SpeechLine{Topic: "mail", Intent: "offer_address", Tone: "warm"}
-
-func (b *Bakery) addressChoices(actor, listener string) []DialogueChoice {
-	if b.ContentVersion < mailContentVersion || !(b.recognizes(actor, listener) || b.recognizes(listener, actor)) {
-		return nil
-	}
-	var lines []DialogueChoice
-	if b.addressOf(listener) != "" && b.contact(actor, listener).Address == "" {
-		lines = append(lines, DialogueChoice{askAddress, "Where can I write to you?"})
-	}
-	if address := b.addressOf(actor); address != "" && b.contact(listener, actor).Address == "" {
-		lines = append(lines, DialogueChoice{offerAddress, "You can write to me at " + address + "."})
-	}
-	return lines
-}
-
 func validLetterBody(body string) bool {
 	return body != "" && strings.TrimSpace(body) == body && utf8.ValidString(body) && utf8.RuneCountInString(body) <= 500 &&
 		!strings.ContainsFunc(body, func(r rune) bool { return !unicode.IsPrint(r) })
@@ -88,7 +46,7 @@ func (b *Bakery) postLetter(actor string, p Proposal) (spatialEffect, *actionFai
 	if args != (ActionArgs{Target: args.Target, Body: args.Body}) || !validID(args.Target) || !validLetterBody(args.Body) {
 		return spatialEffect{}, &actionFailure{"invalid_request", "Write one line of up to 500 printable characters."}
 	}
-	targets := Observation{Targets: b.mailingTargets(actor)}
+	targets := Observation{Targets: b.contactBook(actor, ActionPost).People}
 	ref, failure := targets.selectTarget(args.Target, p.ByName, p.Observed.Target)
 	if failure != nil {
 		if failure.code == "ambiguous_target" {
@@ -96,7 +54,7 @@ func (b *Bakery) postLetter(actor string, p Proposal) (spatialEffect, *actionFai
 		}
 		return spatialEffect{}, &actionFailure{"address_unknown", "You need a mailing address they shared with you."}
 	}
-	c := b.contact(actor, ref)
+	c := b.contact(actor, ref, ActionPost)
 	return spatialEffect{kind: "letter_posted", entityID: actor, entity: b.Entities[actor],
 		payload: EventPayload{Target: ref, Address: c.Address, Body: args.Body},
 		message: "You post a letter to the " + b.Entities[ref].Name + " at " + c.Address + "."}, nil
@@ -124,7 +82,7 @@ func (b *Bakery) residentMail(actor string) spatialEffect {
 		}
 	}
 	for _, l := range b.Letters {
-		if l.To != actor || l.ReadTick == 0 || l.ReplyTo != 0 || answered[l.Post] || b.contact(actor, l.From).Address == "" {
+		if l.To != actor || l.ReadTick == 0 || l.ReplyTo != 0 || answered[l.Post] || b.contact(actor, l.From, ActionPost).Address == "" {
 			continue
 		}
 		effect, failure := b.postLetter(actor, Proposal{Args: ActionArgs{Target: l.From, Body: "Your letter reached me. Thank you for writing."}})
@@ -150,16 +108,28 @@ func (b *Bakery) deliverMail(events []Event) []Event {
 	return events
 }
 
-func (b *Bakery) validateMail(tick int64) error {
-	seen := make(map[[2]string]sharedAddress)
+func (b *Bakery) validateCorrespondence(tick int64) error {
+	seen := make(map[[2]string]sharedContact)
+	seenNumbers := make(map[[2]string]bool)
 	var lastShare uint64
-	for _, c := range b.Addresses {
+	for _, c := range b.Contacts {
 		key := [2]string{c.Owner, c.Person}
-		if c.Owner == c.Person || b.Entities[c.Owner].Kind != Actor || c.Address == "" || c.Address != b.addressOf(c.Person) ||
-			c.Tick <= 0 || c.Tick > tick || c.Sequence <= lastShare || seen[key].Sequence != 0 {
-			return fmt.Errorf("invalid shared mailing address")
+		if c.Owner == c.Person || b.Entities[c.Owner].Kind != Actor || c.Tick <= 0 || c.Tick > tick || c.Sequence <= lastShare {
+			return fmt.Errorf("invalid contact disclosure")
 		}
-		seen[key], lastShare = c, c.Sequence
+		lastShare = c.Sequence
+		if c.Number != "" {
+			number, _ := b.phoneLine(c.Person)
+			if c.Number != number || c.Address != "" || seenNumbers[key] {
+				return fmt.Errorf("invalid shared telephone number")
+			}
+			seenNumbers[key] = true
+		} else {
+			if c.Address == "" || c.Address != b.addressOf(c.Person) || seen[key].Sequence != 0 {
+				return fmt.Errorf("invalid shared mailing address")
+			}
+			seen[key] = c
+		}
 	}
 	posted := make(map[uint64]letter)
 	answered := make(map[uint64]bool)

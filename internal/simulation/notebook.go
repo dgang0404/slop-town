@@ -37,12 +37,12 @@ func (b *Bakery) applySpatial(event *Event, effect spatialEffect, clock *Timelin
 	switch event.Kind {
 	case "actors_conversed":
 		x := event.Payload.Dialogue
-		if x.AddressGiver != "" {
+		if x.ContactGiver != "" {
 			owner := event.ActorID
-			if owner == x.AddressGiver {
+			if owner == x.ContactGiver {
 				owner = event.Payload.Target
 			}
-			b.Addresses = append(slices.Clip(b.Addresses), sharedAddress{Owner: owner, Person: x.AddressGiver, Address: x.Address, Tick: event.Tick, Sequence: event.Sequence})
+			b.Contacts = append(slices.Clip(b.Contacts), sharedContact{Owner: owner, Person: x.ContactGiver, Address: x.Address, Number: x.Number, Tick: event.Tick, Sequence: event.Sequence})
 		}
 	case "letter_posted":
 		p := event.Payload
@@ -73,7 +73,7 @@ func (b *Bakery) applySpatial(event *Event, effect spatialEffect, clock *Timelin
 func (b *Bakery) recordWitnesses(event Event) {
 	entry := NotebookEntry{Tick: event.Tick, SourceSequence: event.Sequence, Subject: event.ActorID, Target: event.Payload.Target}
 	switch event.Kind {
-	case "actors_conversed":
+	case "actors_conversed", "call_answered":
 		x := event.Payload.Dialogue
 		if x.Condition != "" {
 			entry.Subject, entry.Target, entry.Action = event.Payload.Target, "", ActionSpeak

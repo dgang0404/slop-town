@@ -196,7 +196,13 @@ func composeJournal(entries []simulation.JournalEntry) []journalChapter {
 			lines = append(lines, strings.Replace(remembered(entry.Outcome), "I walked toward ", "I continued toward ", 1))
 		}
 		if speech := entry.Conversation; speech.With != "" {
-			if speech.IStarted {
+			if speech.ByPhone {
+				if speech.IStarted {
+					lines = append(lines, "I called the "+speech.With+" and asked, “"+speech.Words+"” They replied, “"+speech.Reply+"”")
+				} else {
+					lines = append(lines, "The "+speech.With+" called and asked, “"+speech.Words+"” I replied, “"+speech.Reply+"”")
+				}
+			} else if speech.IStarted {
 				lines = append(lines, "I said to the "+speech.With+", “"+speech.Words+"”", "The "+speech.With+" replied, “"+speech.Reply+"”")
 			} else {
 				lines = append(lines, "The "+speech.With+" said to me, “"+speech.Words+"”", "I replied, “"+speech.Reply+"”")
@@ -318,7 +324,7 @@ func remembered(sentence string) string {
 		{"introduce yourself", "introduced myself"}, {"discreetly take", "discreetly took"}, {"walk", "walked"}, {"move", "moved"},
 		{"open", "opened"}, {"close", "closed"}, {"take", "took"}, {"put", "put"}, {"drop", "dropped"},
 		{"crouch", "crouched"}, {"stand", "stood"}, {"knock", "knocked"}, {"find", "found"}, {"water", "watered"}, {"harvest", "harvested"},
-		{"post", "posted"}, {"read", "read"}, {"feel", "felt"}, {"wait", "waited"}, {"are", "was"}, {"see", "saw"}, {"carry", "carried"},
+		{"get no answer", "got no answer"}, {"post", "posted"}, {"read", "read"}, {"feel", "felt"}, {"wait", "waited"}, {"are", "was"}, {"see", "saw"}, {"carry", "carried"},
 	} {
 		if tail, ok := strings.CutPrefix(sentence, "You "+verb.present); ok && (tail == "." || strings.HasPrefix(tail, " ")) {
 			return "I " + verb.past + tail
