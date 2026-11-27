@@ -76,7 +76,8 @@ func composeJournal(entries []simulation.JournalEntry) []journalChapter {
 		chapter.Passages = append(chapter.Passages, journalPassage{words, firstSeen})
 	}
 	chapters := journalChapters{met: make(map[string]bool)}
-	var continuingTo, place, describedPlace string
+	var continuingTo string
+	var place, describedPlace simulation.JournalObservation
 	quietWaits := 0
 	flushWaits := func() {
 		switch quietWaits {
@@ -90,15 +91,15 @@ func composeJournal(entries []simulation.JournalEntry) []journalChapter {
 	}
 	for _, entry := range entries {
 		newDay := entry.Date != chapters.date
-		if entry.Place != "" {
+		if entry.Place.Text != "" {
 			place = entry.Place
 		}
-		title, coveredPlace := chapters.begin(entry)
+		title, namesPlace := chapters.begin(entry)
 		if title != "" {
 			flushWaits()
 			book = append(book, journalChapter{Number: chapters.number, Title: title})
-			if coveredPlace != "" {
-				describedPlace = coveredPlace
+			if namesPlace {
+				describedPlace = place
 			}
 		}
 		continuation := entry.Action == simulation.ActionApproach && continuingTo != "" && entry.WalkTarget == continuingTo
@@ -140,14 +141,14 @@ func composeJournal(entries []simulation.JournalEntry) []journalChapter {
 			lines = append(lines, remembered(entry.WalkEnd))
 		}
 		for _, sight := range entry.Observations {
-			if entry.Action != simulation.ActionRest || sight != "You are sitting down." {
-				lines = append(lines, remembered(sight))
+			if entry.Action != simulation.ActionRest || sight.Kind != simulation.SittingDown {
+				lines = append(lines, rememberedObservation(sight))
 			}
 		}
 		if len(lines) != 0 {
 			// Place the next incident, skipping uneventful steps between settings.
-			if place != "" && place != describedPlace {
-				lines = append([]string{remembered(place)}, lines...)
+			if place.Text != "" && !place.SameAs(describedPlace) {
+				lines = append([]string{rememberedObservation(place)}, lines...)
 				describedPlace = place
 			}
 			addPassage(strings.Join(lines, " "), entry.FirstSeen)
@@ -169,14 +170,14 @@ func formatBakeryDate(date simulation.BakeryDate) string {
 }
 
 // A new date and a milestone on the same recorded turn share one heading.
-func (c *journalChapters) begin(entry simulation.JournalEntry) (title, coveredPlace string) {
+func (c *journalChapters) begin(entry simulation.JournalEntry) (title string, namesPlace bool) {
 	if c.number == 0 {
 		title = "The visit begins"
 	}
-	if !c.inside && entry.Place == "You are in the bakery." {
+	if !c.inside && entry.Place.Kind == simulation.InBakery {
 		c.inside = true
 		title = "Inside the bakery"
-		coveredPlace = entry.Place
+		namesPlace = true
 	}
 	var names []string
 	var sameName bool
@@ -196,10 +197,10 @@ func (c *journalChapters) begin(entry simulation.JournalEntry) (title, coveredPl
 	}
 	if sameName {
 		title = "Introductions"
-		coveredPlace = ""
+		namesPlace = false
 	} else if len(names) > 0 {
 		title = "Meeting " + proseList(names)
-		coveredPlace = "" // The meeting heading leaves the arrival to the prose.
+		namesPlace = false // The meeting heading leaves the arrival to the prose.
 	}
 	if entry.Date != c.date {
 		c.date = entry.Date
@@ -212,7 +213,30 @@ func (c *journalChapters) begin(entry simulation.JournalEntry) (title, coveredPl
 	if title != "" {
 		c.number++
 	}
-	return title, coveredPlace
+	return title, namesPlace
+}
+
+// The journal gives the same personal perceptions as the live scene in the
+// character's own voice. Other observations keep the details in the receipt.
+func rememberedObservation(sight simulation.JournalObservation) string {
+	switch sight.Kind {
+	case simulation.OnStreet:
+		return "I was on the street."
+	case simulation.InBakeryDoorway:
+		return "I was in the bakery doorway."
+	case simulation.InBakery:
+		return "I was in the bakery."
+	case simulation.SittingDown:
+		return "I was sitting down."
+	case simulation.TiredLegs:
+		return "My legs felt tired."
+	case simulation.FeelingRelieved:
+		return "I felt relieved."
+	case simulation.LingeringRelief:
+		return "A little of that relief lingered."
+	default:
+		return remembered(sight.Text)
+	}
 }
 
 // These are the sentences in a saved action outcome or observation. Change
@@ -225,10 +249,6 @@ func remembered(sentence string) string {
 		return "My destination moved, so I paused."
 	case "You lose sight of your destination.":
 		return "I lost sight of my destination."
-	case "Your legs feel tired.":
-		return "My legs felt tired."
-	case "A little of that relief lingers.":
-		return "A little of that relief lingered."
 	case "You rest for a turn.":
 		return "I rested."
 	}

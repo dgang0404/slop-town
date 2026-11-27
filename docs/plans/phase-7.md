@@ -182,3 +182,21 @@ Use text and the local top-down grid as the default navigation view. The grid fo
 Offer one optional picture-book scene for atmosphere. For example, one picture can show the player’s view of the baker beside the open crate. Build it from the same visible people, objects and surroundings used for the grid. Reuse the picture while that view still matches. If a new scene is still being drawn, keep play responsive and show the result only if it still matches the player’s view. With illustrations off, text and grid support the whole visit. The journal’s object sketches remain attached to the passages where they were discovered.
 
 The bakery currently has a text grid and illustrated HTML export. The graphical grid and optional live scene belong to later client work. [Master design, sections 7.8 and 47](../design/Slop_Town_Master_Design_Revised_v7.docx)
+
+## Checkpoint 13 — facts behind the narration
+
+The live bakery scene identifies the street, doorway and interior as distinct places. It also identifies sitting down, tired legs, relief and lingering relief when the character can feel them. The terminal uses these facts to describe a change. The journal uses them to give an incident its setting and to omit posture that the action already explains. A character who rests and feels relieved remembers both the rest and the relief.
+
+The journal recovers those same facts from the character’s own version 1 receipts. Other saved observations still supply their original descriptions. The next extension is to give a newly seen object and its visible location the same structured treatment, including the difference between seeing a spoon in a crate and hearing someone mention it.
+
+### Checkpoint 13 results
+
+On the seed-42 visit where the player asked both workers and found the spoon, the executable from `ff1308b` and the revised build produced identical brief and story transcripts. Both journal exports matched byte for byte across builds. Replaying the old save from sequences 0 and 15 reached tick 9, sequence 31 and the hash recorded in the [bakery acceptance results](phase-7-results.md). A separate test varied the supplied wording for arriving, sitting down and feeling relieved. The book still opened with one bakery heading and “I rested. I felt relieved.”
+
+The offline build, full test suite, two seed-42 smoke runs and three race-detector runs passed. The terminal also cross-built for Windows amd64 and macOS arm64. [Journal tests](../../cmd/sloptown/journal_test.go) · [Receipt compatibility test](../../internal/simulation/observation_test.go)
+
+### When will the game call a narration API?
+
+Phase 7 supplies the offline narrator. Phase 10 adds optional AI adapters, with a local model first and opt-in cloud providers after that. For a crate opening, either renderer should receive one scene packet containing the accepted action, the crate, and the spoon the character just saw. The model can phrase the discovery. The simulation decides what the crate contains and whether opening it revealed anything.
+
+Before showing generated prose, check its claims against the packet and the character’s knowledge. If the provider is unavailable or adds an unsupported detail, use the offline text. Record accepted output against the triggering event and timeline so reopening or replaying a visit can reuse the wording. [Master design, sections 3, 17, 38 and 50](../design/Slop_Town_Master_Design_Revised_v7.docx)

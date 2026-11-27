@@ -18,7 +18,7 @@ type JournalSpeech struct {
 // and discoveries in the action's saved observation. Entries are in turn order.
 type JournalEntry struct {
 	Date         BakeryDate
-	Place        string // Location stated in the observer's own receipt, when present.
+	Place        JournalObservation // Location stated in the observer's own receipt, when present.
 	Conversation JournalSpeech
 	Action       ActionKind
 	Outcome      string
@@ -27,7 +27,7 @@ type JournalEntry struct {
 	ContinueWalk bool
 	IntroducedTo ObservedTarget
 	Witnessed    []WitnessedAction
-	Observations []string
+	Observations []JournalObservation
 	FirstSeen    []ObservedTarget // From this character's saved observation.
 }
 
@@ -132,8 +132,9 @@ type journalMemory struct {
 
 // A version-one receipt pairs its ordered selectable targets with one visible
 // description each. Preserve the wording and location the observer saw then.
-func (m *journalMemory) observe(v Observation) (place string, observations []string, firstSeen []ObservedTarget) {
-	place, details, _ := strings.Cut(v.Text, "\n")
+func (m *journalMemory) observe(v Observation) (place JournalObservation, observations []JournalObservation, firstSeen []ObservedTarget) {
+	location, details, _ := strings.Cut(v.Text, "\n")
+	place = personalObservation(location)
 	var self, descriptions []string
 	for line := range strings.SplitSeq(details, "\n") {
 		if strings.HasPrefix(line, "You see the ") || strings.HasPrefix(line, "You carry the ") {
@@ -142,7 +143,7 @@ func (m *journalMemory) observe(v Observation) (place string, observations []str
 			// Personal sensations precede the visible targets.
 			self = append(self, line)
 			if !slices.Contains(m.self, line) {
-				observations = append(observations, line)
+				observations = append(observations, personalObservation(line))
 			}
 		}
 	}
@@ -153,11 +154,11 @@ func (m *journalMemory) observe(v Observation) (place string, observations []str
 		}
 		m.seen[target.Ref] = true
 		firstSeen = append(firstSeen, target)
+		description := "You see the " + target.Name + "."
 		if len(descriptions) == len(v.Targets) {
-			observations = append(observations, descriptions[i])
-		} else {
-			observations = append(observations, "You see the "+target.Name+".")
+			description = descriptions[i]
 		}
+		observations = append(observations, JournalObservation{Text: description})
 	}
 	return place, observations, firstSeen
 }

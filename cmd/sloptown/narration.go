@@ -62,14 +62,14 @@ func (n *turnNarrator) write(out io.Writer, cmd bakeryCommand, turn simulation.T
 	}
 	if place := current.Self.Place; place != "" && place != prior.Self.Place {
 		switch place {
-		case "You are in the bakery.":
+		case simulation.InBakery:
 			lines = append(lines, "You enter "+n.mark("the bakery")+".")
-		case "You are in the bakery doorway.":
+		case simulation.InBakeryDoorway:
 			lines = append(lines, "You reach "+n.mark("the bakery doorway")+".")
-		case "You are on the street.":
+		case simulation.OnStreet:
 			lines = append(lines, "You step onto "+n.mark("the street")+".")
 		default:
-			lines = append(lines, n.mark(place))
+			lines = append(lines, n.mark(place.Description()))
 		}
 	}
 	lines = append(lines, n.describeSelf(prior.Self, current.Self)...)
@@ -150,16 +150,16 @@ func (n *turnNarrator) write(out io.Writer, cmd bakeryCommand, turn simulation.T
 
 func (n *turnNarrator) describeSelf(was, now simulation.ObserverDetail) []string {
 	var lines []string
-	if was.Seated && !now.Seated {
+	if was.Condition == simulation.SittingDown && now.Condition != simulation.SittingDown {
 		lines = append(lines, n.mark("You get back on your feet."))
 	}
-	if now.Seated && !was.Seated && now.Condition == "You are sitting down." {
+	if now.Condition == simulation.SittingDown && was.Condition != simulation.SittingDown {
 		lines = append(lines, n.mark("You sit down."))
 	} else if now.Condition != "" && now.Condition != was.Condition {
-		lines = append(lines, n.mark(now.Condition))
+		lines = append(lines, n.mark(now.Condition.Description()))
 	}
 	if now.Feeling != was.Feeling {
-		feeling := now.Feeling
+		feeling := now.Feeling.Description()
 		if feeling == "" {
 			feeling = "The feeling of relief passes."
 		}
@@ -277,7 +277,7 @@ func (n *turnNarrator) actionOpening(cmd bakeryCommand, target string, scene sim
 	case simulation.ActionMove, simulation.ActionWait:
 		return ""
 	case simulation.ActionRest:
-		if scene.Self.Seated && !n.previous.Self.Seated && scene.Self.Condition == "You are sitting down." {
+		if scene.Self.Condition == simulation.SittingDown && n.previous.Self.Condition != simulation.SittingDown {
 			return ""
 		}
 	case simulation.ActionTake:

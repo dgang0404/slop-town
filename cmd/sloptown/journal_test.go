@@ -25,6 +25,31 @@ func journalVisit(t *testing.T, input string, args ...string) string {
 	return book
 }
 
+func TestJournalRecognizesPlaceAndPostureAcrossWordings(t *testing.T) {
+	entries := []simulation.JournalEntry{
+		{
+			Action: simulation.ActionMove,
+			Place:  simulation.JournalObservation{Kind: simulation.InBakery, Text: "You step into the shop."},
+		},
+		{
+			Action: simulation.ActionRest, Outcome: "You rest for a turn.",
+			Place: simulation.JournalObservation{Kind: simulation.InBakery, Text: "You are inside the shop."},
+			Observations: []simulation.JournalObservation{
+				{Kind: simulation.SittingDown, Text: "You take a seat."},
+				{Kind: simulation.FeelingRelieved, Text: "A weight lifts."},
+			},
+		},
+	}
+	var out bytes.Buffer
+	if err := writeJournal(&out, entries); err != nil {
+		t.Fatal(err)
+	}
+	const want = "My journal\n\nChapter 1 — Inside the bakery\n\nI rested. I felt relieved.\n"
+	if out.String() != want {
+		t.Fatalf("got %q, want %q", out.String(), want)
+	}
+}
+
 func TestJournalAcrossVisits(t *testing.T) {
 	const empty = "I haven't recorded anything yet.\n"
 	const route = "open door\ne\ne\nopen crate\ntake spoon\nput it in crate\nwait\n"

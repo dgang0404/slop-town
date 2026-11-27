@@ -99,8 +99,8 @@ func TestChaptersUseFirsthandMilestones(t *testing.T) {
 	}
 	// When the first recorded turn contains several milestones, it has one opening.
 	c = journalChapters{met: make(map[string]bool)}
-	first := simulation.JournalEntry{Place: "You are in the bakery.", Witnessed: []simulation.WitnessedAction{heard(one), heard(two)}}
-	if title, covered := c.begin(first); title != "Introductions" || covered != "" || c.number != 1 {
+	first := simulation.JournalEntry{Place: simulation.JournalObservation{Kind: simulation.InBakery, Text: "You are in the bakery."}, Witnessed: []simulation.WitnessedAction{heard(one), heard(two)}}
+	if title, covered := c.begin(first); title != "Introductions" || covered || c.number != 1 {
 		t.Fatal(title, c.number)
 	}
 	if title, _ := c.begin(first); title != "" || c.number != 1 {

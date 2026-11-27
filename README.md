@@ -23,6 +23,8 @@ In Phase 5, the player and residents build endurance, feel relief after a tiring
 
 The Phase 7 bakery narrator offers brief and story settings. Both describe what your character notices, with new details in bold on supported terminals. In the practice bakery, workers can talk while you are elsewhere. Ask what someone has heard and they can tell you who witnessed it. The player journal recalls the visit and its conversations in chapters. Export it as plain text or as an illustrated book you can read offline. [Phase 7 presentation plan](docs/plans/phase-7.md)
 
+The demo writes its prose locally. Phase 10 adds optional narration from a local model first and a cloud API later. Both the built-in narrator and a model will work from what the character could see, feel or hear. [Narration API roadmap](docs/plans/phase-7.md#when-will-the-game-call-a-narration-api)
+
 To validate a local content pack, run `go run ./cmd/packcheck PACK_DIRECTORY`. The [manifest guide](docs/content-packs.md) includes a bundled example.
 
 ## Run the Phase 0 fixture

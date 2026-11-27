@@ -28,8 +28,7 @@ type Scene struct {
 // ObserverDetail contains only the surroundings and sensations described to the actor.
 type ObserverDetail struct {
 	Cell                      CellPosition
-	Place, Condition, Feeling string
-	Seated                    bool
+	Place, Condition, Feeling PerceptionKind
 }
 
 // VisibleDetail describes a target in the observer's field of view.
@@ -146,27 +145,27 @@ func (b *Bakery) observe(scope Scope, actorID string, scene *Scene) (Observation
 	}
 	tiles[at.Y][at.X] = "@"
 	view := Observation{Scope: scope, Version: contractVersion, ObserverID: actorID}
-	self := ObserverDetail{Cell: at, Place: "You are in the bakery.", Seated: actor.Seated}
+	self := ObserverDetail{Cell: at, Place: InBakery}
 	if b.Cells[at.Y][at.X].SpaceID == b.StreetID {
-		self.Place = "You are on the street."
+		self.Place = OnStreet
 	}
 	if actor.Seated {
-		self.Condition = "You are sitting down."
+		self.Condition = SittingDown
 	} else if b.ContentVersion >= practiceContentVersion && actor.Fatigue == fatigueLimit {
-		self.Condition = "Your legs feel tired."
+		self.Condition = TiredLegs
 	}
 	switch actor.ReliefTurns {
 	case reliefDuration:
-		self.Feeling = "You feel relieved."
+		self.Feeling = FeelingRelieved
 	case 1, 2:
-		self.Feeling = "A little of that relief lingers."
+		self.Feeling = LingeringRelief
 	}
-	lines := []string{self.Place}
+	lines := []string{self.Place.Description()}
 	if self.Condition != "" {
-		lines = append(lines, self.Condition)
+		lines = append(lines, self.Condition.Description())
 	}
 	if self.Feeling != "" {
-		lines = append(lines, self.Feeling)
+		lines = append(lines, self.Feeling.Description())
 	}
 	for _, id := range slices.Sorted(maps.Keys(b.Entities)) {
 		if id == actorID {
@@ -178,8 +177,8 @@ func (b *Bakery) observe(scope Scope, actorID string, scene *Scene) (Observation
 		}
 		e := b.Entities[id]
 		if pos == at && e.Kind == Door {
-			self.Place = "You are in the bakery doorway."
-			lines[0] = self.Place
+			self.Place = InBakeryDoorway
+			lines[0] = self.Place.Description()
 		}
 		view.Targets = append(view.Targets, ObservedTarget{Ref: id, Name: e.Name})
 		if e.Placement.HolderID == actorID {
