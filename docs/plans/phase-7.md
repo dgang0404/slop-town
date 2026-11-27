@@ -139,6 +139,16 @@ A seed-42 save created by `8faff65` reached the bakery doorway on day 7 of sprin
 
 Up and Enter showed the summer date in a Linux terminal. The in-game export matched the standalone journal byte for byte. Separate tests covered a named walk across midnight, days spent by another actor and the return to spring in year two. The offline build, full test suite, both seed-42 smoke runs and three race-detector runs passed. The CLI also cross-built for Windows amd64 and macOS arm64. [Calendar tests](../../internal/simulation/calendar_test.go) · [Journal walkthroughs](../../cmd/sloptown/calendar_test.go)
 
-## Later narrative work
+## Checkpoint 10 — illustrated journal export
 
-Illustrated journal export follows the dated plain-text edition.
+`export illustrated journal` makes a single HTML book from the same dated chapters and first-person paragraphs as the text edition. The first three illustrations are ink sketches of the bakery door, the crate and the wooden spoon. They were generated for the book and ship in the executable. Exporting works offline, including from an in-memory visit. [Try both editions](../../README.md#export-an-illustrated-journal)
+
+Each sketch belongs to a particular object. The journal selects it from the character’s first saved sighting of that object and places it with that passage. A report can mention a spoon before the player sees one. In that case the book quotes the speaker and waits for a firsthand sighting to draw the spoon. Text and alternative descriptions are readable in a narrow browser window or in print. [Master design, sections 7.8 and 17](../design/Slop_Town_Master_Design_Revised_v7.docx)
+
+### Checkpoint 10 results
+
+A seed-42 save written by `bd1fc70` yielded two sketches before the crate opened. After the player found the spoon, picked it up, put it back and closed the crate, the book showed the spoon once at its discovery. Retrying the saved visit and exporting through Up and Enter in a Linux terminal produced the same HTML as the standalone command. Both executables produced identical plain-text journals and replayed to tick 8, sequence 16, with SHA-256 `f2b87770a60aa9a7c5d76794dbd68e2aab0efaffdf8f4f332d9027efc25aa861`.
+
+An empty timeline exported a book with no pictures. A save deliberately named `slop-town-journal.html` kept its contents while successive books received new filenames. The three embedded images decoded to the bundled artwork. The export was checked at desktop and phone widths in Chrome on Linux. [Export walkthrough and privacy tests](../../cmd/sloptown/journal_illustrated_test.go)
+
+The offline build, full test suite, both seed-42 smoke runs and three race-detector runs passed. The CLI also cross-built for Windows amd64 and macOS arm64.

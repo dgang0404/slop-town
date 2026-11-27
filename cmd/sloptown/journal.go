@@ -11,13 +11,41 @@ import (
 	"github.com/dgang0404/slop-town/internal/simulation"
 )
 
-// Use one plain-text edition for the prompt, the exported file and stdout.
+type journalChapter struct {
+	Number   int
+	Title    string
+	Passages []journalPassage
+}
+
+type journalPassage struct {
+	Text      string
+	FirstSeen []simulation.ObservedTarget
+}
+
+const emptyJournal = "I haven't recorded anything yet."
+
 func writeJournal(dst io.Writer, entries []simulation.JournalEntry) error {
 	out := bufio.NewWriter(dst)
 	fmt.Fprintln(out, "My journal")
 	if len(entries) == 0 {
-		fmt.Fprintln(out, "I haven't recorded anything yet.")
-		return out.Flush()
+		fmt.Fprintln(out, emptyJournal)
+	}
+	for _, chapter := range composeJournal(entries) {
+		fmt.Fprintf(out, "\nChapter %d — %s\n\n", chapter.Number, chapter.Title)
+		for _, passage := range chapter.Passages {
+			fmt.Fprintln(out, passage.Text)
+		}
+	}
+	return out.Flush()
+}
+
+// Both editions tell the same story. Only the illustrated one uses the
+// subjects first seen in each passage to choose accompanying artwork.
+func composeJournal(entries []simulation.JournalEntry) []journalChapter {
+	var book []journalChapter
+	addPassage := func(words string, firstSeen []simulation.ObservedTarget) {
+		chapter := &book[len(book)-1]
+		chapter.Passages = append(chapter.Passages, journalPassage{words, firstSeen})
 	}
 	chapters := journalChapters{met: make(map[string]bool)}
 	var continuingTo string
@@ -26,9 +54,9 @@ func writeJournal(dst io.Writer, entries []simulation.JournalEntry) error {
 		switch quietWaits {
 		case 0:
 		case 1:
-			fmt.Fprintln(out, "I waited.")
+			addPassage("I waited.", nil)
 		default:
-			fmt.Fprintln(out, "I waited a while.")
+			addPassage("I waited a while.", nil)
 		}
 		quietWaits = 0
 	}
@@ -36,7 +64,7 @@ func writeJournal(dst io.Writer, entries []simulation.JournalEntry) error {
 		newDay := entry.Date != chapters.date
 		if title := chapters.begin(entry); title != "" {
 			flushWaits()
-			fmt.Fprintf(out, "\nChapter %d — %s\n\n", chapters.number, title)
+			book = append(book, journalChapter{Number: chapters.number, Title: title})
 		}
 		continuation := entry.Action == simulation.ActionApproach && continuingTo != "" && entry.WalkTarget == continuingTo
 		continuingTo = ""
@@ -79,11 +107,11 @@ func writeJournal(dst io.Writer, entries []simulation.JournalEntry) error {
 			lines = append(lines, remembered(sight))
 		}
 		if len(lines) != 0 {
-			fmt.Fprintln(out, strings.Join(lines, " "))
+			addPassage(strings.Join(lines, " "), entry.FirstSeen)
 		}
 	}
 	flushWaits()
-	return out.Flush()
+	return book
 }
 
 type journalChapters struct {

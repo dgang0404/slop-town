@@ -27,6 +27,7 @@ type JournalEntry struct {
 	IntroducedTo ObservedTarget
 	Witnessed    []WitnessedAction
 	Observations []string
+	FirstSeen    []ObservedTarget // From this character's saved observation.
 }
 
 // Journal reads existing history on demand. Both backends visit committed events
@@ -71,7 +72,7 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 				// has its own event and is included below in the order it was heard.
 				page.WalkEnd = rest[strings.LastIndexByte(rest, '\n')+1:]
 			}
-			page.Observations = memory.observe(r.Result.Observation)
+			page.Observations, page.FirstSeen = memory.observe(r.Result.Observation)
 		}
 
 		if e.Kind == "actors_conversed" && (e.ActorID == actor || e.Payload.Target == actor) {
@@ -130,8 +131,8 @@ type journalMemory struct {
 
 // A version-one receipt pairs its ordered selectable targets with one visible
 // description each. Preserve the wording and location the observer saw then.
-func (m *journalMemory) observe(v Observation) []string {
-	var self, descriptions, observations []string
+func (m *journalMemory) observe(v Observation) (observations []string, firstSeen []ObservedTarget) {
+	var self, descriptions []string
 	for line := range strings.SplitSeq(v.Text, "\n") {
 		if strings.HasPrefix(line, "You see the ") || strings.HasPrefix(line, "You carry the ") {
 			descriptions = append(descriptions, line)
@@ -149,13 +150,14 @@ func (m *journalMemory) observe(v Observation) []string {
 			continue
 		}
 		m.seen[target.Ref] = true
+		firstSeen = append(firstSeen, target)
 		if len(descriptions) == len(v.Targets) {
 			observations = append(observations, descriptions[i])
 		} else {
 			observations = append(observations, "You see the "+target.Name+".")
 		}
 	}
-	return observations
+	return observations, firstSeen
 }
 
 func (b *Bakery) witnessedAction(s NotebookEntry) WitnessedAction {

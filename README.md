@@ -21,7 +21,7 @@ In Phase 4 the baker and porter follow work routines, choose where to rest and k
 
 In Phase 5, the player and residents build endurance, feel relief after a tiring walk, and recognize people who have introduced themselves. [Phase 5 plan](docs/plans/phase-5.md) · [Acceptance results](docs/plans/phase-5-results.md)
 
-The Phase 7 bakery narrator offers brief and story settings. Both describe what your character notices, with new details in bold on supported terminals. In the practice bakery, workers can talk while you are elsewhere. Ask what someone has heard and they can tell you who witnessed it. The player journal recalls the visit and its conversations in chapters and can be exported as plain text. [Phase 7 presentation plan](docs/plans/phase-7.md)
+The Phase 7 bakery narrator offers brief and story settings. Both describe what your character notices, with new details in bold on supported terminals. In the practice bakery, workers can talk while you are elsewhere. Ask what someone has heard and they can tell you who witnessed it. The player journal recalls the visit and its conversations in chapters. Export it as plain text or as an illustrated book you can read offline. [Phase 7 presentation plan](docs/plans/phase-7.md)
 
 To validate a local content pack, run `go run ./cmd/packcheck PACK_DIRECTORY`. The [manifest guide](docs/content-packs.md) includes a bundled example.
 
@@ -156,6 +156,18 @@ To export directly from an existing save, give the shell a destination filename.
 
 ```sh
 go run ./cmd/sloptown journal -db bakery.sqlite > my-bakery-visit.txt
+```
+
+### Export an illustrated journal
+
+Type `export illustrated journal` or choose it with the arrows and Enter. Open `slop-town-journal.html` in a browser. The pictures travel with the file, so you can copy it to another device and read it offline. Later exports use the next available filename.
+
+Try exporting once while the crate is closed and again after you open it and see the wooden spoon. In the second book, the spoon sketch appears beside the passage where you found it. Closing the crate again preserves that memory. The bakery door and the crate have sketches of their own.
+
+To make the same book from an existing save, choose a new output filename and run
+
+```sh
+go run ./cmd/sloptown journal -illustrated -db bakery.sqlite > my-bakery-visit.html
 ```
 
 ### Browse actions and walk to a destination
