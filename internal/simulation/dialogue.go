@@ -248,6 +248,11 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 		x.ReplySource = fact.SourceSequence
 	case "confirm_source":
 		x.Reply = "Yes. That's who told me."
+		if source, ok := b.entryAt(listener, line.Source); ok {
+			if fact, ok := b.overheardReport(source); ok {
+				x.Reply = "Yes. " + b.overheardRelay(source, fact, listener, speaker, false)
+			}
+		}
 	case "confirm":
 		x.Reply = "Yes. That's what I said."
 		if fact, ok := b.entryAt(listener, line.Source); ok && fact.Overheard {

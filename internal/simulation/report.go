@@ -66,6 +66,9 @@ func (b *Bakery) memoryLine(e NotebookEntry, speaker, listener string) (SpeechLi
 		if sight, ok := b.reportedObservation(source); ok {
 			return source.speechLine("confirm_source", "careful"), b.relayWords(source, sight, listener, speaker, true)
 		}
+		if fact, ok := b.overheardReport(source); ok {
+			return source.speechLine("confirm_source", "careful"), b.overheardRelay(source, fact, speaker, listener, true)
+		}
 	} else if sight, ok := b.reportedObservation(e); ok {
 		return e.speechLine("relay", "plain"), b.relayWords(e, sight, speaker, listener, false)
 	} else if fact, ok := b.overheardReport(e); ok {

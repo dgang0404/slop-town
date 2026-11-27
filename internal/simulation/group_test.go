@@ -130,4 +130,26 @@ func TestParticipantConfirmsWhatTheBystanderHeard(t *testing.T) {
 		!strings.Contains(r.Message, passed) {
 		t.Fatal(r)
 	}
+	b = c.bakery
+	back := b.Entities[baker]
+	back.Placement = b.Entities[porter].Placement
+	b.Entities[baker] = back
+	const check = "Did the player tell you they heard you check in on me?"
+	choices, err = c.DialogueChoices(porter, baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var follow SpeechLine
+	for _, choice := range choices {
+		if choice.Words == check {
+			follow = choice.Line
+		}
+	}
+	if follow.Intent != "confirm_source" {
+		t.Fatal(choices)
+	}
+	if r := c.Submit(porter, spatialProposal(c, "follow", ActionSpeak, ActionArgs{Target: baker, Speech: follow})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "Yes. "+passed) {
+		t.Fatal(r)
+	}
 }
