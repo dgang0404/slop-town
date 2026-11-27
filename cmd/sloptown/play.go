@@ -13,8 +13,9 @@ import (
 	"github.com/dgang0404/slop-town/internal/simulation"
 )
 
-const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use walk to NAME to approach a visible destination. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. Use introduce yourself to NAME or talk to NAME when someone is nearby. Short names work. Use it for the last object you acted on. Type actions for choices here, look for the current scene, calendar for today's date, journal to read your memories or quit to leave. Use journal accounts to recall who told you about a sighting. Use journal discoveries for first sightings or journal last seen for the latest. Add a name to search either list. Use export journal for a text copy or export illustrated journal for a book you can open in a browser. Choose narration brief or narration story to change how turns read."
+const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use walk to NAME to approach a visible destination. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. Use introduce yourself to NAME or talk to NAME when someone is nearby. Short names work. Use it for the last object you acted on. Type actions for choices here, look for the current scene, calendar for today's date, journal to read your memories or quit to leave. Use journal accounts to recall who told you about a sighting, or journal leads to see which witnesses you could ask. Use journal discoveries for first sightings or journal last seen for the latest. Add a name to search either list. Use export journal for a text copy or export illustrated journal for a book you can open in a browser. Choose narration brief or narration story to change how turns read."
 
+const leadsCommand = "journal leads"
 const firstSightingsCommand = "journal discoveries"
 const lastSightingsCommand = "journal last seen"
 
@@ -123,12 +124,17 @@ func (s bakerySession) play(in io.Reader, out io.Writer) error {
 				fmt.Fprintln(out, "  "+actionCommand(option))
 			}
 			continue
-		case "journal accounts":
+		case "journal accounts", leadsCommand:
 			accounts, err := s.accounts()
 			if err != nil {
 				return err
 			}
-			if err := writeAccounts(out, accounts); err != nil {
+			if line == leadsCommand {
+				err = writeLeads(out, accounts)
+			} else {
+				err = writeAccounts(out, accounts)
+			}
+			if err != nil {
 				return err
 			}
 			continue

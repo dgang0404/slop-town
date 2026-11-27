@@ -13,10 +13,14 @@ type readMenuLine func(menuSource, bool) (string, *simulation.Scene, error)
 
 func (s bakerySession) menu(cmd bakeryCommand) ([]menuChoice, *simulation.Scene, error) {
 	var choices []menuChoice
+	leads := menuChoice{leadsCommand, leadsCommand}
 	if question := cmd.question(); question != nil {
 		for i, option := range question.options {
 			n := strconv.Itoa(i + 1)
 			choices = append(choices, menuChoice{n + ". " + option.label, n})
+		}
+		if question == &cmd.speech && question.repeatNumber == 0 {
+			choices = append(choices, leads)
 		}
 		return append(choices, menuChoice{"cancel", "cancel"}), nil, nil
 	}
@@ -44,7 +48,7 @@ func (s bakerySession) menu(cmd bakeryCommand) ([]menuChoice, *simulation.Scene,
 	}
 	choices = append(choices, directions...)
 	choices = append(choices, menuChoice{"look", "look"}, menuChoice{"calendar", "calendar"}, menuChoice{"journal", "journal"},
-		menuChoice{"journal accounts", "journal accounts"}, menuChoice{firstSightingsCommand, firstSightingsCommand}, menuChoice{lastSightingsCommand, lastSightingsCommand},
+		menuChoice{"journal accounts", "journal accounts"}, leads, menuChoice{firstSightingsCommand, firstSightingsCommand}, menuChoice{lastSightingsCommand, lastSightingsCommand},
 		menuChoice{"export journal", "export journal"}, menuChoice{"export illustrated journal", "export illustrated journal"})
 	setting := "narration story"
 	if s.narrator.style == "story" {

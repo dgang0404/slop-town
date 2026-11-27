@@ -146,6 +146,8 @@ Type `journal accounts` or select it with the arrows and Enter. This part of you
 
 In the visit above, read the accounts after speaking to the baker. You’ll see “The baker said the porter saw me sit down” and “I haven't heard it from the porter yet.” After you ask the porter, their own account appears beneath the baker’s. Returning to the same teller leaves one entry for that sighting.
 
+Type `journal leads` to see which eyewitnesses you could still ask. After the baker tells you about your rest, it reads “Did the porter see me sit down, as the baker said?” The question is dated when you first heard the story. You can also choose `journal leads` with the arrows and Enter while deciding what to say. Reading spends no turn. Once the porter gives you their account, the question drops off the list. [Phase 7 journal leads](docs/plans/phase-7.md#checkpoint-18--open-questions-for-eyewitnesses)
+
 ### Read your journal
 
 Type `journal` or choose it with the arrows and Enter. After the spoon walkthrough, the journal remembers where you saw the spoon, when you took it and where you put it. In a practice bakery it can also recall a greeting you heard or a resident you saw sit down. Reading costs no game time.

@@ -30,12 +30,15 @@ func TestEyewitnessReportAcrossRestart(t *testing.T) {
 	const indirect = "\nDay 1 of spring, year 1 — The baker said the porter saw me sit down.\n"
 	const pending = indirect + "I haven't heard it from the porter yet.\n"
 	const both = indirect + "Day 1 of spring, year 1 — The porter told me they saw me sit down.\n"
-	checkAccounts := func(want string) {
+	const noLeads = "I have no eyewitness accounts to follow up.\n"
+	const openLead = "\nDay 1 of spring, year 1\nDid the porter see me sit down, as the baker said?\n"
+	checkAccounts := func(want, wantLeads string) {
 		t.Helper()
-		out := play(path, "journal accounts\n", "")
+		out := play(path, "journal accounts\njournal leads\n", "")
 		_, notes, ok := strings.Cut(out, "Accounts I've heard\n")
-		if !ok || notes != want {
-			t.Fatalf("heard accounts: %q, want %q", notes, want)
+		notes, leads, found := strings.Cut(notes, "Open leads\n")
+		if !ok || !found || notes != want || leads != wantLeads {
+			t.Fatalf("heard accounts: %q, want %q; leads: %q, want %q", notes, want, leads, wantLeads)
 		}
 	}
 
@@ -58,7 +61,7 @@ func TestEyewitnessReportAcrossRestart(t *testing.T) {
 		t.Fatal(out)
 	}
 	second := interrupt(after+"north\n", ask)
-	checkAccounts(empty)
+	checkAccounts(empty, noLeads)
 	out := play(path, route, "")
 	_, book, ok := strings.Cut(out, "My journal\n")
 	if !ok || !strings.Contains(book, "The baker replied, “"+account+"”") || !strings.Contains(book, "Did the porter tell you they saw me sit down?") {
@@ -86,7 +89,7 @@ func TestEyewitnessReportAcrossRestart(t *testing.T) {
 		}
 	}
 	head := checkpointAtHead(t, path, scope)
-	checkAccounts(pending)
+	checkAccounts(pending, openLead)
 	retry := play(path, route, "")
 	_, again, _ := strings.Cut(retry, "My journal\n")
 	if strings.Count(retry, "already completed") != 7 || book != again {
@@ -101,13 +104,14 @@ func TestEyewitnessReportAcrossRestart(t *testing.T) {
 	t.Logf("replay from %d, %d and %d reached tick %d, sequence %d, sha256 %s", initial.Sequence, first.Sequence, second.Sequence, head.Tick, head.Sequence, head.Hash)
 	// Reopen the town and take the account to the named witness. A failed
 	// write must leave the report available for the same question on retry.
-	const witnessVisit = ask + "4\ncancel\ntalk to porter\n4\ncancel\njournal\n"
+	const witnessVisit = ask + "4\ncancel\ntalk to porter\njournal leads\n4\njournal leads\ncancel\njournal\n"
 	beforeQuestion := interrupt(route, witnessVisit)
-	checkAccounts(pending)
+	checkAccounts(pending, openLead)
 	witnessOut := play(path, witnessVisit, "")
 	_, witnessBook, _ := strings.Cut(witnessOut, "My journal\n")
 	const direct = "The porter replied, “I saw you sit down.”"
-	if !strings.Contains(witnessBook, account) || strings.Count(witnessBook, direct) != 1 {
+	if !strings.Contains(witnessBook, account) || strings.Count(witnessBook, direct) != 1 ||
+		!strings.Contains(witnessOut, "Open leads\n"+openLead) || !strings.Contains(witnessOut, "Open leads\n"+noLeads) {
 		t.Fatal(witnessOut)
 	}
 	final := checkpointAtHead(t, path, scope)
@@ -118,7 +122,7 @@ func TestEyewitnessReportAcrossRestart(t *testing.T) {
 		}
 	}
 	retry = play(path, witnessVisit, "")
-	checkAccounts(both)
+	checkAccounts(both, noLeads)
 	_, again, _ = strings.Cut(retry, "My journal\n")
 	if strings.Count(retry, "already completed") != 8 || again != witnessBook {
 		t.Fatal(retry)

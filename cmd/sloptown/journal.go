@@ -66,6 +66,32 @@ func writeSightingIndex(dst io.Writer, entries []simulation.JournalEntry, name s
 	return out.Flush()
 }
 
+func writeLeads(dst io.Writer, accounts []simulation.HeardAccount) error {
+	out := bufio.NewWriter(dst)
+	phrases := journalPhrases.Leads
+	fmt.Fprintln(out, phrases.Title)
+	var date simulation.BakeryDate
+	printed := false
+	for _, account := range accounts {
+		if !account.AwaitingWitness() {
+			continue
+		}
+		first := account.Tellings[0]
+		if !printed || date != first.Date {
+			fmt.Fprintln(out)
+			fmt.Fprintln(out, formatBakeryDate(first.Date))
+			date = first.Date
+		}
+		question := strings.NewReplacer("{witness}", account.Witness, "{act}", account.Act, "{teller}", first.Teller).Replace(phrases.Question)
+		fmt.Fprintln(out, question)
+		printed = true
+	}
+	if !printed {
+		fmt.Fprintln(out, phrases.Empty)
+	}
+	return out.Flush()
+}
+
 func writeAccounts(dst io.Writer, accounts []simulation.HeardAccount) error {
 	out := bufio.NewWriter(dst)
 	fmt.Fprintln(out, "Accounts I've heard")
@@ -74,20 +100,18 @@ func writeAccounts(dst io.Writer, accounts []simulation.HeardAccount) error {
 	}
 	for _, account := range accounts {
 		fmt.Fprintln(out)
-		heardWitness := account.OwnSighting
 		for _, note := range account.Tellings {
 			fmt.Fprintf(out, "%s — The %s ", formatBakeryDate(note.Date), note.Teller)
 			switch {
 			case note.FromWitness:
 				fmt.Fprintf(out, "told me they saw %s.\n", account.Act)
-				heardWitness = true
 			case account.OwnSighting:
 				fmt.Fprintf(out, "said I'd told them I saw %s.\n", account.Act)
 			default:
 				fmt.Fprintf(out, "said the %s saw %s.\n", account.Witness, account.Act)
 			}
 		}
-		if !heardWitness {
+		if account.AwaitingWitness() {
 			fmt.Fprintf(out, "I haven't heard it from the %s yet.\n", account.Witness)
 		}
 	}

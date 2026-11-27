@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package simulation
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 // HeardAccount groups what one character has heard about one witness's sighting.
 // Act is phrased from the reader's perspective, such as "me sit down".
@@ -16,6 +19,14 @@ type AccountTelling struct {
 	Teller      string
 	FromWitness bool
 	Date        BakeryDate // When the reader first heard it from this person.
+}
+
+// AwaitingWitness reports whether this reader has only heard the sighting
+// secondhand. Hearing the witness first also settles any later retelling.
+func (a HeardAccount) AwaitingWitness() bool {
+	return !a.OwnSighting && len(a.Tellings) > 0 && !slices.ContainsFunc(a.Tellings, func(t AccountTelling) bool {
+		return t.FromWitness
+	})
 }
 
 func (c *Coordinator) Accounts(actor string) ([]HeardAccount, error) {

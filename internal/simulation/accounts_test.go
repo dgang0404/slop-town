@@ -44,11 +44,14 @@ func TestAccountsKeepDistinctWitnessesAndSightings(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatalf("accounts: %+v, %v", got, err)
 	}
+	if got[0].AwaitingWitness() || !got[1].AwaitingWitness() || !got[2].AwaitingWitness() {
+		t.Fatal("hearing the porter should settle only that witness's first sighting")
+	}
 
 	// Someone can repeat a witness's own account back to them.
 	b.appendSighting(porter, report(56, 28, baker, 6))
 	got, err = c.Accounts(porter)
-	if err != nil || len(got) != 1 || !got[0].OwnSighting || got[0].Act != "the player sit down" {
+	if err != nil || len(got) != 1 || !got[0].OwnSighting || got[0].AwaitingWitness() || got[0].Act != "the player sit down" {
 		t.Fatalf("witness as reader: %+v, %v", got, err)
 	}
 }

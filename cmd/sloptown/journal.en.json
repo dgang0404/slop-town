@@ -1,4 +1,9 @@
 {
+  "leads": {
+    "title": "Open leads",
+    "empty": "I have no eyewitness accounts to follow up.",
+    "question": "Did the {witness} see {act}, as the {teller} said?"
+  },
   "walkArrival": {
     "live": "You reach the {object}.",
     "journal": "I reached the {object}."

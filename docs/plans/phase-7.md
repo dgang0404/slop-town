@@ -256,3 +256,17 @@ A save from `1b4666c` recorded the short walk to the bakery door. Reopening it w
 A walk that ended on the first turn of day two opened the new chapter with “I reached the crate.” A walk that still had a step left at daybreak recorded the continuation and then the arrival. [Calendar tests](../../cmd/sloptown/calendar_test.go)
 
 In a Linux terminal, Down and Enter selected the west step, the return walk and the journal. The arrival highlighted **bakery door** and the save ended at tick 2. The full offline test suite, both seed-42 smoke runs and three race-detector runs passed. The CLI also cross-built for Windows amd64 and macOS arm64.
+
+## Checkpoint 18 — open questions for eyewitnesses
+
+The master design describes leads that players can discover through conversations and revisit in the journal. The first kind of open question comes from hearing someone name a witness. In the seed-42 practice bakery, `journal leads` can show “Did the porter see me sit down, as the baker said?” Choose it at the main prompt or among the conversation choices with the arrows and Enter. The dialogue keeps its original choices while you read. [Try it in the bakery](../../README.md#find-out-who-saw-you)
+
+Each question names the person who first told the reader and carries the date of that telling. The simulation groups reports by witness and sighting. Confirming the source with the baker leaves the question open. Hearing from the porter about that sighting settles it, even if someone later repeats the story. The dated tellings remain in `journal accounts`. [Account projection and tests](../../internal/simulation/accounts_test.go) · [Journal wording](../../cmd/sloptown/journal.en.json)
+
+### Checkpoint 18 results
+
+In a save created by `4cf825f`, the player had spoken with the baker on day one. Reopening the save and reading the lead during the conversation with the porter kept the clock at tick 7. In a Linux terminal, Down and Enter selected the original witness question. The porter's reply closed the lead on tick 8. The previous and current executables produced identical plain and illustrated journals and replayed from sequences 0 and 25 to sequence 27 with SHA-256 `cead21908106706c6e4c0d95f3e0486e077d18110cd040ca94dde50b14f0ae75`.
+
+An interrupted SQLite write while hearing the baker's story left the leads empty. A failed write during the porter's reply kept the question open until retry. Separate checks covered two witnesses sharing a name, two sightings by the same witness and a witness hearing their own account repeated. [Rollback and restart walkthrough](../../internal/storage/report_test.go) · [Journal tests](../../cmd/sloptown/journal_test.go)
+
+The full offline suite, both seed-42 smoke runs and three race-detector runs passed. The CLI cross-built for Windows amd64 and macOS arm64.

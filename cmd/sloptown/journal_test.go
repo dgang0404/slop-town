@@ -159,3 +159,26 @@ func TestJournalRecallsAWalk(t *testing.T) {
 		t.Fatal(lost)
 	}
 }
+
+func TestJournalLeadsDateTheFirstTelling(t *testing.T) {
+	dayOne := simulation.BakeryDate{Day: 1, Season: "spring", Year: 1}
+	dayTwo := simulation.BakeryDate{Day: 2, Season: "spring", Year: 1}
+	heardBaker := simulation.AccountTelling{Teller: "baker", Date: dayOne}
+	heardMiller := simulation.AccountTelling{Teller: "miller", Date: dayTwo}
+	accounts := []simulation.HeardAccount{
+		{Witness: "porter", Act: "me sit down", Tellings: []simulation.AccountTelling{heardBaker, heardMiller}},
+		{Witness: "miller", Act: "the porter close the crate", Tellings: []simulation.AccountTelling{heardBaker}},
+		{Witness: "baker", Act: "me open the crate", Tellings: []simulation.AccountTelling{heardMiller}},
+	}
+	var out bytes.Buffer
+	if err := writeLeads(&out, accounts); err != nil {
+		t.Fatal(err)
+	}
+	const want = "Open leads\n\nDay 1 of spring, year 1\n" +
+		"Did the porter see me sit down, as the baker said?\n" +
+		"Did the miller see the porter close the crate, as the baker said?\n" +
+		"\nDay 2 of spring, year 1\nDid the baker see me open the crate, as the miller said?\n"
+	if out.String() != want {
+		t.Fatal(out.String())
+	}
+}
