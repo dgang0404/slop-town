@@ -69,3 +69,45 @@ func TestWorkroomSupplyOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestBakerCollectsOrderAcrossRestart(t *testing.T) {
+	t.Chdir(t.TempDir())
+	const db = "rounds.sqlite"
+	scope := simulation.Scope{WorldID: "bakery", TimelineID: "main"}
+	visit := func(commands string, flags ...string) string {
+		t.Helper()
+		return journalVisit(t, commands+"journal\n", append([]string{"-db", db}, flags...)...)
+	}
+	visit("", "-workroom")
+	if _, err := storage.SaveCheckpoint(db, scope); err != nil {
+		t.Fatal(err)
+	}
+	const delivery = "open bakery door\nwalk to workroom door\nopen workroom door\nwalk to drawer\nexamine order\nopen drawer\nnorth\nwalk to crate\nopen crate\ntake scraper\nput scraper in drawer\nclose drawer\n"
+	visit(delivery + strings.Repeat("wait\n", 12))
+	mid, err := storage.SaveCheckpoint(db, scope)
+	if err != nil || mid.Tick != 26 {
+		t.Fatal(mid, err)
+	}
+	read := func() simulation.Scene {
+		t.Helper()
+		scene, err := storage.OpenBakeryScene(db, scope, 42, "bakery/baker")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return scene
+	}
+	if holder := read().Details["bakery/scraper"].Holder; holder != "bakery/workbench" {
+		t.Fatal(holder)
+	}
+	visit("wait\n", "-batch", "pickup")
+	if holder := read().Details["bakery/scraper"].Holder; holder != "bakery/baker" {
+		t.Fatal(holder)
+	}
+	visit("wait\n", "-batch", "pickup")
+	for _, seq := range []uint64{0, mid.Sequence} {
+		r, err := storage.Replay(db, scope, seq)
+		if err != nil || r.Tick != 27 {
+			t.Fatal(r, err)
+		}
+	}
+}

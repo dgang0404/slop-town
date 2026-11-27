@@ -437,6 +437,8 @@ Start a fresh save with `go run ./cmd/sloptown bakery -workroom -play -seed 42 -
 
 In a fresh seed-42 workroom, open the bakery door, then type `walk to workroom door`, `open workroom door`, `walk to drawer` and `examine order`. The slip asks for the dough scraper. Open the drawer, step north, walk to the crate, open it and take the scraper. Type `walk to drawer`, `put scraper in drawer` and `examine order` to check the delivery. Other seeds can ask for a grain scoop or flour sieve.
 
+**Stay for the collection.** In a fresh workroom the baker checks the workbench near the end of each 32-turn shift. After delivering the scraper, close the drawer and wait nearby. The baker can open the drawer and pick up the tool on separate turns. You can also leave before the collection. When you return, the drawer tells you what is there now. To learn who took something you missed, you need a witness.
+
 ### Export an illustrated journal
 
 Type `export illustrated journal` or choose it with the arrows and Enter. Open `slop-town-journal.html` in a browser. The maps travel with the file, so you can copy it to another device and read it offline. Later exports use the next available filename.

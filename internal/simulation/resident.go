@@ -70,6 +70,11 @@ func (b *Bakery) residentTurn(scope Scope, role string, clock *Timeline) (spatia
 	goal := workStation(door, clock.Tick())
 	actor := b.Entities[id]
 	if b.ContentVersion < restContentVersion || actor.Fatigue < fatigueLimit {
+		// The baker checks the workbench during the last eight turns of each
+		// 32-turn shift. The visit happens even if nobody filled the order.
+		if role == "baker" && b.ContentVersion >= workroomRoundsVersion && (clock.Tick()-1)%32 >= 24 {
+			return b.workroomRound(scope, id, doorID), nil, nil
+		}
 		if b.ContentVersion >= relationshipContentVersion && actor.Placement.Cell == goal && goal.X == door.X-1 && !actor.Seated {
 			return b.shopfrontIntroduction(scope, id), nil, nil
 		}
@@ -77,6 +82,33 @@ func (b *Bakery) residentTurn(scope Scope, role string, clock *Timeline) (spatia
 	}
 	goal.X = door.X + 2 // The resting place behind the prep area.
 	return b.restTurn(scope, id, role, clock, goal, b.stepToward(scope, id, goal, doorID))
+}
+
+// Approach along the main aisle before turning toward the inner door.
+func (b *Bakery) workroomRound(scope Scope, baker, frontDoor string) spatialEffect {
+	prefix := url.PathEscape(scope.WorldID) + "/"
+	inner := prefix + "workroom-door"
+	entry := b.Entities[inner].Placement.Cell
+	at := b.Entities[baker].Placement.Cell
+	if at.X != entry.X {
+		aisle := b.Entities[frontDoor].Placement.Cell
+		aisle.X = entry.X
+		return b.stepToward(scope, baker, aisle, frontDoor)
+	}
+	if at != entry {
+		return b.stepToward(scope, baker, entry, inner)
+	}
+	drawer := prefix + "workbench"
+	tool := b.Entities[prefix+"order"].RequestedItem
+	p := Proposal{Scope: scope, Action: ActionOpen, Args: ActionArgs{Target: drawer}}
+	if b.Entities[drawer].Open {
+		if b.Entities[tool].Placement.HolderID != drawer {
+			return spatialEffect{}
+		}
+		p.Action, p.Args.Target = ActionTake, tool
+	}
+	effect, _ := b.resolveSpatial(baker, p)
+	return effect
 }
 
 func workStation(door CellPosition, tick int64) CellPosition {

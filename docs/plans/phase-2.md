@@ -18,6 +18,12 @@ Across 100 seeds the player opened both doors, entered the workroom, closed its 
 
 Fresh workrooms use generator version 4. A pinned order names the utensil selected for the crate during generation. Examining the order up close in sufficient light reveals the request. With the drawer open, the character can verify delivery against the actual tool in the drawer. Taking it away makes the order outstanding again. Earlier workroom saves keep their original contents. The SQLite walkthrough reads the slip, checks an empty drawer, collects the tool, reopens the save, delivers it and retries the delivery batch. [Play the supply order](../../README.md#fill-the-workroom-supply-order)
 
+### The baker collects a delivery
+
+Fresh workrooms use content version 26. On turns 25 through 32 of each 32-turn shift, the baker visits the workbench whether anyone delivered a tool or not. Walking, opening either door, opening the drawer and picking up the requested tool use ordinary actions. When tired, the baker can take a break and miss part of the round. Other items stay in the drawer. Content version 25 retains the earlier work routine.
+
+In the seed-42 SQLite walkthrough, the player closed the stocked drawer on turn 14. The baker opened it on turn 26. The test reopened that save, verified the scraper was still in the drawer, advanced one turn and found the same scraper in the baker’s inventory. Retrying the turn and replaying from the initial and turn-26 checkpoints reached turn 27. [Saved collection test](../../cmd/sloptown/workroom_test.go)
+
 ## First checkpoint — generate a place
 
 Use one floor with five columns and four rows. Coordinates start at the northwest corner. East increases `x`; south increases `y`. Columns 0–1 are the street, column 2 is the bakery wall, and columns 3–4 are the bakery interior. One wall cell contains a closed door. Opening it makes that cell passable and transparent.

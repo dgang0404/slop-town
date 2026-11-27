@@ -57,3 +57,24 @@ func TestWorkroomRoundTripAcrossSeeds(t *testing.T) {
 		}
 	}
 }
+
+func TestWorkroomRoundLeavesOtherItemsInPlace(t *testing.T) {
+	scope := Scope{"bakery", "main"}
+	c, err := (BakerySetup{Workroom: true}).NewCoordinator(scope, 42)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := c.bakery
+	baker := b.Entities["bakery/baker"]
+	baker.Placement = b.Entities["bakery/workroom-door"].Placement
+	b.Entities["bakery/baker"] = baker
+	drawer := b.Entities["bakery/workbench"]
+	drawer.Open = true
+	b.Entities["bakery/workbench"] = drawer
+	spoon := b.Entities["bakery/spoon"]
+	spoon.Placement = Placement{HolderID: "bakery/workbench"}
+	b.Entities["bakery/spoon"] = spoon
+	if action := b.workroomRound(scope, "bakery/baker", "bakery/door"); action.kind != "" {
+		t.Fatal(action)
+	}
+}

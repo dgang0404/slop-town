@@ -119,6 +119,7 @@ const (
 	landmarkContentVersion        = 23
 	mailContentVersion            = 24
 	phoneContentVersion           = 25
+	workroomRoundsVersion         = 26
 	fatigueLimit                  = 5 // Steps since the last rest, capped during a break.
 )
 
