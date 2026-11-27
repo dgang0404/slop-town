@@ -10,6 +10,14 @@ The player and residents develop through what they do and experience. The simula
 | 4. Demo controls | Browse available actions with Up and Down. Walk up to a visible person or object by name. [Walkthrough and checks](#checkpoint-4-demo-controls) |
 | 5. Acceptance | Follow the consequences through ordinary play, an interrupted save, restart and replay. Compare character views, developer history and local and hosted results. |
 
+## Planned mechanic — professions and learnable skills
+
+Players and residents can learn baking, reading, writing, music and woodworking through meaningful practice. A profession describes the skills a person has already had reason to develop. In a starting town, baking is the baker’s strongest skill, and the baker starts as the town’s most accomplished baker. The librarian reads fluently and writes well. The farmer has developed strength through years of lifting and hauling. Strength is a physical attribute that can help with many jobs. Knowing when dough has risen enough is learned baking skill.
+
+Anyone with ingredients and access to an oven can try baking. The librarian can bake bread badly at first, learn from a dense loaf and eventually surpass the baker. The baker can learn a tune and the farmer can take up woodworking without either having to change jobs. The same opportunities apply to the player. Practice develops the skill the action actually exercises. Reading a letter and composing a reply exercise different skills, even when both happen at the same desk.
+
+Show proficiency through the work itself. A practiced baker can judge the rise by touch, and a musician learning a tune may lose the rhythm at a difficult passage. For a future check, give the baker, the librarian and the player the same recipe and equipment. Verify that all three can attempt it, prior experience affects the outcome, and meaningful practice carries into later attempts after a save and reload.
+
 ## Checkpoint 1 results
 
 Checkpoint 1 introduced practice bakeries with both Phase 4 workers in content version 6. The seed-42 player walked west, south, east, north, south and north, then sat down. The first two walks each took the player to four distinct destinations and left them tired. On the third walk the player felt tired on step six. On the first walk that happened on step five. The baker and porter also earned practice during their ordinary work routines. [Run the walkthrough](../../README.md#try-the-endurance-walk) · [Simulation checks](../../internal/simulation/endurance_test.go)
