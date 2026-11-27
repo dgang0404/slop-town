@@ -439,3 +439,21 @@ A failed receipt write rolled back the examination and that turn’s worker acti
 New practice towns use content version 20. A version 19 save from `250e6c6` kept its earlier actions. Both executables produced identical seed-43 knock transcripts and journals. Replay from sequences 0 and 6 reached tick 3, sequence 14, with SHA-256 `ccb381f0dbcf0eb5c3354adee06110eaac7b6656dd89a60970a0a3ee68d6b7fb`.
 
 The offline suite and both seed-42 smoke runs passed. The terminal, simulation and storage packages each passed three race-detector runs. The CLI cross-built for Windows amd64 and macOS arm64.
+
+## Checkpoint 29 — see across a doorway and remember people
+
+A character looking through the bakery door can distinguish someone outside on the street, inside the bakery or standing in the doorway. Nearby objects still use bearings when those help with navigation. If two targets match the same name across the doorway, the choice includes their place and bearing. An item in an open crate keeps its container as well as the place where the character saw it. Doors, lids and the observer’s line of sight determine what can appear. [Doorway tests](../../internal/simulation/landmark_test.go)
+
+`journal people` lists people in the order the character first exchanged introductions with them. An introduction in either direction opens an entry. Each entry can recall a distinguishing detail actually noticed during examination, something the person said directly to the reader, and the last recorded sighting. Seeing someone from a distance leaves them out of the book until an introduction. Type `contacts` or use the arrows to choose **journal people**. [Try both visits](../../README.md#look-through-the-doorway-and-remember-people)
+
+### Checkpoint 29 results
+
+On seed 42 the player looked out from inside the bakery and saw the porter outside. In a second visit, the player noticed the porter’s frayed sleeve and introduced themselves. After the player walked down the street, the last sighting still placed the porter in the doorway three turns later. The book survived reopening. Looking up a person kept the replay head unchanged, and two people called “porter” kept separate descriptions and quotes. Down and Enter opened the same book in a Linux terminal. [Contact book tests](../../cmd/sloptown/journal_people_test.go)
+
+Fresh practice towns use content version 23 to record visible landmarks. A version 22 save retained its original harvest transcript, journal and turn-15 replay hash from Phase 6. The book can also read an introduction and a close examination that were already saved under the previous rules. [Previous harvest replay](phase-6.md#checkpoint-2--harvest-a-sprig)
+
+### Planned follow-up — shared contact details, letters and calls
+
+Let a character offer a mailing address in conversation. Record who shared it and when in that person’s book entry. The first playable correspondence checkpoint will let the player or a resident write a letter to a learned address. The letter should take town time to arrive, and its contents should become known to the recipient on reading. Verify a save and restart while a letter is in transit delivers it once.
+
+A later checkpoint can add calls in a town with telephones. A character who learns a number and reaches a phone can place a call. The recipient’s circumstances determine whether they answer. Mailing addresses and phone numbers enter the book when someone shares them.

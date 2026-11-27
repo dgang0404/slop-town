@@ -91,7 +91,7 @@ func prepareCommand(action simulation.ActionKind, args simulation.ActionArgs, sc
 			n.ref = last
 		} else {
 			for _, t := range scene.MatchingTargets(phrase) {
-				n.options = append(n.options, promptOption{ref: t.Ref, label: t.Name + " " + scene.Details[t.Ref].Location})
+				n.options = append(n.options, promptOption{ref: t.Ref, label: t.Name + " " + scene.ChoiceLocation(t.Ref)})
 			}
 			if len(n.options) == 1 {
 				n.ref = n.options[0].ref

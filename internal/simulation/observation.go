@@ -4,6 +4,7 @@ package simulation
 import (
 	"errors"
 	"maps"
+	"net/url"
 	"slices"
 	"strings"
 )
@@ -37,6 +38,15 @@ type VisibleDetail struct {
 	Label, State, Location, Holder string
 	Recognition, Expression        string
 	Cell                           CellPosition
+}
+
+// ChoiceLocation keeps a bearing when disambiguating several visible namesakes.
+func (s Scene) ChoiceLocation(ref string) string {
+	detail := s.Details[ref]
+	if s.Landmarks[ref] != "" {
+		return detail.Location + ", " + relativeLocation(s.Self.Cell, detail.Cell)
+	}
+	return detail.Location
 }
 
 // WitnessedAction identifies a firsthand sighting at the moment it occurred.
@@ -174,10 +184,8 @@ func (b *Bakery) observe(scope Scope, actorID string, scene *Scene) (Observation
 	}
 	tiles[at.Y][at.X] = "@"
 	view := Observation{Scope: scope, Version: contractVersion, ObserverID: actorID}
-	self := ObserverDetail{Cell: at, Place: InBakery}
-	if b.Cells[at.Y][at.X].SpaceID == b.StreetID {
-		self.Place = OnStreet
-	}
+	doorway := b.Entities[url.PathEscape(b.WorldID)+"/door"].Placement.Cell
+	self := ObserverDetail{Cell: at, Place: b.visiblePlace(at, doorway)}
 	if actor.Seated {
 		self.Condition = SittingDown
 	} else if b.ContentVersion >= practiceContentVersion && actor.Fatigue == fatigueLimit {
@@ -219,7 +227,7 @@ func (b *Bakery) observe(scope Scope, actorID string, scene *Scene) (Observation
 				continue
 			}
 		}
-		if pos == at && e.Kind == Door {
+		if b.ContentVersion < landmarkContentVersion && pos == at && e.Kind == Door {
 			self.Place = InBakeryDoorway
 			lines[0] = self.Place.Description()
 		}
@@ -241,6 +249,20 @@ func (b *Bakery) observe(scope Scope, actorID string, scene *Scene) (Observation
 		location := relativeLocation(at, pos)
 		if holder := e.Placement.HolderID; holder != "" {
 			location = "in the " + b.Entities[holder].Name
+		}
+		if b.ContentVersion >= landmarkContentVersion && e.Kind != Door {
+			place := b.visiblePlace(pos, doorway)
+			if place != self.Place {
+				if view.Landmarks == nil {
+					view.Landmarks = make(map[string]PerceptionKind)
+				}
+				view.Landmarks[id] = place
+				if e.Placement.HolderID == "" {
+					location = place.landmark()
+				} else {
+					location += " " + place.landmark()
+				}
+			}
 		}
 		lines = append(lines, "You see the "+label+" "+location+".")
 		detail := VisibleDetail{Label: label, State: state, Location: location, Holder: e.Placement.HolderID, Cell: pos}

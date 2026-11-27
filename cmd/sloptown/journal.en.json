@@ -34,6 +34,7 @@
   },
   "lastSeen": {
     "unspecified": "I last saw the {object}.",
+    "landmark": "I last saw the {object} {landmark}.",
     "here": "I last saw the {object} right beside me.",
     "bearing": "I last saw the {object} to the {bearing}.",
     "container": "I last saw the {object} in the {container}.",
@@ -41,6 +42,7 @@
   },
   "discoveries": {
     "unspecified": "I saw the {object}.",
+    "landmark": "I saw the {object} {landmark}.",
     "here": "I saw the {object} here.",
     "bearing": "I saw the {object} to the {bearing}.",
     "container": "I saw the {object} in the {container}.",

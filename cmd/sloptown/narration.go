@@ -206,6 +206,8 @@ func (n *turnNarrator) describeTarget(obj simulation.ObservedTarget, scene simul
 		return "You carry " + n.mark("the "+obj.Name) + "."
 	case !seen:
 		return "You see " + n.mark("the "+now.Label) + " " + now.Location + "."
+	case scene.Landmarks[obj.Ref] != "" && scene.Landmarks[obj.Ref] != n.previous.Landmarks[obj.Ref]:
+		return subject + " is " + n.mark(now.Location) + "."
 	case explained.Action == "" && was.Holder != now.Holder:
 		return subject + " is now " + n.mark(now.Location) + "."
 	case explained.Action == "" && was.State != now.State && now.State != "":

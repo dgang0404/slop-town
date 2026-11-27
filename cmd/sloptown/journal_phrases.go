@@ -38,6 +38,9 @@ func rememberedSighting(sight simulation.Discovery, phrases map[simulation.Disco
 	if phrase == "" || (sight.Location == simulation.LocationUnspecified && sight.Text != "") {
 		return remembered(sight.Text)
 	}
-	return strings.NewReplacer("{object}", sight.Label, "{bearing}", sight.Bearing, "{container}", sight.Container).
+	if sight.Location == simulation.LocationContainer && sight.Landmark != "" {
+		phrase = strings.TrimSuffix(phrase, ".") + " {landmark}."
+	}
+	return strings.NewReplacer("{landmark}", sight.Landmark, "{object}", sight.Label, "{bearing}", sight.Bearing, "{container}", sight.Container).
 		Replace(phrase)
 }

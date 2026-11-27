@@ -52,7 +52,7 @@ func TestReadableBakeryTranscript(t *testing.T) {
 	story := play(loseResidents, "-practice", "-narration", "story")
 	_, storyEnd, _ := strings.Cut(story, "You walk toward the baker.")
 	notice, fullScene, _ := strings.Cut(storyEnd, "\n")
-	if notice != " You lose sight of the baker and the porter, last seen to the southeast before your last step." ||
+	if notice != " You lose sight of the baker and the porter, last seen in the bakery doorway." ||
 		strings.Contains(fullScene, "the baker ") || strings.Contains(fullScene, "the porter") {
 		t.Fatal(storyEnd)
 	}

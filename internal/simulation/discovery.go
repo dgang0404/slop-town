@@ -10,6 +10,7 @@ type Discovery struct {
 	Label     string // Includes visible details such as "closed" or "sitting".
 	Location  DiscoveryLocation
 	Bearing   string
+	Landmark  string // A visible place across a threshold, recorded at the time.
 	Container string
 	Text      string // Original observation, including any unfamiliar wording.
 }
@@ -18,6 +19,7 @@ type DiscoveryLocation string
 
 const (
 	LocationUnspecified DiscoveryLocation = "unspecified"
+	LocationLandmark    DiscoveryLocation = "landmark"
 	LocationHere        DiscoveryLocation = "here"
 	LocationBearing     DiscoveryLocation = "bearing"
 	LocationContainer   DiscoveryLocation = "container"
@@ -26,7 +28,7 @@ const (
 
 // Decode the descriptions emitted by the version-one observer. Match the
 // complete target name before interpreting any location words inside it.
-func discoveryFromReceipt(target ObservedTarget, text string) Discovery {
+func locatedDiscovery(target ObservedTarget, text string, place PerceptionKind) Discovery {
 	d := Discovery{Target: target, Label: target.Name, Location: LocationUnspecified, Text: text}
 	if text == "You carry the "+target.Name+"." {
 		d.Location = LocationInventory
@@ -45,6 +47,15 @@ func discoveryFromReceipt(target ObservedTarget, text string) Discovery {
 		where, ok := strings.CutPrefix(line, label+" ")
 		if !ok {
 			continue
+		}
+		if landmark := place.landmark(); landmark != "" {
+			if where == landmark {
+				d.Location, d.Label, d.Landmark = LocationLandmark, label, landmark
+				break
+			}
+			if holder, found := strings.CutSuffix(where, " "+landmark); found {
+				where, d.Landmark = holder, landmark
+			}
 		}
 		switch where {
 		case "here":

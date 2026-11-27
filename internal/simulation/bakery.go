@@ -109,6 +109,7 @@ const (
 	examineContentVersion         = 20
 	plantContentVersion           = 21
 	harvestContentVersion         = 22
+	landmarkContentVersion        = 23
 	fatigueLimit                  = 5 // Steps since the last rest, capped during a break.
 )
 
@@ -135,7 +136,7 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 	}
 	b.ContentVersion = personalityContentVersion
 	if setup.Practice {
-		b.ContentVersion = harvestContentVersion
+		b.ContentVersion = landmarkContentVersion
 		prefix := url.PathEscape(worldID) + "/"
 		for localID, detail := range bakeryCloseDetails {
 			id := prefix + localID

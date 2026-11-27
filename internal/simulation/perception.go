@@ -59,6 +59,28 @@ func (b *Bakery) dimAt(cell CellPosition) bool {
 	return !door.Open && cell != door.Placement.Cell
 }
 
+func (b *Bakery) visiblePlace(cell, doorway CellPosition) PerceptionKind {
+	if cell == doorway {
+		return InBakeryDoorway
+	}
+	if b.Cells[cell.Y][cell.X].SpaceID == b.StreetID {
+		return OnStreet
+	}
+	return InBakery
+}
+
+func (k PerceptionKind) landmark() string {
+	switch k {
+	case OnStreet:
+		return "outside on the street"
+	case InBakery:
+		return "inside the bakery"
+	case InBakeryDoorway:
+		return "in the bakery doorway"
+	}
+	return ""
+}
+
 func (k PerceptionKind) Description() string { return receiptDescriptions[k] }
 
 // SoundPhrase describes what can be reported from the listener's position.

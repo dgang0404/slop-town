@@ -11,6 +11,7 @@ import (
 // JournalSpeech preserves the words heard by a participant.
 type JournalSpeech struct {
 	With         string
+	WithRef      string
 	IStarted     bool
 	Words, Reply string
 }
@@ -18,21 +19,23 @@ type JournalSpeech struct {
 // JournalEntry holds an actor's own action, audible dialogue, firsthand sightings
 // and discoveries in the action's saved observation. Entries are in turn order.
 type JournalEntry struct {
-	Date          BakeryDate
-	Place         JournalObservation // Location stated in the observer's own receipt, when present.
-	Conversation  JournalSpeech
-	Action        ActionKind
-	Outcome       string
-	WalkEnd       string
-	WalkTarget    string
-	WalkArrival   ObservedTarget
-	ContinueWalk  bool
-	IntroducedTo  ObservedTarget
-	OutcomeTarget string // The action already introduces this object in the journal.
-	Witnessed     []WitnessedAction
-	Observations  []JournalObservation
-	FirstSeen     []Discovery // From this character's saved observation.
-	LastSeen      []Discovery // Latest recorded view of each target, on the turn it was seen.
+	Date           BakeryDate
+	Place          JournalObservation // Location stated in the observer's own receipt, when present.
+	Conversation   JournalSpeech
+	Action         ActionKind
+	Outcome        string
+	WalkEnd        string
+	WalkTarget     string
+	WalkArrival    ObservedTarget
+	ContinueWalk   bool
+	IntroducedTo   ObservedTarget
+	ExaminedRef    string // Resolved target of the character’s own examination.
+	ExaminedDetail string
+	OutcomeTarget  string // The action already introduces this object in the journal.
+	Witnessed      []WitnessedAction
+	Observations   []JournalObservation
+	FirstSeen      []Discovery // From this character's saved observation.
+	LastSeen       []Discovery // Latest recorded view of each target, on the turn it was seen.
 }
 
 // Journal reads existing history on demand. Both backends visit committed events
@@ -99,6 +102,18 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 
 		if e.ActorID == actor {
 			switch e.Kind {
+			case "target_examined":
+				if person := b.Entities[e.Payload.Target]; person.Kind == Actor {
+					page := entryAt(e.Tick)
+					page.ExaminedRef, page.ExaminedDetail = e.Payload.Target, e.Payload.PersonDetail
+					if b.ContentVersion < landmarkContentVersion {
+						// Older examinations kept the visible detail only in the reader's receipt.
+						if finding, ok := strings.CutPrefix(page.Outcome, "You find the "+person.Name+" "); ok {
+							_, detail, _ := strings.Cut(strings.TrimSuffix(finding, "."), ", ")
+							page.ExaminedDetail = detail
+						}
+					}
+				}
 			case "plant_watered":
 				entryAt(e.Tick).OutcomeTarget = e.Payload.Target
 			case "plant_harvested":
@@ -117,7 +132,7 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 			if err != nil {
 				return err
 			}
-			page.Conversation = JournalSpeech{With: b.Entities[other].Name, IStarted: started,
+			page.Conversation = JournalSpeech{WithRef: other, With: b.Entities[other].Name, IStarted: started,
 				Words: words, Reply: reply}
 		}
 
@@ -167,7 +182,7 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 	for _, ref := range slices.Sorted(maps.Keys(memory.latest)) {
 		last := memory.latest[ref]
 		page := &entries[last.page]
-		page.LastSeen = append(page.LastSeen, discoveryFromReceipt(last.target, last.description))
+		page.LastSeen = append(page.LastSeen, locatedDiscovery(last.target, last.description, last.place))
 	}
 	return entries, nil
 }
@@ -177,6 +192,7 @@ type recordedSighting struct {
 	target      ObservedTarget
 	description string
 	plant       PlantCondition
+	place       PerceptionKind
 }
 
 type journalMemory struct {
@@ -210,13 +226,13 @@ func (m *journalMemory) observe(v Observation, page int) (place JournalObservati
 		previous, seen := m.latest[target.Ref]
 		condition := v.Plants[target.Ref]
 		if !seen {
-			firstSeen = append(firstSeen, discoveryFromReceipt(target, description))
+			firstSeen = append(firstSeen, locatedDiscovery(target, description, v.Landmarks[target.Ref]))
 		} else if condition == newLeaves && previous.plant != newLeaves {
 			observations = append(observations, JournalObservation{Text: "You see new leaves on the " + target.Name + "."})
 		} else if condition == clippedStems && previous.plant != clippedStems {
 			observations = append(observations, JournalObservation{Text: "You see clipped stems on the " + target.Name + "."})
 		}
-		m.latest[target.Ref] = recordedSighting{page: page, target: target, description: description, plant: condition}
+		m.latest[target.Ref] = recordedSighting{page: page, target: target, description: description, plant: condition, place: v.Landmarks[target.Ref]}
 	}
 	return place, observations, firstSeen
 }

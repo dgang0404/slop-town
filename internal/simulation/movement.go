@@ -149,8 +149,12 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 		if b.ContentVersion < examineContentVersion {
 			return spatialEffect{}, &actionFailure{"action_unavailable", "Examination is unavailable here."}
 		}
-		return spatialEffect{kind: "target_examined", payload: EventPayload{Target: args.Target}, entityID: view.ObserverID, entity: actor,
-			message: b.examination(view, args.Target)}, nil
+		finding, detail := b.examination(view, args.Target)
+		payload := EventPayload{Target: args.Target}
+		if b.ContentVersion >= landmarkContentVersion && b.Entities[args.Target].Kind == Actor {
+			payload.PersonDetail = detail
+		}
+		return spatialEffect{kind: "target_examined", payload: payload, entityID: view.ObserverID, entity: actor, message: finding}, nil
 	}
 	if action == ActionKnock {
 		if b.ContentVersion < knockContentVersion {

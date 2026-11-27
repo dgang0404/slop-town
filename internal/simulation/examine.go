@@ -20,7 +20,7 @@ func init() {
 
 // The target has been resolved in the actor's view. Sample its appearance
 // before the workers take their turns and save the finding in the receipt.
-func (b *Bakery) examination(view Observation, ref string) string {
+func (b *Bakery) examination(view Observation, ref string) (finding, detail string) {
 	target := b.Entities[ref]
 	observer := b.Entities[view.ObserverID].Placement.Cell
 	at, _ := b.PositionOf(ref) // Observe already resolved the visible target's position.
@@ -54,9 +54,13 @@ func (b *Bakery) examination(view Observation, ref string) string {
 			state = "in the " + b.Entities[holder].Name
 		}
 	}
-	finding := "You find the " + target.Name + " " + state
-	if target.CloseDetail != "" && inReach(observer, at) && !b.dimAt(at) {
-		finding += ", " + target.CloseDetail
+	if landmark := view.Landmarks[ref].landmark(); landmark != "" {
+		state += " " + landmark
 	}
-	return finding + "."
+	finding = "You find the " + target.Name + " " + state
+	if target.CloseDetail != "" && inReach(observer, at) && !b.dimAt(at) {
+		detail = target.CloseDetail
+		finding += ", " + detail
+	}
+	return finding + ".", detail
 }

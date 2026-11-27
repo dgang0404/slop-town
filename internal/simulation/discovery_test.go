@@ -106,7 +106,7 @@ func TestDiscoveryReadsOnlyTheRecordedLocation(t *testing.T) {
 		{"key", "You see the key beside a shelf.", LocationUnspecified, "key", "", ""},
 	} {
 		target := ObservedTarget{Ref: "town/object", Name: tc.name}
-		d := discoveryFromReceipt(target, tc.text)
+		d := locatedDiscovery(target, tc.text, "")
 		if d.Target != target || d.Text != tc.text || d.Location != tc.location || d.Label != tc.label || d.Bearing != tc.bearing || d.Container != tc.container {
 			t.Errorf("%q: %+v", tc.text, d)
 		}

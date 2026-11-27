@@ -77,8 +77,9 @@ type Observation struct {
 	Text       string                    `json:"text"`
 	Grid       string                    `json:"grid,omitempty"`
 	Targets    []ObservedTarget          `json:"targets,omitempty"`
-	Heard      []PerceptionKind          `json:"heard,omitempty"`  // Sounds heard during this turn, in order.
-	Plants     map[string]PlantCondition `json:"plants,omitempty"` // Only planters visible to this observer.
+	Heard      []PerceptionKind          `json:"heard,omitempty"`     // Sounds heard during this turn, in order.
+	Plants     map[string]PlantCondition `json:"plants,omitempty"`    // Only planters visible to this observer.
+	Landmarks  map[string]PerceptionKind `json:"landmarks,omitempty"` // Visible targets across a threshold.
 }
 
 // ObservedTarget is a reference the observer may select in the current view.
@@ -136,6 +137,7 @@ type EventPayload struct {
 	Target            string         `json:",omitempty"`
 	HolderID          string         `json:",omitempty"`
 	ItemID            string         `json:",omitempty"` // The cutting produced when Target is harvested.
+	PersonDetail      string         `json:",omitempty"` // Distinguishing detail actually seen during an examination.
 	EndurancePractice bool           `json:",omitempty"`
 	ReliefStarted     bool           `json:",omitempty"`
 	Dialogue          Exchange       `json:",omitzero"`
@@ -227,6 +229,7 @@ func (c *Coordinator) SubmitTurn(actorID string, p Proposal) Turn {
 	result.Observation.Targets = slices.Clone(result.Observation.Targets)
 	result.Observation.Heard = slices.Clone(result.Observation.Heard)
 	result.Observation.Plants = maps.Clone(result.Observation.Plants)
+	result.Observation.Landmarks = maps.Clone(result.Observation.Landmarks)
 	turn.Result = result
 	if step != nil && step.Bakery != nil {
 		turn.Scene.Observation = result.Observation

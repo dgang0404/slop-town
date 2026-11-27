@@ -366,6 +366,23 @@ To export directly from an existing save, give the shell a destination filename.
 go run ./cmd/sloptown journal -db bakery.sqlite > my-bakery-visit.txt
 ```
 
+### Look through the doorway and remember people
+
+In a fresh seed-42 practice town, type `wait`, `east`, `east`, then `look`. From inside the bakery you can see the porter **outside on the street**. The doorway has its own description when someone stands on the threshold. Closing the door cuts off the view.
+
+To try the people book, start another fresh visit with `go run ./cmd/sloptown bakery -practice -play -seed 42`.
+
+```text
+examine porter
+examine porter
+introduce yourself to porter
+journal people porter
+wait
+contacts
+```
+
+The porter comes close enough for you to see a frayed sleeve on the second examination. After the introduction, their entry remembers it. The baker’s greeting on the next turn earns a separate entry. Choose **journal people** with the arrows, type `contacts` for everyone, or use `journal people NAME` to look someone up. Reading costs no turn. [People, places and plans for correspondence](docs/plans/phase-7.md#checkpoint-29--see-across-a-doorway-and-remember-people)
+
 ### Export an illustrated journal
 
 Type `export illustrated journal` or choose it with the arrows and Enter. Open `slop-town-journal.html` in a browser. The pictures travel with the file, so you can copy it to another device and read it offline. Later exports use the next available filename.

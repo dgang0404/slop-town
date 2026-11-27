@@ -13,14 +13,18 @@ import (
 	"github.com/dgang0404/slop-town/internal/simulation"
 )
 
-const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use walk to NAME to approach a visible destination. Use examine NAME in a new practice bakery to spend a turn looking closely. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. In a new practice bakery, try discreetly take NAME for a careful pickup or listen to spend a turn listening. Use water NAME at a planter and harvest NAME once it grows new leaves. Use knock on NAME at a door. Use hide behind NAME beside cover and come out to stand up again. Use introduce yourself to NAME or talk to NAME when someone is nearby. Short names work. Use it for the last object you acted on. Type actions for choices here, look for the current scene, calendar for today's date, journal to read your memories or quit to leave. Use journal accounts to recall who told you about a sight or sound, or journal leads to see which witnesses you could ask. Use journal discoveries for first sightings or journal last seen for the latest. Add a name to search either list. Use export journal for a text copy or export illustrated journal for a book you can open in a browser. Choose narration brief or narration story to change how turns read."
+const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use walk to NAME to approach a visible destination. Use examine NAME in a new practice bakery to spend a turn looking closely. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. In a new practice bakery, try discreetly take NAME for a careful pickup or listen to spend a turn listening. Use water NAME at a planter and harvest NAME once it grows new leaves. Use knock on NAME at a door. Use hide behind NAME beside cover and come out to stand up again. Use introduce yourself to NAME or talk to NAME when someone is nearby. Short names work. Use it for the last object you acted on. Type actions for choices here, look for the current scene, calendar for today's date, journal to read your memories or quit to leave. Use journal people to recall the people you have met. Add a name to read one entry. Use journal accounts to recall who told you about a sight or sound, or journal leads to see which witnesses you could ask. Use journal discoveries for first sightings or journal last seen for the latest. Add a name to search either list. Use export journal for a text copy or export illustrated journal for a book you can open in a browser. Choose narration brief or narration story to change how turns read."
 
+const peopleCommand = "journal people"
 const leadsCommand = "journal leads"
 const firstSightingsCommand = "journal discoveries"
 const lastSightingsCommand = "journal last seen"
 
 func sightingQuery(line string) (command, name string) {
-	for _, cmd := range []string{firstSightingsCommand, lastSightingsCommand} {
+	if line == "contacts" {
+		return peopleCommand, ""
+	}
+	for _, cmd := range []string{firstSightingsCommand, lastSightingsCommand, peopleCommand} {
 		if line == cmd {
 			return cmd, ""
 		}
@@ -92,7 +96,12 @@ func (s bakerySession) play(in io.Reader, out io.Writer) error {
 			if err != nil {
 				return err
 			}
-			if err := writeSightingIndex(out, entries, name, command == lastSightingsCommand); err != nil {
+			if command == peopleCommand {
+				err = writePeople(out, entries, name)
+			} else {
+				err = writeSightingIndex(out, entries, name, command == lastSightingsCommand)
+			}
+			if err != nil {
 				return err
 			}
 			continue
