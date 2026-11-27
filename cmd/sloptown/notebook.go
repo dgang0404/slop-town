@@ -87,6 +87,9 @@ func runActorInspection(command string, args []string, stdout, stderr io.Writer)
 		if e.Action == simulation.ActionHide {
 			saw = "hide behind " + e.Target
 		}
+		if e.Action == simulation.ActionKnock {
+			saw = "knock on " + e.Target
+		}
 		fmt.Fprintf(stdout, "Tick %d, event %d — saw %s %s.\n", e.Tick, e.SourceSequence, e.Subject, saw)
 	}
 	return 0

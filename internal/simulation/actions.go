@@ -55,6 +55,9 @@ func (b *Bakery) AvailableActions(scope Scope, actorID string) ([]ActionOption, 
 		case Door, Container:
 			offer(ActionOpen, args)
 			offer(ActionClose, args)
+			if b.Entities[target.Ref].Kind == Door {
+				offer(ActionKnock, args)
+			}
 			if b.Entities[target.Ref].ProvidesCover {
 				offer(ActionHide, args)
 			}

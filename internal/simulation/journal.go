@@ -51,12 +51,16 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 	}
 	memory := journalMemory{latest: make(map[string]recordedSighting)}
 	sightings := b.Notebooks[actor]
+	seenKnocks := make(map[string]bool)
 	err := visit(func(e Event) error {
 		if e.Scope != scope {
 			return fmt.Errorf("mismatched journal history")
 		}
 		if e.Tick < 0 {
 			return fmt.Errorf("invalid journal tick %d", e.Tick)
+		}
+		if e.Kind == "tick_advanced" {
+			clear(seenKnocks)
 		}
 		if e.Kind == "tick_advanced" && e.ActorID == actor {
 			r, err := receipt(e.RequestID)
@@ -126,7 +130,7 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 			s := sightings[0]
 			sightings = sightings[1:]
 			if s.Action == ActionListen {
-				if b.ContentVersion >= dropSoundContentVersion {
+				if b.ContentVersion >= dropSoundContentVersion && !seenKnocks[e.ParentID] {
 					// An impact may be heard during another character's turn.
 					page := entryAt(e.Tick)
 					page.Observations = append(page.Observations, JournalObservation{Kind: s.Sound, Text: s.Sound.Description()})
@@ -134,6 +138,11 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 			} else if s.Action != ActionIntroduce && s.Action != ActionSpeak {
 				page := entryAt(e.Tick)
 				page.Witnessed = append(page.Witnessed, b.witnessedAction(s))
+				if s.Action == ActionKnock {
+					// Seeing the knock tells the whole incident. The sound
+					// remains in the notebook for questions about hearing.
+					seenKnocks[e.ID] = true
+				}
 			}
 		}
 		return nil

@@ -407,3 +407,19 @@ Interrupting the SQLite receipt write rolled back the hiding turn and the witnes
 New practice timelines use content version 18. A version 17 save from `d104063` kept its previous action menu and stealth practice. Both executables produced the same transcript and journal and replayed the seed-51 visit from sequences 0 and 28 to tick 11, sequence 44, with SHA-256 `454a018d6ada3d3069deeff3159a7f398c12882a35ea84abceb50a85e8affa6c`.
 
 The offline suite and both seed-42 smoke runs passed. The terminal, simulation and storage packages each passed three race-detector runs. The CLI cross-built for Windows amd64 and macOS arm64.
+
+## Checkpoint 27 — a knock at the bakery door
+
+A character within reach of a visible door can spend a turn knocking on it. The sound starts at the door, so listeners on either side can hear a knock even when it is shut. Distance, obstacles and the listener’s perception determine how far it carries. To identify the knocker, a witness must see both the person and the door at the moment of contact. Residents continue their routines and can later tell the player what they saw or heard. [Playable walkthrough](../../README.md#knock-on-the-bakery-door)
+
+### Checkpoint 27 results
+
+On seed 43, the porter saw the player knock from the street. The baker heard it indoors, then opened the door on the way to work. After reopening the save, the porter replied, “I saw you knock on the bakery door.” The baker replied, “I heard a knock.” Both accounts appeared in the player’s journal. Down and Enter completed the visit in a Linux terminal. [Restart and dialogue test](../../internal/storage/knock_test.go)
+
+When the baker knocked from inside, the player outside heard the front door. A knock on a second door farther inside reached the player only when the front door was open. With a clear view, the journal named the baker and the door once. [Perception tests](../../internal/simulation/knock_test.go)
+
+Interrupting the receipt write rolled back the turn and its memories. After retry, replay from sequences 0 and 6 reached tick 3, sequence 14, with SHA-256 `ccb381f0dbcf0eb5c3354adee06110eaac7b6656dd89a60970a0a3ee68d6b7fb`.
+
+New practice timelines use content version 19. A version 18 save from `94beab3` produced the same seed-2 hiding transcript and journal in both executables. Replay from sequences 0 and 26 reached tick 12, sequence 45, with SHA-256 `655b64ef3ad3786d7cf81ce00225a615bd7710af06b558b7fd4f370b9b45977d`.
+
+The offline suite and both seed-42 smoke runs passed. The terminal, simulation and storage packages passed three race-detector runs each. The CLI cross-built for Windows amd64 and macOS arm64.

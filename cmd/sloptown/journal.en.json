@@ -19,6 +19,7 @@
     "door_creak": "I heard a door creak.",
     "footsteps": "I heard footsteps.",
     "clatter": "I heard a clatter.",
+    "knock": "I heard a knock.",
     "dim_light": "The light was dim."
   },
   "discoveryIndex": {

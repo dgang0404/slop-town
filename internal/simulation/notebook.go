@@ -77,6 +77,8 @@ func (b *Bakery) recordWitnesses(event Event) {
 		entry.Action = ActionRest
 	case "actor_hid":
 		entry.Action = ActionHide // The witness sees the actor duck before cover blocks the view.
+	case "door_knocked":
+		entry.Action = ActionKnock
 	case "door_opened", "container_opened":
 		entry.Action = ActionOpen
 	case "door_closed", "container_closed":
@@ -170,7 +172,8 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 			switch e.Action {
 			case ActionListen:
 				if b.ContentVersion < soundAccountContentVersion || e.Subject != "" || e.Target != "" || e.Sound.SoundPhrase() == "" ||
-					(e.Sound == Clatter && b.ContentVersion < dropSoundContentVersion) {
+					(e.Sound == Clatter && b.ContentVersion < dropSoundContentVersion) ||
+					(e.Sound == Knock && b.ContentVersion < knockContentVersion) {
 					return fmt.Errorf("invalid sound memory for %q at sequence %d", owner, e.SourceSequence)
 				}
 			case SightHandMovement:
@@ -207,6 +210,10 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 			case ActionHide:
 				if b.ContentVersion < coverContentVersion || !b.Entities[e.Target].ProvidesCover {
 					return fmt.Errorf("invalid hiding place in a notebook sighting")
+				}
+			case ActionKnock:
+				if b.ContentVersion < knockContentVersion || b.Entities[e.Target].Kind != Door {
+					return fmt.Errorf("invalid door in a notebook sighting")
 				}
 			case ActionOpen, ActionClose:
 				if kind := b.Entities[e.Target].Kind; kind != Door && kind != Container {

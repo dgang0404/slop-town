@@ -102,6 +102,8 @@ func (n *turnNarrator) write(out io.Writer, cmd bakeryCommand, turn simulation.T
 		case simulation.ActionHide:
 			lines = append(lines, actor+" "+n.mark("hides "+event.ObjectPhrase())+".")
 			explained[event.Actor.Ref] = event
+		case simulation.ActionKnock:
+			lines = append(lines, actor+" "+n.mark("knocks "+event.ObjectPhrase())+".")
 		case simulation.ActionOpen, simulation.ActionClose, simulation.ActionTake, simulation.ActionDrop, simulation.ActionPut:
 			lines = append(lines, actor+" "+n.mark(string(event.Action)+"s "+event.ObjectPhrase())+".")
 			explained[event.Target.Ref] = event

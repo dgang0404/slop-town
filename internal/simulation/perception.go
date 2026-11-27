@@ -25,6 +25,7 @@ const (
 	Footsteps       PerceptionKind = "footsteps"
 	DoorCreak       PerceptionKind = "door_creak"
 	Clatter         PerceptionKind = "clatter"
+	Knock           PerceptionKind = "knock"
 	DimLight        PerceptionKind = "dim_light"
 	Crouching       PerceptionKind = "crouching"
 )
@@ -44,6 +45,7 @@ var receiptDescriptions = map[PerceptionKind]string{
 	Footsteps:       "You hear footsteps.",
 	DoorCreak:       "You hear a door creak.",
 	Clatter:         "You hear a clatter.",
+	Knock:           "You hear a knock.",
 	DimLight:        "The light is dim here.",
 }
 
@@ -68,6 +70,8 @@ func (k PerceptionKind) SoundPhrase() string {
 		return "a door creak"
 	case Clatter:
 		return "a clatter"
+	case Knock:
+		return "a knock"
 	default:
 		return ""
 	}

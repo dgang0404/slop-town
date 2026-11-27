@@ -102,6 +102,7 @@ const (
 	daylightContentVersion        = 16
 	stealthPracticeContentVersion = 17
 	coverContentVersion           = 18
+	knockContentVersion           = 19
 	fatigueLimit                  = 5 // Steps since the last rest, capped during a break.
 )
 
@@ -128,7 +129,7 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 	}
 	b.ContentVersion = personalityContentVersion
 	if setup.Practice {
-		b.ContentVersion = coverContentVersion
+		b.ContentVersion = knockContentVersion
 		prefix := url.PathEscape(worldID) + "/"
 		spoon := b.Entities[prefix+"spoon"]
 		spoon.DropSound = Clatter

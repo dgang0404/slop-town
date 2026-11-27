@@ -15,21 +15,36 @@ type heardSound struct {
 }
 
 func (b *Bakery) soundsDuringAction(heard []heardSound, primary, event Event) []heardSound {
-	if event.Kind == "item_dropped" && b.ContentVersion >= dropSoundContentVersion {
-		sound := b.Entities[event.Payload.Target].DropSound
-		if sound != "" {
-			for _, id := range slices.Sorted(maps.Keys(b.Entities)) {
-				if b.Entities[id].Kind == Actor && b.withinEarshot(id, event.Payload.Destination, 3) {
-					heard = append(heard, heardSound{id, sound, event})
-				}
-			}
+	var sound PerceptionKind
+	var source CellPosition
+	var reach int
+	switch event.Kind {
+	case "door_knocked":
+		sound, source, reach = Knock, b.Entities[event.Payload.Target].Placement.Cell, 4
+	case "item_dropped":
+		if b.ContentVersion >= dropSoundContentVersion {
+			sound, source, reach = b.Entities[event.Payload.Target].DropSound, event.Payload.Destination, 3
+		}
+	default:
+		if primary.Kind != "actor_listened" {
+			return heard
+		}
+		sound = b.audibleAction(primary.ActorID, event)
+		if sound != "" && !slices.ContainsFunc(heard, func(h heardSound) bool { return h.listener == primary.ActorID && h.kind == sound }) {
+			heard = append(heard, heardSound{primary.ActorID, sound, primary})
 		}
 		return heard
 	}
-	if primary.Kind == "actor_listened" {
-		sound := b.audibleAction(primary.ActorID, event)
-		if sound != "" && !slices.ContainsFunc(heard, func(h heardSound) bool { return h.listener == primary.ActorID && h.kind == sound }) {
-			heard = append(heard, heardSound{primary.ActorID, sound, primary})
+	if sound == "" {
+		return heard
+	}
+	for _, id := range slices.Sorted(maps.Keys(b.Entities)) {
+		// The knocker already recalls the deliberate action in their receipt.
+		if b.Entities[id].Kind != Actor || (sound == Knock && id == event.ActorID) {
+			continue
+		}
+		if b.withinEarshot(id, source, reach) {
+			heard = append(heard, heardSound{id, sound, event})
 		}
 	}
 	return heard
@@ -66,7 +81,7 @@ func (b *Bakery) withinEarshot(listener string, source CellPosition, reach int) 
 }
 
 // Sound travels through adjacent floor cells and around corners. A closed
-// door blocks a sound passing through it. Its own creak starts on the door.
+// door blocks a sound passing through it. Creaks and knocks start on the door.
 func (b *Bakery) soundReaches(source, listener CellPosition, reach int) bool {
 	if !b.isFloorCell(source) || !b.isFloorCell(listener) || manhattanDistance(source, listener) > reach {
 		return false

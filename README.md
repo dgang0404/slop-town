@@ -232,6 +232,14 @@ talk to baker
 
 From down low, the crate cuts off your view of the bakery door. You can still hear footsteps, and the baker comes into sight again as they pass to one side. Ask **“What have you seen around here?”** The baker says, “I saw you hide behind the crate.” Read `journal accounts` to see what they told you. [Hiding checkpoint](docs/plans/phase-7.md#checkpoint-26--hide-behind-the-crate)
 
+### Knock on the bakery door
+
+Start a fresh visit with `go run ./cmd/sloptown bakery -practice -play -seed 43`. Type `knock on the door` or select **knock on the bakery door** with the arrows and Enter. The knock takes one turn.
+
+1. Choose **talk to the porter** and ask **“What have you seen around here?”** From the street, the porter saw you knock.
+2. Choose **cancel**, then **talk to the baker**. Ask **“What sounds have you heard lately?”** The baker was inside when you knocked and replies, “I heard a knock.”
+3. Read `journal accounts` to see both accounts of that one moment. [Door-knocking checkpoint](docs/plans/phase-7.md#checkpoint-27--a-knock-at-the-bakery-door)
+
 ### Listen from the street
 
 Start a fresh practice visit with `go run ./cmd/sloptown bakery -practice -play -seed 42`. At the first prompt, type `listen` or select it with the arrows and Enter. A door creaks, then you hear footsteps. Read `journal` to see how your character remembers the sounds.

@@ -48,6 +48,9 @@ type WitnessedAction struct {
 // ObjectPhrase names the visible object and, for a put, its observed destination.
 func (s WitnessedAction) ObjectPhrase() string {
 	objects := "the " + s.Target.Name
+	if s.Action == ActionKnock {
+		return "on " + objects
+	}
 	if s.Action == ActionHide {
 		return "behind " + objects
 	}

@@ -109,7 +109,7 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 		if !validID(args.Target) || !validID(args.Container) || args != (ActionArgs{Target: args.Target, Container: args.Container}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Choose an item and a destination container."}
 		}
-	case ActionOpen, ActionClose, ActionTake, ActionDiscreetTake, ActionDrop, ActionIntroduce, ActionApproach, ActionHide:
+	case ActionOpen, ActionClose, ActionKnock, ActionTake, ActionDiscreetTake, ActionDrop, ActionIntroduce, ActionApproach, ActionHide:
 		if !validID(args.Target) || args != (ActionArgs{Target: args.Target}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Choose one target."}
 		}
@@ -135,6 +135,17 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 	}
 	if action == ActionApproach {
 		return b.approach(view.ObserverID, args.Target)
+	}
+	if action == ActionKnock {
+		if b.ContentVersion < knockContentVersion {
+			return spatialEffect{}, &actionFailure{"action_unavailable", "Knocking is unavailable here."}
+		}
+		door := b.Entities[args.Target]
+		if door.Kind != Door || !inReach(actor.Placement.Cell, door.Placement.Cell) {
+			return spatialEffect{}, &actionFailure{"target_unavailable", "You need a door within reach to knock on."}
+		}
+		return spatialEffect{kind: "door_knocked", payload: EventPayload{Target: args.Target}, entityID: view.ObserverID, entity: actor,
+			message: "You knock on the " + door.Name + "."}, nil
 	}
 	if action == ActionHide {
 		if !b.canHideBehind(actor, args.Target) {

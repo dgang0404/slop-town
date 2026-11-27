@@ -211,7 +211,7 @@ func composeJournal(entries []simulation.JournalEntry) []journalChapter {
 				lines = append(lines, "The "+sight.Actor.Name+" introduced themselves to me.")
 			case simulation.ActionRest:
 				lines = append(lines, "I saw "+who+" sit down.")
-			case simulation.ActionOpen, simulation.ActionClose, simulation.ActionTake, simulation.ActionDrop, simulation.ActionPut, simulation.ActionHide:
+			case simulation.ActionOpen, simulation.ActionClose, simulation.ActionKnock, simulation.ActionTake, simulation.ActionDrop, simulation.ActionPut, simulation.ActionHide:
 				lines = append(lines, "I saw "+who+" "+string(sight.Action)+" "+sight.ObjectPhrase()+".")
 			}
 		}
@@ -315,7 +315,7 @@ func remembered(sentence string) string {
 	for _, verb := range []struct{ present, past string }{
 		{"introduce yourself", "introduced myself"}, {"discreetly take", "discreetly took"}, {"walk", "walked"}, {"move", "moved"},
 		{"open", "opened"}, {"close", "closed"}, {"take", "took"}, {"put", "put"}, {"drop", "dropped"},
-		{"crouch", "crouched"}, {"stand", "stood"},
+		{"crouch", "crouched"}, {"stand", "stood"}, {"knock", "knocked"},
 		{"feel", "felt"}, {"wait", "waited"}, {"are", "was"}, {"see", "saw"}, {"carry", "carried"},
 	} {
 		if tail, ok := strings.CutPrefix(sentence, "You "+verb.present); ok && (tail == "." || strings.HasPrefix(tail, " ")) {

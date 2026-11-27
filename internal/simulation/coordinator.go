@@ -29,6 +29,7 @@ const (
 	ActionEmerge       ActionKind = "emerge"
 	ActionMove         ActionKind = "move"
 	ActionOpen         ActionKind = "open"
+	ActionKnock        ActionKind = "knock"
 	ActionClose        ActionKind = "close"
 	ActionTake         ActionKind = "take"
 	ActionDiscreetTake ActionKind = "discreet_take"
