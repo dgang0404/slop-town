@@ -41,6 +41,7 @@ const (
 	Door      EntityKind = "door"
 	Container EntityKind = "container"
 	Item      EntityKind = "item"
+	Planter   EntityKind = "planter" // A fixed outdoor planter with its own watering spout.
 )
 
 type SpatialEntity struct {
@@ -61,6 +62,7 @@ type SpatialEntity struct {
 	ProvidesCover      bool            `json:",omitempty"`
 	HiddenBehind       string          `json:",omitempty"` // Reference to the cover beside a crouching actor.
 	CloseDetail        string          `json:",omitempty"` // A visible distinguishing mark within arm's reach.
+	Growth             plantGrowth     `json:",omitzero"`
 }
 
 // Bakery is authoritative fixture state. Cells are in row-major order and
@@ -105,6 +107,7 @@ const (
 	coverContentVersion           = 18
 	knockContentVersion           = 19
 	examineContentVersion         = 20
+	plantContentVersion           = 21
 	fatigueLimit                  = 5 // Steps since the last rest, capped during a break.
 )
 
@@ -131,7 +134,7 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 	}
 	b.ContentVersion = personalityContentVersion
 	if setup.Practice {
-		b.ContentVersion = examineContentVersion
+		b.ContentVersion = plantContentVersion
 		prefix := url.PathEscape(worldID) + "/"
 		for localID, detail := range bakeryCloseDetails {
 			id := prefix + localID
@@ -145,6 +148,10 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 		crate := b.Entities[prefix+"crate"]
 		crate.ProvidesCover = true
 		b.Entities[prefix+"crate"] = crate
+		at := b.Entities[prefix+"player"].Placement
+		at.Cell.X--
+		b.Entities[prefix+"mint"] = SpatialEntity{Name: "mint planter", Kind: Planter, Placement: at,
+			CloseDetail: "a brass watering spout over the soil"}
 	}
 	*clock = staged
 	return b, nil
@@ -262,6 +269,14 @@ func (b *Bakery) Validate() error {
 		}
 		if _, err := b.PositionOf(id); err != nil {
 			return err
+		}
+		if e.Kind == Planter {
+			if b.ContentVersion < plantContentVersion || e.Portable || e.Placement.HolderID != "" ||
+				b.Cells[e.Placement.Cell.Y][e.Placement.Cell.X].SpaceID != b.StreetID {
+				return fmt.Errorf("invalid outdoor planter %q", id)
+			}
+		} else if e.Growth != (plantGrowth{}) {
+			return fmt.Errorf("unexpected plant growth for %q", id)
 		}
 		if e.CloseDetail != "" && b.ContentVersion < examineContentVersion {
 			return fmt.Errorf("unexpected examination detail for %q", id)

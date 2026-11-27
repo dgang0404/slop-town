@@ -221,6 +221,12 @@ func (b *Bakery) observe(scope Scope, actorID string, scene *Scene) (Observation
 			lines[0] = self.Place.Description()
 		}
 		view.Targets = append(view.Targets, ObservedTarget{Ref: id, Name: e.Name})
+		if e.Kind == Planter {
+			if view.Plants == nil {
+				view.Plants = make(map[string]PlantCondition)
+			}
+			view.Plants[id] = e.Growth.condition()
+		}
 		if e.Placement.HolderID == actorID {
 			if scene != nil {
 				scene.Details[id] = VisibleDetail{Label: e.Name, Location: "in your inventory", Holder: actorID}
@@ -274,6 +280,8 @@ func (b *Bakery) contentsVisible(id, actorID string) bool {
 
 func appearance(e SpatialEntity) (label, glyph, state string) {
 	switch e.Kind {
+	case Planter:
+		return e.Growth.condition().appearance(e.Name)
 	case Door:
 		if e.Open {
 			return "open " + e.Name, "/", "open"

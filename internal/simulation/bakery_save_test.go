@@ -12,6 +12,10 @@ import (
 func usePracticeVersion(b *Bakery, version int) {
 	b.ContentVersion = version
 	for id, e := range b.Entities {
+		if version < plantContentVersion && e.Kind == Planter {
+			delete(b.Entities, id)
+			continue
+		}
 		if version < examineContentVersion {
 			e.CloseDetail = ""
 		}

@@ -21,6 +21,8 @@ In Phase 4 the baker and porter follow work routines, choose where to rest and k
 
 In Phase 5, the player and residents build endurance, feel relief after a tiring walk, and recognize people who have introduced themselves. [Phase 5 plan](docs/plans/phase-5.md) · [Acceptance results](docs/plans/phase-5-results.md)
 
+Phase 6 begins with a living mint plant outside the practice bakery. Its leaves can unfold while the player is elsewhere. [Phase 6 plan](docs/plans/phase-6.md)
+
 The Phase 7 bakery narrator offers brief and story settings. Both describe what your character notices, with new details in bold on supported terminals. In the practice bakery, workers can talk while you are elsewhere. Ask what someone has heard and they can tell you who witnessed it. The player journal recalls the visit and its conversations in chapters. Export it as plain text or as an illustrated book you can read offline. [Phase 7 presentation plan](docs/plans/phase-7.md)
 
 The demo writes its prose locally. Phase 10 adds optional narration from a local model first and a cloud API later. Both the built-in narrator and a model will work from what the character could see, feel or hear. [Narration API roadmap](docs/plans/phase-7.md#when-will-the-game-call-a-narration-api)
@@ -258,6 +260,27 @@ journal
 ```
 
 Each examination takes one turn. Up close in daylight, you can see a scrape across the crate’s lid and a notch in the spoon’s handle. The last examination finds the crate empty. Your journal also remembers when the spoon was inside. Use `look` to read the current scene for free. [Examination checkpoint](docs/plans/phase-7.md#checkpoint-28--examine-a-visible-person-or-object)
+
+### Water the mint outside the bakery
+
+Start a fresh visit with `go run ./cmd/sloptown bakery -practice -play -seed 42`. Choose **water the mint planter** with the arrows and Enter, or type `water mint`. Its built-in spout wets the soil in one turn. If you stay on the street and wait six turns, you’ll see the mint put out new leaves.
+
+To let it grow while you’re away, enter this sequence in a fresh visit.
+
+```text
+water mint
+walk to baker
+walk to crate
+south
+wait
+wait
+wait
+journal last seen mint
+north
+journal
+```
+
+Around the corner, your last sighting still describes the damp planter. Step north to see the leaves for yourself. The journal records finding them on your return. [Plant growth and replay checks](docs/plans/phase-6.md#checkpoint-1-results)
 
 ### Listen from the street
 

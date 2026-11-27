@@ -25,6 +25,10 @@ func usePracticeVersion(t *testing.T, path string, scope simulation.Scope, versi
 	b := &saved.Bakery
 	b.ContentVersion = version
 	for id, e := range b.Entities {
+		if e.Kind == simulation.Planter {
+			delete(b.Entities, id)
+			continue
+		}
 		e.DropSound, e.ProvidesCover, e.CloseDetail = "", false, ""
 		b.Entities[id] = e
 	}

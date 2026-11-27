@@ -34,6 +34,9 @@ func (b *Bakery) applySpatial(event *Event, effect spatialEffect, clock *Timelin
 	} else if b.ContentVersion >= notebookContentVersion && !placesItem {
 		b.recordWitnesses(*event)
 	}
+	if event.Kind == "plant_watered" {
+		effect.entity.Growth = plantGrowth{WateredTick: event.Tick, WateredSequence: event.Sequence}
+	}
 	b.Entities[effect.entityID] = effect.entity
 	if placesItem && b.ContentVersion >= itemWitnessContentVersion {
 		b.recordWitnesses(*event)

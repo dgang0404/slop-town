@@ -25,7 +25,7 @@ func RestoreBakery(data []byte, world string, clock *Timeline) (*Bakery, error) 
 		return nil, err
 	}
 	b := saved.Bakery
-	if saved.Version != 1 || b == nil || b.GeneratorVersion != 1 || b.ContentVersion < 1 || b.ContentVersion > examineContentVersion {
+	if saved.Version != 1 || b == nil || b.GeneratorVersion != 1 || b.ContentVersion < 1 || b.ContentVersion > plantContentVersion {
 		return nil, fmt.Errorf("unsupported bakery snapshot or content version")
 	}
 	if clock == nil || b.WorldID != world || b.Seed != clock.seed || clock.draws["geography"] != 1 {
@@ -35,6 +35,16 @@ func RestoreBakery(data []byte, world string, clock *Timeline) (*Bakery, error) 
 		return nil, err
 	}
 	prefix := url.PathEscape(world) + "/"
+	if b.ContentVersion >= plantContentVersion {
+		if b.Entities[prefix+"mint"].Kind != Planter {
+			return nil, fmt.Errorf("missing mint planter")
+		}
+		for id, e := range b.Entities {
+			if e.Kind == Planter && !e.Growth.valid(clock.Tick(), b.leafDelay(id)) {
+				return nil, fmt.Errorf("invalid saved growth for %q", id)
+			}
+		}
+	}
 	if b.ContentVersion >= notebookContentVersion {
 		porter := b.Entities[prefix+"porter"]
 		if porter.Kind != Actor || !b.isFloorCell(porter.Placement.Cell) {

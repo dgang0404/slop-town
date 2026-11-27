@@ -226,7 +226,9 @@ func composeJournal(entries []simulation.JournalEntry) []journalChapter {
 			lines = append(lines, rememberedObservation(sight))
 		}
 		for _, discovery := range entry.FirstSeen {
-			lines = append(lines, rememberedSighting(discovery, journalPhrases.Discoveries))
+			if entry.WateredTarget == "" || entry.WateredTarget != discovery.Target.Ref {
+				lines = append(lines, rememberedSighting(discovery, journalPhrases.Discoveries))
+			}
 		}
 		if len(lines) != 0 {
 			// Place the next incident, skipping uneventful steps between settings.
@@ -315,7 +317,7 @@ func remembered(sentence string) string {
 	for _, verb := range []struct{ present, past string }{
 		{"introduce yourself", "introduced myself"}, {"discreetly take", "discreetly took"}, {"walk", "walked"}, {"move", "moved"},
 		{"open", "opened"}, {"close", "closed"}, {"take", "took"}, {"put", "put"}, {"drop", "dropped"},
-		{"crouch", "crouched"}, {"stand", "stood"}, {"knock", "knocked"}, {"find", "found"},
+		{"crouch", "crouched"}, {"stand", "stood"}, {"knock", "knocked"}, {"find", "found"}, {"water", "watered"},
 		{"feel", "felt"}, {"wait", "waited"}, {"are", "was"}, {"see", "saw"}, {"carry", "carried"},
 	} {
 		if tail, ok := strings.CutPrefix(sentence, "You "+verb.present); ok && (tail == "." || strings.HasPrefix(tail, " ")) {

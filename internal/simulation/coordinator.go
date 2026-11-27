@@ -31,6 +31,7 @@ const (
 	ActionOpen         ActionKind = "open"
 	ActionKnock        ActionKind = "knock"
 	ActionExamine      ActionKind = "examine"
+	ActionWater        ActionKind = "water"
 	ActionClose        ActionKind = "close"
 	ActionTake         ActionKind = "take"
 	ActionDiscreetTake ActionKind = "discreet_take"
@@ -70,12 +71,13 @@ type Proposal struct {
 
 type Observation struct {
 	Scope
-	Version    int              `json:"version"`
-	ObserverID string           `json:"observer_id"`
-	Text       string           `json:"text"`
-	Grid       string           `json:"grid,omitempty"`
-	Targets    []ObservedTarget `json:"targets,omitempty"`
-	Heard      []PerceptionKind `json:"heard,omitempty"` // Sounds heard during this turn, in order.
+	Version    int                       `json:"version"`
+	ObserverID string                    `json:"observer_id"`
+	Text       string                    `json:"text"`
+	Grid       string                    `json:"grid,omitempty"`
+	Targets    []ObservedTarget          `json:"targets,omitempty"`
+	Heard      []PerceptionKind          `json:"heard,omitempty"`  // Sounds heard during this turn, in order.
+	Plants     map[string]PlantCondition `json:"plants,omitempty"` // Only planters visible to this observer.
 }
 
 // ObservedTarget is a reference the observer may select in the current view.
@@ -222,6 +224,7 @@ func (c *Coordinator) SubmitTurn(actorID string, p Proposal) Turn {
 	}
 	result.Observation.Targets = slices.Clone(result.Observation.Targets)
 	result.Observation.Heard = slices.Clone(result.Observation.Heard)
+	result.Observation.Plants = maps.Clone(result.Observation.Plants)
 	turn.Result = result
 	if step != nil && step.Bakery != nil {
 		turn.Scene.Observation = result.Observation
@@ -325,6 +328,9 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 			return reject("resolution_failed", "The resident could not finish the turn."), nil
 		}
 		events = append(events, residents...)
+		if nextBakery.ContentVersion >= plantContentVersion {
+			events = nextBakery.advancePlants(events)
+		}
 		if nextBakery.ContentVersion >= emotionContentVersion {
 			nextBakery.advanceRelief(events)
 		}

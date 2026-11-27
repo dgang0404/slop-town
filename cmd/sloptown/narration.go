@@ -85,7 +85,7 @@ func (n *turnNarrator) write(out io.Writer, cmd bakeryCommand, turn simulation.T
 	explained := make(map[string]simulation.WitnessedAction)
 	introduced := make(map[string]bool)
 	switch cmd.Action {
-	case simulation.ActionOpen, simulation.ActionClose, simulation.ActionPut, simulation.ActionDrop, simulation.ActionTake, simulation.ActionDiscreetTake:
+	case simulation.ActionOpen, simulation.ActionClose, simulation.ActionPut, simulation.ActionDrop, simulation.ActionTake, simulation.ActionDiscreetTake, simulation.ActionWater:
 		explained[target] = simulation.WitnessedAction{Action: cmd.Action}
 	}
 	for _, event := range current.Witnessed {

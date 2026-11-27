@@ -50,6 +50,8 @@ func (b *Bakery) AvailableActions(scope Scope, actorID string) ([]ActionOption, 
 			add(ActionExamine, args) // Any target in this actor's view can be examined.
 		}
 		switch b.Entities[target.Ref].Kind {
+		case Planter:
+			offer(ActionWater, args)
 		case Actor:
 			offer(ActionIntroduce, args)
 			if lines := b.dialogueChoices(view, target.Ref, false); len(lines) > 0 {

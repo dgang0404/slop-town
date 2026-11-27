@@ -18,20 +18,21 @@ type JournalSpeech struct {
 // JournalEntry holds an actor's own action, audible dialogue, firsthand sightings
 // and discoveries in the action's saved observation. Entries are in turn order.
 type JournalEntry struct {
-	Date         BakeryDate
-	Place        JournalObservation // Location stated in the observer's own receipt, when present.
-	Conversation JournalSpeech
-	Action       ActionKind
-	Outcome      string
-	WalkEnd      string
-	WalkTarget   string
-	WalkArrival  ObservedTarget
-	ContinueWalk bool
-	IntroducedTo ObservedTarget
-	Witnessed    []WitnessedAction
-	Observations []JournalObservation
-	FirstSeen    []Discovery // From this character's saved observation.
-	LastSeen     []Discovery // Latest recorded view of each target, on the turn it was seen.
+	Date          BakeryDate
+	Place         JournalObservation // Location stated in the observer's own receipt, when present.
+	Conversation  JournalSpeech
+	Action        ActionKind
+	Outcome       string
+	WalkEnd       string
+	WalkTarget    string
+	WalkArrival   ObservedTarget
+	ContinueWalk  bool
+	IntroducedTo  ObservedTarget
+	WateredTarget string // The watering sentence already names this planter in the journal.
+	Witnessed     []WitnessedAction
+	Observations  []JournalObservation
+	FirstSeen     []Discovery // From this character's saved observation.
+	LastSeen      []Discovery // Latest recorded view of each target, on the turn it was seen.
 }
 
 // Journal reads existing history on demand. Both backends visit committed events
@@ -96,6 +97,9 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 			}
 		}
 
+		if e.Kind == "plant_watered" && e.ActorID == actor {
+			entryAt(e.Tick).WateredTarget = e.Payload.Target
+		}
 		if e.Kind == "actors_conversed" && (e.ActorID == actor || e.Payload.Target == actor) {
 			page := entryAt(e.Tick)
 			other := e.ActorID
@@ -167,6 +171,7 @@ type recordedSighting struct {
 	page        int
 	target      ObservedTarget
 	description string
+	plant       PlantCondition
 }
 
 type journalMemory struct {
@@ -197,10 +202,14 @@ func (m *journalMemory) observe(v Observation, page int) (place JournalObservati
 		if len(descriptions) == len(v.Targets) {
 			description = descriptions[i]
 		}
-		if _, seen := m.latest[target.Ref]; !seen {
+		previous, seen := m.latest[target.Ref]
+		condition := v.Plants[target.Ref]
+		if !seen {
 			firstSeen = append(firstSeen, discoveryFromReceipt(target, description))
+		} else if condition == newLeaves && previous.plant != newLeaves {
+			observations = append(observations, JournalObservation{Text: "You see new leaves on the " + target.Name + "."})
 		}
-		m.latest[target.Ref] = recordedSighting{page: page, target: target, description: description}
+		m.latest[target.Ref] = recordedSighting{page: page, target: target, description: description, plant: condition}
 	}
 	return place, observations, firstSeen
 }
