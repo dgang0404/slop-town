@@ -18,8 +18,8 @@ type journalChapter struct {
 }
 
 type journalPassage struct {
-	Text      string
-	FirstSeen []simulation.Discovery
+	Text string
+	Grid string
 }
 
 const emptyJournal = "I haven't recorded anything yet."
@@ -141,13 +141,13 @@ func writeJournal(dst io.Writer, entries []simulation.JournalEntry) error {
 	return out.Flush()
 }
 
-// Both editions tell the same story. Only the illustrated one uses the
-// subjects first seen in each passage to choose accompanying artwork.
+// Both editions tell the same story. The HTML edition includes the saved
+// view alongside the passage where the character first saw something.
 func composeJournal(entries []simulation.JournalEntry) []journalChapter {
 	var book []journalChapter
-	addPassage := func(words string, firstSeen []simulation.Discovery) {
+	addPassage := func(words, grid string) {
 		chapter := &book[len(book)-1]
-		chapter.Passages = append(chapter.Passages, journalPassage{words, firstSeen})
+		chapter.Passages = append(chapter.Passages, journalPassage{words, grid})
 	}
 	chapters := journalChapters{met: make(map[string]bool)}
 	var continuingTo string
@@ -157,9 +157,9 @@ func composeJournal(entries []simulation.JournalEntry) []journalChapter {
 		switch quietWaits {
 		case 0:
 		case 1:
-			addPassage("I waited.", nil)
+			addPassage("I waited.", "")
 		default:
-			addPassage("I waited a while.", nil)
+			addPassage("I waited a while.", "")
 		}
 		quietWaits = 0
 	}
@@ -242,7 +242,7 @@ func composeJournal(entries []simulation.JournalEntry) []journalChapter {
 				lines = append([]string{rememberedObservation(place)}, lines...)
 				describedPlace = place
 			}
-			addPassage(strings.Join(lines, " "), entry.FirstSeen)
+			addPassage(strings.Join(lines, " "), entry.DiscoveryGrid)
 		}
 	}
 	flushWaits()

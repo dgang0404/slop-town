@@ -87,8 +87,9 @@ type Bakery struct {
 // BakerySetup selects the content of a new timeline. The save supplies the
 // content version when resuming an existing timeline.
 type BakerySetup struct {
-	Resident bool
-	Practice bool // Includes both workers in a bakery with use-based endurance.
+	Resident  bool
+	Practice  bool // Includes both workers in a bakery with use-based endurance.
+	Generated bool // Furnish a new practice bakery from its seed.
 }
 
 const (
@@ -120,7 +121,7 @@ const (
 )
 
 func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, error) {
-	if (!setup.Resident && !setup.Practice) || clock == nil {
+	if (!setup.Resident && !setup.Practice && !setup.Generated) || clock == nil {
 		return GenerateBakery(worldID, clock)
 	}
 	// Publish the geography and both profile draws together.
@@ -141,7 +142,7 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 		b.Entities[id] = resident
 	}
 	b.ContentVersion = personalityContentVersion
-	if setup.Practice {
+	if setup.Practice || setup.Generated {
 		b.ContentVersion = phoneContentVersion
 		prefix := url.PathEscape(worldID) + "/"
 		for localID, detail := range bakeryCloseDetails {
@@ -166,6 +167,11 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 		at.Cell.X--
 		b.Entities[prefix+"mint"] = SpatialEntity{Name: "mint planter", Kind: Planter, Placement: at,
 			CloseDetail: "a brass watering spout over the soil"}
+		if setup.Generated {
+			if err := b.furnish(&staged, prefix); err != nil {
+				return nil, err
+			}
+		}
 	}
 	*clock = staged
 	return b, nil

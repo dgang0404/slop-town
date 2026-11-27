@@ -36,9 +36,9 @@ func TestIllustratedJournalFollowsTheSpoon(t *testing.T) {
 	}
 	journalVisit(t, arrive+"journal\n", args...)
 	first := export("main")
-	if strings.Count(first, "<img ") != 2 || strings.Contains(first, "wooden spoon") ||
-		!strings.Contains(first, "Ink sketch of the crate.") || !strings.Contains(first, "Ink sketch of the bakery door.") {
-		t.Fatal("expected only the two objects seen before the crate opened")
+	if strings.Count(first, "<figure>") != 2 || strings.Contains(first, "wooden spoon") ||
+		strings.Contains(first, "c*") || !strings.Contains(first, "?") {
+		t.Fatal("expected the views before the crate opened")
 	}
 	batch := []string{"-db", db, "-batch", "discover"}
 	journalVisit(t, discover+"journal\n", batch...)
@@ -49,9 +49,9 @@ func TestIllustratedJournalFollowsTheSpoon(t *testing.T) {
 	book := export("main")
 	_, later, seen := strings.Cut(book, "I saw the wooden spoon in the crate.")
 	illustration, _, pickedUp := strings.Cut(later, "I took the wooden spoon.")
-	if !seen || !pickedUp || !strings.Contains(illustration, "Ink sketch of the wooden spoon.") ||
-		strings.Count(book, "<img ") != 3 || strings.Count(book, "data:image/webp;base64,") != 3 {
-		t.Fatal("expected a single embedded spoon sketch in its discovery passage")
+	if !seen || !pickedUp || !strings.Contains(illustration, "c*") ||
+		strings.Count(book, "<figure>") != 3 || strings.Contains(book, "data:image/") {
+		t.Fatal("expected the open crate and its visible contents on the discovery map")
 	}
 	for _, tc := range []struct {
 		args  []string
@@ -72,7 +72,7 @@ func TestIllustratedJournalFollowsTheSpoon(t *testing.T) {
 	}
 	journalVisit(t, "journal\n", "-db", db, "-timeline", "unvisited")
 	empty := export("unvisited")
-	if !strings.Contains(html.UnescapeString(empty), emptyJournal) || strings.Contains(empty, "<img ") {
+	if !strings.Contains(html.UnescapeString(empty), emptyJournal) || strings.Contains(empty, "<figure>") {
 		t.Fatal("expected an empty book on another timeline")
 	}
 	if after, err := storage.Replay(db, scope, 0); err != nil || after != head {
@@ -94,8 +94,8 @@ func TestIllustratedJournalKeepsQuotedWordsAsText(t *testing.T) {
 	}
 	book := out.String()
 	if !strings.Contains(book, "I heard about a wooden spoon.") || !strings.Contains(book, "Kit &amp; &lt;Jo&gt;") ||
-		strings.Contains(book, "<img ") {
-		t.Fatal("a reported or similarly named object should not be pictured, and names must remain text")
+		strings.Contains(book, "<figure>") {
+		t.Fatal("names alone cannot reconstruct a missing observation grid")
 	}
 	r, w := io.Pipe()
 	r.Close()
@@ -109,7 +109,8 @@ func TestJournalHearsAboutSpoonBeforeSeeingIt(t *testing.T) {
 	entries := []simulation.JournalEntry{{
 		Conversation: simulation.JournalSpeech{With: "baker", Words: "I heard about a wooden spoon."},
 	}, {
-		Action: simulation.ActionWait,
+		Action:        simulation.ActionWait,
+		DiscoveryGrid: "@ c*",
 		FirstSeen: []simulation.Discovery{{
 			Target: simulation.ObservedTarget{Ref: "bakery/spoon", Name: "wooden spoon"},
 			Label:  "wooden spoon", Location: simulation.LocationContainer, Container: "blue crate",
@@ -119,7 +120,7 @@ func TestJournalHearsAboutSpoonBeforeSeeingIt(t *testing.T) {
 	if err := writeIllustratedJournal(&book, entries[:1]); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(book.String(), "I heard about a wooden spoon.") || strings.Contains(book.String(), "<img ") || strings.Contains(book.String(), "I saw the wooden spoon") {
+	if !strings.Contains(book.String(), "I heard about a wooden spoon.") || strings.Contains(book.String(), "<figure>") || strings.Contains(book.String(), "I saw the wooden spoon") {
 		t.Fatal("the account should contain only the words heard")
 	}
 	book.Reset()
@@ -127,7 +128,56 @@ func TestJournalHearsAboutSpoonBeforeSeeingIt(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, after, ok := strings.Cut(book.String(), "<p>I saw the wooden spoon in the blue crate.</p>")
-	if !ok || strings.Count(book.String(), "<img ") != 1 || !strings.Contains(after, "Ink sketch of the wooden spoon.") {
-		t.Fatal("expected the spoon sketch at the firsthand discovery during the wait")
+	if !ok || strings.Count(book.String(), "<figure>") != 1 || !strings.Contains(after, "<pre>@ c*</pre>") {
+		t.Fatal("expected the recorded view at the firsthand discovery during the wait")
 	}
+}
+
+func TestGeneratedFurnishingsAcrossRestart(t *testing.T) {
+	t.Chdir(t.TempDir())
+	scope := simulation.Scope{WorldID: "bakery", TimelineID: "main"}
+	const db = "generated.sqlite"
+	visit := func(input string, flags ...string) string {
+		t.Helper()
+		return journalVisit(t, input+"journal\n", append([]string{"-db", db}, flags...)...)
+	}
+	visit("", "-generated", "-seed", "42")
+	if _, err := storage.SaveCheckpoint(db, scope); err != nil {
+		t.Fatal(err)
+	}
+	visit("open door\nwalk to crate\n")
+	corner, err := storage.SaveCheckpoint(db, scope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const discover = "open crate\nexamine scraper\ntake scraper\n"
+	book := visit(discover, "-practice", "-seed", "43", "-batch", "supplies")
+	if !strings.Contains(book, "I found the dough scraper in the crate, a brass rivet in its handle.") ||
+		!strings.Contains(book, "I took the dough scraper.") {
+		t.Fatal(book)
+	}
+	if repeated := visit(discover, "-batch", "supplies"); repeated != book {
+		t.Fatal("retry changed the journal")
+	}
+	head, err := storage.Replay(db, scope, 0)
+	if err != nil || head.Tick != 7 {
+		t.Fatal(head, err)
+	}
+	if again, err := storage.Replay(db, scope, corner.Sequence); err != nil || again != head {
+		t.Fatal(again, err)
+	}
+	entries, err := storage.BakeryJournal(db, scope, "bakery/player")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var htmlBook bytes.Buffer
+	if err := writeIllustratedJournal(&htmlBook, entries); err != nil {
+		t.Fatal(err)
+	}
+	_, after, ok := strings.Cut(htmlBook.String(), "I saw the dough scraper in the crate. I saw the wooden spoon in the crate.")
+	grid, _, next := strings.Cut(after, "I found the dough scraper")
+	if !ok || !next || !strings.Contains(grid, "c**") || strings.Count(grid, "<figure>") != 1 {
+		t.Fatal("both discovered tools should share the grid recorded before pickup")
+	}
+	t.Logf("tick %d, sequence %d, sha256 %s", head.Tick, head.Sequence, head.Hash)
 }

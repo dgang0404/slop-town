@@ -17,6 +17,22 @@ Consider a player typing “open the door.” The client sends an intention refe
 
 The app connects these components in process. The UI and AI receive no database handle or mutable world state. An accepted AI proposal produces a recorded event so replay can use the recorded outcome offline. Player views, narration and suggestions consume the same filtered observations. Preserve the distinction between current perceptions, remembered facts and secondhand claims.
 
+## What the game reads today
+
+As of 27 November 2026, each new SQLite bakery timeline gets a seed, random stream positions and a snapshot of its people, objects, names, descriptions and placements. A committed turn writes the updated state, ordered events and a receipt together. These records can contain the exact words a character heard, a letter they read, and the text and visible grid they received. The journal reads that history from the save. Creating a replay checkpoint adds a row on request. Schema version 4 supports this demo. The master design’s town-wide ingredient library, multi-building world and remaining domains still need schema and content work. [Schema migrations](../../internal/storage/fixture.go) · [Timeline storage](../../internal/storage/timeline.go)
+
+| Layer | Working today | Still planned |
+| --- | --- | --- |
+| Authoritative Go simulation | The coordinator accepts versioned proposals, checks actions, advances time and produces events and actor-specific observations. The bakery exercises movement, containers, object handling, perception, notebooks, work and rest, personality, emotion, directional relationships and plant growth. | Broader world generation, economy and ecology, full object physics, combat, a general rules service and engine registration. The pack checker currently validates manifest declarations. |
+| Deterministic fallback | The terminal parses commands offline. Local Go APIs offer available actions and dialogue choices. The journal combines saved evidence with bundled English templates. Several dialogue lines and action messages are still authored in Go. | A versioned content library with reusable weighted dialogue, scene templates and default reactions across the town. |
+| Optional narrative inference | The proposal and observation contracts define what an adapter may submit and what information it may receive. | Phase 10 connects local and then remote models. The simulation validates their proposals and records accepted outcomes for offline replay. |
+
+In a fresh seed-42 practice save, two waits, an introduction and asking the porter for their number populated one timeline, 15 events and four receipts. The conversation event contained the actual reply, “You can reach me on 202 at the bakery phone.” Reading the journal after the visit could recover those words from SQLite.
+
+For example, generation can select a dough scraper from the bundled supply list and copy its name and distinguishing mark into the new town. Later, the storage adapter loads that instance and the simulation decides what a character close enough to examine it can learn. The journal can then read the actual examination from that character’s receipt. The English template used to tell the story comes from the executable. [Supply definitions](../../internal/simulation/bakery-supplies.en.json) · [Journal projection](../../internal/simulation/journal.go) · [English templates](../../cmd/sloptown/journal.en.json)
+
+Current callers use the local Go methods `SubmitTurn`, `Scene`, `AvailableActions`, `DialogueChoices` and `Journal`. The terminal can use either an in-memory coordinator or its SQLite-backed equivalents. A shared catalog lookup for generators and future engines, the engine registry and the external adapter API remain open work. [Terminal wiring](../../cmd/sloptown/bakery.go)
+
 ## Version 1 message shapes
 
 These field definitions specify the Phase 1 implementation target. IDs are opaque strings. A world ID identifies a generated town. A timeline ID selects one history within it. Neither identity is derived from the fixture hash. Contract versions evolve independently of the SQLite schema version.

@@ -38,6 +38,7 @@ type JournalEntry struct {
 	Witnessed      []WitnessedAction
 	Observations   []JournalObservation
 	FirstSeen      []Discovery // From this character's saved observation.
+	DiscoveryGrid  string      // The same receipt's view at the time of a first sighting.
 	LastSeen       []Discovery // Latest recorded view of each target, on the turn it was seen.
 }
 
@@ -92,6 +93,9 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 				page.WalkEnd = rest[strings.LastIndexByte(rest, '\n')+1:]
 			}
 			page.Place, page.Observations, page.FirstSeen = memory.observe(r.Result.Observation, len(entries)-1)
+			if len(page.FirstSeen) > 0 {
+				page.DiscoveryGrid = r.Result.Observation.Grid
+			}
 			if page.Action == ActionListen {
 				page.Outcome = "" // The journal keeps what the listener perceived that turn.
 				if b.ContentVersion < dropSoundContentVersion {

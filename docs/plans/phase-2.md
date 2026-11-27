@@ -2,6 +2,14 @@
 
 **Approved walkthrough, 25 November 2026.** A player starts outside a bakery. They open the door, walk inside, find a closed crate, take a wooden spoon from it and carry it outside. After quitting and reopening the town, the spoon is exactly where they left it. The fixture size and action durations are test values. [Master design, sections 6, 7, 47 and 50](../design/Slop_Town_Master_Design_Revised_v7.docx) · [Phase 1 acceptance](phase-1-results.md)
 
+## Furnish a bakery at creation
+
+The first playable extension beyond the reference layout uses `bakery -generated`. On the same five-by-four floor, the generator places the phones, crate and planter, and selects one bakery tool to accompany the spoon. It draws from eligible cells in a stable order on a separate furnishing stream. The indoor phone stays within reach of the prep station. Before accepting the layout it checks that the player can reach the door and both residents and can stand beside every fixture even with furniture squares excluded from the aisle. A failed setup leaves the timeline’s clock and random streams untouched. [Play the generated bakery](../../README.md#play-a-bakery-furnished-from-its-seed)
+
+On 27 November 2026, seeds 0 through 99 produced 68 distinct arrangements of the four furnishings and all three tools. The test opened the door, walked inside, opened the crate and took the spoon for every seed. Repeating a seed after an unrelated weather draw produced the same layout. On seed 42 the player found a dough scraper, examined the rivet in its handle and took it. Reopening with different creation options preserved the item and layout. Replaying from the initial checkpoint and the approach to the crate reached turn 7, sequence 24, SHA-256 `764ca86c94f0ba52b1bb0229e772e4c9490ecaa9e891dac250ed5ff1e3a8226e`. [Generation tests](../../internal/simulation/furnishing_test.go) · [Saved visit](../../cmd/sloptown/journal_illustrated_test.go)
+
+**Next generation checkpoint.** Give a second room or shop its own footprint, linked entrance and work area from reusable content definitions. Verify a playable route from the street to each required interaction and back, with room to use the door, work and rest. Save generated instances and the content revision. Exercise those routes across seeds alongside the fixed bakery regressions. The longer Phase 8 hundred-town campaign will also exercise residents and event chains over time.
+
 ## First checkpoint — generate a place
 
 Use one floor with five columns and four rows. Coordinates start at the northwest corner. East increases `x`; south increases `y`. Columns 0–1 are the street, column 2 is the bakery wall, and columns 3–4 are the bakery interior. One wall cell contains a closed door. Opening it makes that cell passable and transparent.

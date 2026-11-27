@@ -33,8 +33,9 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	})
 	resident := flags.Bool("resident", false, "include the baker's work routine when creating a new timeline")
 	practice := flags.Bool("practice", false, "create a resident bakery with use-based endurance")
+	generated := flags.Bool("generated", false, "create a practice bakery with seeded furnishings and supplies")
 	flags.Usage = func() {
-		fmt.Fprintln(stderr, "Usage: sloptown bakery [-seed N] [-resident] [-practice] [-db PATH] [-timeline NAME] [-batch ID] [-play [-narration brief|story] | [-full] ACTION ...]")
+		fmt.Fprintln(stderr, "Usage: sloptown bakery [-seed N] [-resident] [-practice] [-generated] [-db PATH] [-timeline NAME] [-batch ID] [-play [-narration brief|story] | [-full] ACTION ...]")
 		fmt.Fprintln(stderr, "Actions: wait | rest | listen | move DIRECTION | open NAME | close NAME | knock NAME | examine NAME | water NAME | harvest NAME | take NAME | discreet_take NAME | drop NAME | put ITEM CONTAINER | introduce PERSON | approach NAME | hide NAME | emerge | post PERSON MESSAGE | read_letter | call NAME_OR_NUMBER")
 	}
 	if err := flags.Parse(args); err != nil {
@@ -55,7 +56,7 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		style = "brief"
 	}
 	scope := simulation.Scope{WorldID: "bakery", TimelineID: *timeline}
-	setup := simulation.BakerySetup{Resident: *resident, Practice: *practice}
+	setup := simulation.BakerySetup{Resident: *resident, Practice: *practice, Generated: *generated}
 	const player = "bakery/player"
 	var session bakerySession
 	if !*full {

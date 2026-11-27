@@ -18,9 +18,10 @@
     h2 small { display: block; margin-bottom: .6rem; color: #745435; font: 600 .78rem/1.2 "Work Sans", sans-serif;
                text-transform: uppercase; letter-spacing: .13em; }
     p { margin: .65rem 0; }
-    .sketches { display: flex; justify-content: center; flex-wrap: wrap; gap: .75rem; }
-    figure { width: min(15rem, 100%); margin: .4rem 0 .65rem; }
-    img { display: block; width: 100%; height: auto; mix-blend-mode: multiply; }
+    figure { margin: .5rem 0 1.5rem; }
+    pre { width: fit-content; max-width: 100%; overflow-x: auto; padding: .75rem 1rem; margin: 0;
+          border: 1px solid #d5c9b6; font: 1rem/1.5 "IBM Plex Mono", monospace; }
+    figcaption { margin-top: .25rem; font-size: .875rem; color: #675545; }
     @media print {
       html, main { background: white; }
       main { padding: 0; border: 0; max-width: none; min-height: 0; }
@@ -33,10 +34,16 @@
 <body>
 <main>
   <h1>My journal</h1>
+  {{if .HasMaps}}<details><summary>Map key</summary>
+    <p>@ is me, a is another person, . is open ground, # is a wall and ? is out of sight.
+       A door is + when closed and / when open. A container is C when closed and c when open.
+       Each * is a visible item, T marks a telephone, and y or Y marks a plant.
+       Symbols grouped together share a square.</p>
+  </details>{{end}}
   {{range .Chapters}}<section>
     <h2><small>Chapter {{.Number}}</small> {{.Title}}</h2>
     {{range .Passages}}<div class="passage"><p>{{.Text}}</p>
-      <div class="sketches">{{range $discovery := .FirstSeen}}{{with sketch $discovery.Target}}<figure><img width="600" height="400" src="{{.}}" alt="Ink sketch of the {{$discovery.Target.Name}}."></figure>{{end}}{{end}}</div>
+      {{with .Grid}}<figure><pre>{{.}}</pre><figcaption>My view at the time</figcaption></figure>{{end}}
     </div>{{end}}
   </section>
   {{else}}<p>{{.Empty}}</p>{{end}}

@@ -7,13 +7,14 @@ For tested devices, hardware targets and offline play, see the [player system re
 ## Design documents
 
 - [Master Design and Architecture, revision 7](docs/design/Slop_Town_Master_Design_Revised_v7.docx) describes the town, its residents, player commands, and how the simulation resolves actions.
+- The [grid illustration decision](docs/plans/phase-7.md#the-full-town-display) updates the camera direction in sections 7.8 and 47. The [engine and data status](docs/decisions/0002-simulation-contracts.md#what-the-game-reads-today) distinguishes working APIs and save data from planned services.
 - [Phase 0 Development Foundation](docs/design/Slop_Town_Phase_0_Development_Foundation.docx) outlines the first development milestone, including the headless runner, persistence, and tests.
 
 See the [Phase 0 plan](docs/plans/phase-0.md) for the Go foundation milestones.
 
 The [Phase 0 acceptance report](docs/plans/phase-0-results.md) collects the foundation test evidence. The [Phase 1 plan](docs/plans/phase-1.md) covers time, events, saves and replay. Its [acceptance report](docs/plans/phase-1-results.md) gives the reproducible restart and rollback checks and the CI status.
 
-Phase 2 follows a wooden spoon from a bakery crate to the street. The runner can reopen the town and replay that journey. See the [Phase 2 plan](docs/plans/phase-2.md) and [acceptance results](docs/plans/phase-2-results.md).
+Phase 2 follows a wooden spoon from a bakery crate to the street. The runner can reopen the town and replay that journey. You can also [play a bakery furnished from its seed](#play-a-bakery-furnished-from-its-seed). [Phase 2 plan](docs/plans/phase-2.md) · [Acceptance results](docs/plans/phase-2-results.md)
 
 Phase 3 adds a playable text-command session, contextual actions and numbered choices for ambiguous names. Its acceptance test compares a typed walkthrough with explicit commands across restarts. [Phase 3 plan](docs/plans/phase-3.md) · [Acceptance results](docs/plans/phase-3-results.md)
 
@@ -416,11 +417,23 @@ The porter gives you extension **202**. The first call rings out. On the second 
 
 To use only the arrows and Enter, choose **talk to the porter**, then **What number can I reach you on?** and **cancel**. Choose **call the porter** for either call. You can also give someone your own number with `give my number to NAME`. Mailing addresses and telephone numbers are shared separately. [Phone checkpoint and restart checks](docs/plans/phase-7.md#checkpoint-31--place-a-phone-call)
 
+### Play a bakery furnished from its seed
+
+Start a fresh save with
+
+```sh
+go run ./cmd/sloptown bakery -generated -play -seed 42 -db furnished.sqlite
+```
+
+On this seed, type `open door`, `walk to crate`, `open crate`, then `examine scraper`. The dough scraper has a brass rivet in its handle. Try another seed with a fresh file or a new `-timeline` to change the furnishings and the extra utensil in the crate. Reopening an existing timeline uses its saved layout.
+
+The room and street still have the same footprint. The crate, both phones and the planter get their places at creation, with a clear aisle to each. The original `-practice` walkthroughs keep their reference layouts. [Generation checks](docs/plans/phase-2.md#furnish-a-bakery-at-creation)
+
 ### Export an illustrated journal
 
-Type `export illustrated journal` or choose it with the arrows and Enter. Open `slop-town-journal.html` in a browser. The pictures travel with the file, so you can copy it to another device and read it offline. Later exports use the next available filename.
+Type `export illustrated journal` or choose it with the arrows and Enter. Open `slop-town-journal.html` in a browser. The maps travel with the file, so you can copy it to another device and read it offline. Later exports use the next available filename.
 
-Try exporting once while the crate is closed and again after you open it and see the wooden spoon. In the second book, the spoon sketch appears beside the passage where you found it. Closing the crate again preserves that memory. The bakery door and the crate have sketches of their own.
+Try exporting once while the crate is closed and again after you open it. The second book shows the top-down grid you saw when you discovered the contents. The open crate is `c`, each visible item adds a `*` on that square, and `?` marks a square you couldn’t see. Closing the lid again preserves that earlier view.
 
 To make the same book from an existing save, choose a new output filename and run
 
@@ -428,7 +441,7 @@ To make the same book from an existing save, choose a new output filename and ru
 go run ./cmd/sloptown journal -illustrated -db bakery.sqlite > my-bakery-visit.html
 ```
 
-The sketches illustrate memories in the book. For the full-town client, the planned navigation view is text and a local grid, with an optional picture of the current scene. [Town display plan](docs/plans/phase-7.md#the-full-town-display)
+The planned graphical client can draw that same grid from straight above or at an isometric angle. [Town display plan](docs/plans/phase-7.md#the-full-town-display)
 
 ### Browse actions and walk to a destination
 

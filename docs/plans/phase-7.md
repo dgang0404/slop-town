@@ -141,9 +141,9 @@ Up and Enter showed the summer date in a Linux terminal. The in-game export matc
 
 ## Checkpoint 10 — illustrated journal export
 
-`export illustrated journal` makes a single HTML book from the same dated chapters and first-person paragraphs as the text edition. The first three illustrations are ink sketches of the bakery door, the crate and the wooden spoon. They were generated for the book and ship in the executable. Exporting works offline, including from an in-memory visit. [Try both editions](../../README.md#export-an-illustrated-journal)
+`export illustrated journal` makes a single HTML book from the same dated chapters and first-person paragraphs as the text edition. This checkpoint originally shipped three ink sketches of the bakery door, crate and wooden spoon. The [grid illustration decision](#the-full-town-display) replaced them with observed maps. Exporting works offline, including from an in-memory visit. [Try both editions](../../README.md#export-an-illustrated-journal)
 
-Each sketch belongs to a particular object. The journal selects it from the character’s first saved sighting of that object and places it with that passage. A report can mention a spoon before the player sees one. In that case the book quotes the speaker and waits for a firsthand sighting to draw the spoon. Text and alternative descriptions are readable in a narrow browser window or in print. [Master design, sections 7.8 and 17](../design/Slop_Town_Master_Design_Revised_v7.docx)
+Each original sketch belonged to a particular object. The journal selected it from the character’s first saved sighting of that object and placed it with that passage. A report could mention a spoon before the player saw one. In that case the book quoted the speaker and waited for a firsthand sighting to draw the spoon. [Master design, sections 7.8 and 17](../design/Slop_Town_Master_Design_Revised_v7.docx)
 
 ### Checkpoint 10 results
 
@@ -179,9 +179,13 @@ The acceptance walkthrough reopens two visits at the same corner. One player ask
 
 Use text and the local top-down grid as the default navigation view. The grid follows the player and updates the visible cells, people and objects after each committed action. If the baker steps into a doorway beside the player, the grid can show both occupants at that location. Names and actions remain available through text. Closed containers and rooms outside the character’s view conceal their contents.
 
-Offer one optional picture-book scene for atmosphere. For example, one picture can show the player’s view of the baker beside the open crate. Build it from the same visible people, objects and surroundings used for the grid. Reuse the picture while that view still matches. If a new scene is still being drawn, keep play responsive and show the result only if it still matches the player’s view. With illustrations off, text and grid support the whole visit. The journal’s object sketches remain attached to the passages where they were discovered.
+**Camera decision, 27 November 2026.** All new scene and journal illustrations use the grid, seen from directly above or from a Diablo-style isometric angle. This supersedes the separate picture-book camera in sections 7.8 and 47 of the master design and the earlier bakery portrait experiment. The terminal and the HTML book use the top-down projection today. [Master design](../design/Slop_Town_Master_Design_Revised_v7.docx)
 
-The bakery currently has a text grid and illustrated HTML export. The graphical grid and optional live scene belong to later client work. [Master design, sections 7.8 and 47](../design/Slop_Town_Master_Design_Revised_v7.docx)
+For the Phase 9 client, draw visible ground, structures, furnishings, people and interaction overlays against the same floor and cell coordinates. Keep multiple occupants selectable on a shared square. At an isometric angle, draw occupants in depth order and keep the selected square readable behind tall objects. Text identifies the same visible targets. Reuse tile and object art across locations. Measure memory and frame time on a representative town before setting an asset budget.
+
+The illustrated journal now takes one map from the character’s saved observation on a turn with a new sighting. Two tools discovered together share a map. An unheard event or a secondhand account supplies no visual evidence. Earlier saves already contain these observed grids. [HTML export and privacy checks](../../cmd/sloptown/journal_illustrated_test.go)
+
+On a six-turn seed-42 visit saved by `f940d29`, the player entered the bakery, opened the crate, took the spoon and closed the lid. The previous executable exported a 121,880-byte HTML journal. The top-down edition exported the same visit in 3,368 bytes, with the visible spoon still in the crate on its discovery map. The plain-text editions matched byte for byte.
 
 ## Checkpoint 13 — facts behind the narration
 
