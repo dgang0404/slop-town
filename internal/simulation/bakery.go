@@ -108,6 +108,7 @@ const (
 	knockContentVersion           = 19
 	examineContentVersion         = 20
 	plantContentVersion           = 21
+	harvestContentVersion         = 22
 	fatigueLimit                  = 5 // Steps since the last rest, capped during a break.
 )
 
@@ -134,7 +135,7 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 	}
 	b.ContentVersion = personalityContentVersion
 	if setup.Practice {
-		b.ContentVersion = plantContentVersion
+		b.ContentVersion = harvestContentVersion
 		prefix := url.PathEscape(worldID) + "/"
 		for localID, detail := range bakeryCloseDetails {
 			id := prefix + localID
@@ -274,6 +275,14 @@ func (b *Bakery) Validate() error {
 			if b.ContentVersion < plantContentVersion || e.Portable || e.Placement.HolderID != "" ||
 				b.Cells[e.Placement.Cell.Y][e.Placement.Cell.X].SpaceID != b.StreetID {
 				return fmt.Errorf("invalid outdoor planter %q", id)
+			}
+			if b.ContentVersion >= harvestContentVersion {
+				item, exists := b.Entities[sprigID(id)]
+				if exists != e.Growth.Harvested || (exists && (item.Kind != Item || !item.Portable || item.Name != "mint sprig")) {
+					return fmt.Errorf("invalid harvested sprig for %q", id)
+				}
+			} else if e.Growth.Harvested {
+				return fmt.Errorf("unexpected harvest for %q", id)
 			}
 		} else if e.Growth != (plantGrowth{}) {
 			return fmt.Errorf("unexpected plant growth for %q", id)

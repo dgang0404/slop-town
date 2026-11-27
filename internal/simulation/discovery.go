@@ -41,7 +41,7 @@ func discoveryFromReceipt(target ObservedTarget, text string) Discovery {
 		return d
 	}
 	for _, label := range []string{target.Name, "closed " + target.Name, "open " + target.Name, target.Name + " sitting", target.Name + " crouching",
-		"dry " + target.Name, "damp " + target.Name, target.Name + newLeavesLabel} {
+		"dry " + target.Name, "damp " + target.Name, target.Name + newLeavesLabel, target.Name + clippedStemsLabel} {
 		where, ok := strings.CutPrefix(line, label+" ")
 		if !ok {
 			continue

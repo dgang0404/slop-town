@@ -32,6 +32,7 @@ const (
 	ActionKnock        ActionKind = "knock"
 	ActionExamine      ActionKind = "examine"
 	ActionWater        ActionKind = "water"
+	ActionHarvest      ActionKind = "harvest"
 	ActionClose        ActionKind = "close"
 	ActionTake         ActionKind = "take"
 	ActionDiscreetTake ActionKind = "discreet_take"
@@ -134,6 +135,7 @@ type EventPayload struct {
 	Destination       CellPosition   `json:",omitzero"`
 	Target            string         `json:",omitempty"`
 	HolderID          string         `json:",omitempty"`
+	ItemID            string         `json:",omitempty"` // The cutting produced when Target is harvested.
 	EndurancePractice bool           `json:",omitempty"`
 	ReliefStarted     bool           `json:",omitempty"`
 	Dialogue          Exchange       `json:",omitzero"`
@@ -374,6 +376,9 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 			}
 		}
 		result.SelectedTarget = p.Observed.Target
+		if p.Action == ActionHarvest {
+			result.SelectedTarget = primary.payload.ItemID
+		}
 		if p.Action == ActionApproach {
 			ref := primary.payload.Target
 			result.SelectedTarget = ref

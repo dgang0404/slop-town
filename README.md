@@ -21,7 +21,7 @@ In Phase 4 the baker and porter follow work routines, choose where to rest and k
 
 In Phase 5, the player and residents build endurance, feel relief after a tiring walk, and recognize people who have introduced themselves. [Phase 5 plan](docs/plans/phase-5.md) · [Acceptance results](docs/plans/phase-5-results.md)
 
-Phase 6 begins with a living mint plant outside the practice bakery. Its leaves can unfold while the player is elsewhere. [Phase 6 plan](docs/plans/phase-6.md)
+Phase 6 begins with a living mint plant outside the practice bakery. Its leaves can unfold while the player is elsewhere. Once they open, a character can harvest a sprig and carry it back into the shop. [Phase 6 plan](docs/plans/phase-6.md)
 
 The Phase 7 bakery narrator offers brief and story settings. Both describe what your character notices, with new details in bold on supported terminals. In the practice bakery, workers can talk while you are elsewhere. Ask what someone has heard and they can tell you who witnessed it. The player journal recalls the visit and its conversations in chapters. Export it as plain text or as an illustrated book you can read offline. [Phase 7 presentation plan](docs/plans/phase-7.md)
 
@@ -281,6 +281,22 @@ journal
 ```
 
 Around the corner, your last sighting still describes the damp planter. Step north to see the leaves for yourself. The journal records finding them on your return. [Plant growth and replay checks](docs/plans/phase-6.md#checkpoint-1-results)
+
+### Harvest a sprig and carry it inside
+
+Start a fresh practice visit with seed 42. Type `water mint` and then `wait` six times. When new leaves appear, the arrows offer **harvest the mint planter**. You can also type these commands.
+
+```text
+harvest planter
+examine it
+east
+walk to crate
+open crate
+put sprig in crate
+look
+```
+
+The cutting takes one turn and leaves short stems. After harvesting, `it` refers to the sprig in your hand. The open crate can hold the mint alongside the wooden spoon. [Harvest and restart checks](docs/plans/phase-6.md#checkpoint-2--harvest-a-sprig)
 
 ### Listen from the street
 

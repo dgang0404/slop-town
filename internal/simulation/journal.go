@@ -28,7 +28,7 @@ type JournalEntry struct {
 	WalkArrival   ObservedTarget
 	ContinueWalk  bool
 	IntroducedTo  ObservedTarget
-	WateredTarget string // The watering sentence already names this planter in the journal.
+	OutcomeTarget string // The action already introduces this object in the journal.
 	Witnessed     []WitnessedAction
 	Observations  []JournalObservation
 	FirstSeen     []Discovery // From this character's saved observation.
@@ -97,8 +97,13 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 			}
 		}
 
-		if e.Kind == "plant_watered" && e.ActorID == actor {
-			entryAt(e.Tick).WateredTarget = e.Payload.Target
+		if e.ActorID == actor {
+			switch e.Kind {
+			case "plant_watered":
+				entryAt(e.Tick).OutcomeTarget = e.Payload.Target
+			case "plant_harvested":
+				entryAt(e.Tick).OutcomeTarget = e.Payload.ItemID
+			}
 		}
 		if e.Kind == "actors_conversed" && (e.ActorID == actor || e.Payload.Target == actor) {
 			page := entryAt(e.Tick)
@@ -208,6 +213,8 @@ func (m *journalMemory) observe(v Observation, page int) (place JournalObservati
 			firstSeen = append(firstSeen, discoveryFromReceipt(target, description))
 		} else if condition == newLeaves && previous.plant != newLeaves {
 			observations = append(observations, JournalObservation{Text: "You see new leaves on the " + target.Name + "."})
+		} else if condition == clippedStems && previous.plant != clippedStems {
+			observations = append(observations, JournalObservation{Text: "You see clipped stems on the " + target.Name + "."})
 		}
 		m.latest[target.Ref] = recordedSighting{page: page, target: target, description: description, plant: condition}
 	}

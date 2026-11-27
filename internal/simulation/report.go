@@ -7,7 +7,7 @@ const reportThanks = "Thanks for telling me."
 
 func (e NotebookEntry) isObservation() bool {
 	switch e.Action {
-	case ActionRest, ActionOpen, ActionClose, ActionKnock, ActionTake, ActionPut, ActionDrop, ActionHide, SightHandMovement, ActionListen:
+	case ActionRest, ActionOpen, ActionClose, ActionKnock, ActionHarvest, ActionTake, ActionPut, ActionDrop, ActionHide, SightHandMovement, ActionListen:
 		return true
 	}
 	return false

@@ -104,7 +104,7 @@ func (n *turnNarrator) write(out io.Writer, cmd bakeryCommand, turn simulation.T
 			explained[event.Actor.Ref] = event
 		case simulation.ActionKnock:
 			lines = append(lines, actor+" "+n.mark("knocks "+event.ObjectPhrase())+".")
-		case simulation.ActionOpen, simulation.ActionClose, simulation.ActionTake, simulation.ActionDrop, simulation.ActionPut:
+		case simulation.ActionOpen, simulation.ActionClose, simulation.ActionTake, simulation.ActionDrop, simulation.ActionPut, simulation.ActionHarvest:
 			lines = append(lines, actor+" "+n.mark(string(event.Action)+"s "+event.ObjectPhrase())+".")
 			explained[event.Target.Ref] = event
 		}
@@ -125,6 +125,9 @@ func (n *turnNarrator) write(out io.Writer, cmd bakeryCommand, turn simulation.T
 	}
 	var revealed []string
 	for _, obj := range current.Targets {
+		if cmd.Action == simulation.ActionHarvest && obj.Ref == turn.SelectedTarget {
+			continue // The harvest sentence already introduces the sprig.
+		}
 		now := current.Details[obj.Ref]
 		was, seen := prior.Details[obj.Ref]
 		if !seen && opened != "" && now.Holder == opened {

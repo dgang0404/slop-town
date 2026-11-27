@@ -52,6 +52,7 @@ func (b *Bakery) AvailableActions(scope Scope, actorID string) ([]ActionOption, 
 		switch b.Entities[target.Ref].Kind {
 		case Planter:
 			offer(ActionWater, args)
+			offer(ActionHarvest, args)
 		case Actor:
 			offer(ActionIntroduce, args)
 			if lines := b.dialogueChoices(view, target.Ref, false); len(lines) > 0 {

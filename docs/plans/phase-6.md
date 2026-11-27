@@ -1,6 +1,6 @@
 # Phase 6 — economy, plants, animals and environment
 
-The master design calls for plants that grow with town time, including when nobody is looking. This phase starts with watering an individual plant and observing it again later. Harvesting, animal interactions and trading produce are later parts of the roadmap. [Master design, sections 29 and 50](../design/Slop_Town_Master_Design_Revised_v7.docx)
+The master design calls for plants that grow with town time, including when nobody is looking. This phase starts with watering an individual plant and observing it again later. The first two checkpoints cover growth and harvesting. Animal interactions and trading produce come later. [Master design, sections 29 and 50](../design/Slop_Town_Master_Design_Revised_v7.docx)
 
 ## Checkpoint 1 — water the bakery mint
 
@@ -20,6 +20,16 @@ Fresh practice saves use content version 21. A version 20 save from `6e79493` ke
 
 Down and Enter completed the whole visit in a Linux terminal. The offline suite, both seed-42 smoke runs and three race-detector runs passed. The CLI cross-built for Windows amd64 and macOS arm64.
 
-## Next checkpoint — harvest a sprig
+## Checkpoint 2 — harvest a sprig
 
-Let a character within reach harvest a sprig from the leafy plant. The harvested sprig should enter that character’s inventory as a physical item, and the planter should show what remains. Verify that retrying a harvest across a restart produces one sprig.
+Fresh practice towns use content version 22. When new leaves appear, a character beside the planter can spend one turn harvesting a mint sprig. It goes into that character’s hand and the planter shows clipped stems. This plant yields one cutting. A witness who sees the gardener and the planter can describe the harvest. [Try the harvest](../../README.md#harvest-a-sprig-and-carry-it-inside)
+
+On seed 42 the player harvested on turn eight, examined the sprig, dropped it, picked it back up and stored it beside the wooden spoon. The baker could also harvest when within reach. A witness saw the clipped stems and the act of harvesting. Someone around the corner missed it. [Simulation checks](../../internal/simulation/harvest_test.go)
+
+Interrupting the SQLite receipt write left the leafy plant intact. Retrying after restart created one sprig. Repeating the entire visit left that sprig in the crate. Replay from sequences 0, 28 and 30 reached turn 15, sequence 57, with SHA-256 `9882ff224e51a749deb959513aa2e6ea8a226c26e22c02a5906e05c677290568`. Both executables replayed a version 21 mint visit to its checkpoint 1 hash. [SQLite restart test](../../internal/storage/harvest_test.go)
+
+The offline suite and both seed-42 smoke runs passed. Down and Enter completed the harvest, examination, drop and journal visit in a Linux terminal. The CLI cross-built for Windows amd64 and macOS arm64.
+
+## Next gardening checkpoint — a second cutting
+
+Let clipped mint grow another set of leaves over town time. A second harvest should produce a distinct sprig even if someone still holds the first. Verify both items and the time between cuttings across a save and restart.

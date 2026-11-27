@@ -7,6 +7,7 @@ type plantGrowth struct {
 	WateredTick     int64
 	WateredSequence uint64
 	NewLeaves       bool
+	Harvested       bool `json:",omitempty"`
 }
 
 // The mint starts with a pair of folded leaves. After watering, individual
@@ -20,7 +21,7 @@ func (g plantGrowth) valid(tick, delay int64) bool {
 		return g == (plantGrowth{})
 	}
 	return g.WateredTick > 0 && g.WateredTick <= tick && g.WateredSequence > 0 &&
-		g.NewLeaves == (tick-g.WateredTick >= delay)
+		g.NewLeaves == (tick-g.WateredTick >= delay) && (!g.Harvested || g.NewLeaves)
 }
 
 func (b *Bakery) water(actor SpatialEntity, ref string) (spatialEffect, *actionFailure) {
@@ -33,6 +34,26 @@ func (b *Bakery) water(actor SpatialEntity, ref string) (spatialEffect, *actionF
 	}
 	return spatialEffect{kind: "plant_watered", payload: EventPayload{Target: ref}, entityID: ref, entity: plant,
 		message: "You water the " + plant.Name + " using its spout."}, nil
+}
+
+// This planter yields one cutting. Its identity follows the sprig through inventory and storage.
+func sprigID(planter string) string { return planter + "/sprig" }
+
+func (b *Bakery) harvest(actorID, ref string) (spatialEffect, *actionFailure) {
+	plant := b.Entities[ref]
+	if b.ContentVersion < harvestContentVersion || plant.Kind != Planter || !inReach(b.Entities[actorID].Placement.Cell, plant.Placement.Cell) {
+		return spatialEffect{}, targetUnavailable()
+	}
+	switch plant.Growth.condition() {
+	case clippedStems:
+		return spatialEffect{}, &actionFailure{"already_in_state", "Only clipped stems remain."}
+	case newLeaves:
+		plant.Growth.Harvested = true
+	default:
+		return spatialEffect{}, &actionFailure{"action_unavailable", "There are no new leaves to harvest yet."}
+	}
+	return spatialEffect{kind: "plant_harvested", payload: EventPayload{Target: ref, ItemID: sprigID(ref), HolderID: actorID},
+		entityID: ref, entity: plant, message: "You harvest a mint sprig from the " + plant.Name + "."}, nil
 }
 
 // Publish due growth after the workers move and before the end-of-turn view.
@@ -59,18 +80,22 @@ func (b *Bakery) advancePlants(events []Event) []Event {
 }
 
 const newLeavesLabel = " with new leaves"
+const clippedStemsLabel = " with clipped stems"
 
 // PlantCondition is the soil or foliage a character can see.
 type PlantCondition string
 
 const (
-	soilDry   PlantCondition = "dry_soil"
-	soilDamp  PlantCondition = "damp_soil"
-	newLeaves PlantCondition = "new_leaves"
+	soilDry      PlantCondition = "dry_soil"
+	soilDamp     PlantCondition = "damp_soil"
+	newLeaves    PlantCondition = "new_leaves"
+	clippedStems PlantCondition = "clipped_stems"
 )
 
 func (g plantGrowth) condition() PlantCondition {
 	switch {
+	case g.Harvested:
+		return clippedStems
 	case g.NewLeaves:
 		return newLeaves
 	case g.WateredTick != 0:
@@ -82,6 +107,8 @@ func (g plantGrowth) condition() PlantCondition {
 
 func (condition PlantCondition) appearance(name string) (label, glyph, state string) {
 	switch condition {
+	case clippedStems:
+		return name + clippedStemsLabel, "y", "cut back to short stems"
 	case newLeaves:
 		return name + newLeavesLabel, "Y", "putting out new leaves"
 	case soilDamp:

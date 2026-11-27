@@ -34,7 +34,14 @@ func (b *Bakery) applySpatial(event *Event, effect spatialEffect, clock *Timelin
 	} else if b.ContentVersion >= notebookContentVersion && !placesItem {
 		b.recordWitnesses(*event)
 	}
-	if event.Kind == "plant_watered" {
+	switch event.Kind {
+	case "plant_harvested":
+		id := event.Payload.ItemID
+		if _, exists := b.Entities[id]; exists {
+			return fmt.Errorf("harvested item %q already exists", id)
+		}
+		b.Entities[id] = SpatialEntity{Kind: Item, Name: "mint sprig", Portable: true, Placement: Placement{HolderID: event.Payload.HolderID}}
+	case "plant_watered":
 		effect.entity.Growth = plantGrowth{WateredTick: event.Tick, WateredSequence: event.Sequence}
 	}
 	b.Entities[effect.entityID] = effect.entity
@@ -80,6 +87,8 @@ func (b *Bakery) recordWitnesses(event Event) {
 		entry.Action = ActionRest
 	case "actor_hid":
 		entry.Action = ActionHide // The witness sees the actor duck before cover blocks the view.
+	case "plant_harvested":
+		entry.Action = ActionHarvest
 	case "door_knocked":
 		entry.Action = ActionKnock
 	case "door_opened", "container_opened":
@@ -213,6 +222,10 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 			case ActionHide:
 				if b.ContentVersion < coverContentVersion || !b.Entities[e.Target].ProvidesCover {
 					return fmt.Errorf("invalid hiding place in a notebook sighting")
+				}
+			case ActionHarvest:
+				if b.ContentVersion < harvestContentVersion || !b.Entities[e.Target].Growth.Harvested || b.Entities[e.Target].Kind != Planter {
+					return fmt.Errorf("invalid harvested planter in a notebook sighting")
 				}
 			case ActionKnock:
 				if b.ContentVersion < knockContentVersion || b.Entities[e.Target].Kind != Door {

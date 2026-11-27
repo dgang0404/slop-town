@@ -87,6 +87,9 @@ func runActorInspection(command string, args []string, stdout, stderr io.Writer)
 		if e.Action == simulation.ActionHide {
 			saw = "hide behind " + e.Target
 		}
+		if e.Action == simulation.ActionHarvest {
+			saw = "harvest a sprig from " + e.Target
+		}
 		if e.Action == simulation.ActionKnock {
 			saw = "knock on " + e.Target
 		}
