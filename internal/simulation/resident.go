@@ -1,19 +1,23 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package simulation
 
-import "net/url"
+import (
+	"net/url"
+	"slices"
+)
 
 // Workers take at most one spatial action in this fixed order, after the
 // primary actor. A break decision is logged immediately before its effect.
-func (b *Bakery) advanceResidents(clock *Timeline, primary Event) ([]Event, error) {
+func (b *Bakery) advanceResidents(clock *Timeline, primary Event) ([]Event, []PerceptionKind, error) {
 	if b.ContentVersion < residentContentVersion {
-		return nil, nil
+		return nil, nil, nil
 	}
 	roles := []string{"baker"}
 	if b.ContentVersion >= personalityContentVersion {
 		roles = append(roles, "porter")
 	}
 	var events []Event
+	var heard []PerceptionKind
 	for _, role := range roles {
 		id := url.PathEscape(b.WorldID) + "/" + role
 		if id == primary.ActorID {
@@ -21,7 +25,7 @@ func (b *Bakery) advanceResidents(clock *Timeline, primary Event) ([]Event, erro
 		}
 		effect, choice, err := b.residentTurn(primary.Scope, role, clock)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if effect.kind == "" {
 			continue
@@ -33,7 +37,13 @@ func (b *Bakery) advanceResidents(clock *Timeline, primary Event) ([]Event, erro
 		}
 		action := parent.child(primary.Sequence+uint64(len(events))+1, id, "spatial", effect.kind, effect.payload)
 		if err := b.applySpatial(action, effect, clock); err != nil {
-			return nil, err
+			return nil, nil, err
+		}
+		if primary.Kind == "actor_listened" {
+			sound := b.audibleAction(primary.ActorID, action)
+			if sound != "" && !slices.Contains(heard, sound) {
+				heard = append(heard, sound)
+			}
 		}
 		if choice != nil && effect.kind != "actor_rested" {
 			worker := b.Entities[id]
@@ -48,12 +58,12 @@ func (b *Bakery) advanceResidents(clock *Timeline, primary Event) ([]Event, erro
 		if effect := b.residentConversation(primary); effect.kind != "" {
 			action := primary.child(primary.Sequence+1, effect.entityID, "spatial", effect.kind, effect.payload)
 			if err := b.applySpatial(action, effect, clock); err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			events = append(events, action)
 		}
 	}
-	return events, nil
+	return events, heard, nil
 }
 
 // Workers know the route between the shopfront and the prep area. Each

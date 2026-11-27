@@ -40,7 +40,7 @@ func (b *Bakery) observeDiscreetTake(event Event, clock *Timeline) error {
 			return err
 		}
 		distance := manhattanDistance(witness.Placement.Cell, taker.Placement.Cell)
-		perception := int(seededSample(b.Seed, "aptitude/perception/"+id, 0) % 21)
+		perception := perceptionAptitude(b.Seed, id)
 		score := int(roll%100) + perception - stealth - 8*distance
 		entry := NotebookEntry{Tick: event.Tick, SourceSequence: event.Sequence}
 		switch {

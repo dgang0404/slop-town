@@ -59,6 +59,14 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 	actor := b.Entities[view.ObserverID]
 	action, args := p.Action, p.Args
 	switch action {
+	case ActionListen:
+		if p.ByName || args != (ActionArgs{}) {
+			return spatialEffect{}, &actionFailure{"invalid_request", "Listen takes no arguments."}
+		}
+		if b.ContentVersion < listenContentVersion {
+			return spatialEffect{}, &actionFailure{"action_unavailable", "Listening is unavailable here."}
+		}
+		return spatialEffect{kind: "actor_listened", message: "You listen for a moment.", entityID: view.ObserverID, entity: actor}, nil
 	case ActionWait:
 		if p.ByName || args != (ActionArgs{}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Wait takes no arguments."}

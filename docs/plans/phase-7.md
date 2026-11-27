@@ -291,7 +291,7 @@ In new practice bakeries, a character can discreetly pick up a visible item with
 
 Just before a discreet pickup, each observer who can see the acting character makes one hidden check. The simulation weighs the actor’s stealth, the observer’s perception and their distance in tiles. Each character’s initial aptitudes come from the town seed, and each observer has their own saved sequence of draws. Players and residents use the same rules.
 
-A witness who identifies both the person and the item remembers an ordinary pickup. A partial sighting records an anonymous hand movement and names the container only when it was visible. A missed movement leaves no account to pass along. Lighting, sound, attention, skill growth and actions such as hiding and listening remain future work. [Master design, sections 7.6, 12.2, 12.5 and 46–47](../design/Slop_Town_Master_Design_Revised_v7.docx)
+A witness who identifies both the person and the item remembers an ordinary pickup. A partial sighting records an anonymous hand movement and names the container only when it was visible. A missed movement leaves no account to pass along. Checkpoint 21 adds deliberate listening for footsteps and doors. Lighting, sounds from handling items, skill growth and hiding remain future work. [Master design, sections 7.6, 12.2, 12.5 and 46–47](../design/Slop_Town_Master_Design_Revised_v7.docx)
 
 ### Acceptance walkthrough
 
@@ -311,3 +311,17 @@ The same rule handled a resident taking an item. With the baker picking up a spo
 An interrupted SQLite write rolled back the pickup, notebooks and perception draws together. After retry, replay from sequences 0 and 19 reached tick 17, sequence 60, with SHA-256 `ea026b91111c8258a910b8ecce73ac15097ea4a2fbf044292f797857629b1797`. New practice timelines use content version 12. On a version 11 save from `7744c0a`, both executables produced the same ordinary pickup transcript and replayed to tick 7 with SHA-256 `25bca1e85ac15f2d14a71dc8541238efe1a74ff6c253fa777d360486c368ac6c`.
 
 The offline suite, both seed-42 smoke runs and three race-detector runs passed. The CLI cross-built for Windows amd64 and macOS arm64.
+
+## Checkpoint 21 — listen from the street
+
+In a new practice bakery, a player or resident can spend one turn listening. A step makes a footfall at the square where the walker lands. A moving door creaks at its hinge. The simulation checks how far each sound can travel at the moment it occurs. Nearby footsteps can carry around an open doorway. A closed door blocks footsteps passing through it, and its own creak can reach either side. [Playable walkthrough](../../README.md#listen-from-the-street)
+
+For this fixture, footsteps carry three floor squares and a creak carries four. Characters in the upper third of the existing perception aptitude range hear one square farther. Each sound takes the shortest connected route through adjacent floor squares. The listener remembers the distinct sounds in the order they heard them. Hearing alone supplies no name or selectable target. The journal keeps sounds and any other discoveries made during that turn. Conversation about overheard sounds and noises from handling objects are open for later checkpoints.
+
+### Checkpoint 21 results
+
+At the seed-42 shopfront, Down and Enter selected `listen`. The player heard a door creak followed by footsteps, then read both in the journal. On seed 4, the player walked two steps south, waited three turns, and heard footsteps while both workers were out of sight. A second listen on the quiet seventh turn added no sound to the journal. In a separate scene, the baker stepped behind a closed door just before the porter opened it. The listener heard only the creak. The porter could also listen around a corner and hear an unseen walker. [Simulation checks](../../internal/simulation/listen_test.go)
+
+A failed SQLite receipt write rolled back the listening turn and the workers’ movements. Reopening and retrying reproduced the uninterrupted journal. Replay from sequences 0 and 19 reached tick 7, sequence 25, with SHA-256 `c332aa4106c6c91e41e1a675c316d9b03f75c4068ae33e010462955ff93b3342`. New practice timelines use content version 13. A version 12 save from `4e2a404` replayed its discreet pickup and eyewitness account to the same hash in both builds. [Rollback and replay check](../../internal/storage/listen_test.go)
+
+The full offline suite and both seed-42 smoke runs passed. The terminal, simulation and storage packages passed three race-detector runs. The CLI cross-built for Windows amd64 and macOS arm64.

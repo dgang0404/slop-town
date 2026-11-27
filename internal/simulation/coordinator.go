@@ -6,6 +6,7 @@ import (
 	"maps"
 	"net/url"
 	"slices"
+	"strings"
 	"sync"
 	"unicode/utf8"
 )
@@ -22,6 +23,7 @@ type ActionKind string
 
 const (
 	ActionWait         ActionKind = "wait"
+	ActionListen       ActionKind = "listen"
 	ActionRest         ActionKind = "rest"
 	ActionMove         ActionKind = "move"
 	ActionOpen         ActionKind = "open"
@@ -69,6 +71,7 @@ type Observation struct {
 	Text       string           `json:"text"`
 	Grid       string           `json:"grid,omitempty"`
 	Targets    []ObservedTarget `json:"targets,omitempty"`
+	Heard      []PerceptionKind `json:"heard,omitempty"` // Sounds heard during this turn, in order.
 }
 
 // ObservedTarget is a reference the observer may select in the current view.
@@ -212,6 +215,7 @@ func (c *Coordinator) SubmitTurn(actorID string, p Proposal) Turn {
 		c.receipts[key] = &Receipt{Proposal: p, Result: result}
 	}
 	result.Observation.Targets = slices.Clone(result.Observation.Targets)
+	result.Observation.Heard = slices.Clone(result.Observation.Heard)
 	turn.Result = result
 	if step != nil && step.Bakery != nil {
 		turn.Scene.Observation = result.Observation
@@ -310,7 +314,7 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 		if err := nextBakery.applySpatial(action, primary, &next); err != nil {
 			return reject("resolution_failed", "The action could not be completed."), nil
 		}
-		residents, err := nextBakery.advanceResidents(&next, action)
+		residents, heard, err := nextBakery.advanceResidents(&next, action)
 		if err != nil {
 			return reject("resolution_failed", "The resident could not finish the turn."), nil
 		}
@@ -321,6 +325,14 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 		scene, err = (State{Clock: &next, Bakery: nextBakery}).Scene(scope, actorID)
 		if err != nil {
 			return reject("resolution_failed", "You cannot observe your surroundings."), nil
+		}
+		scene.Heard = heard
+		if len(heard) != 0 {
+			var lines []string
+			for _, sound := range heard {
+				lines = append(lines, sound.Description())
+			}
+			message = strings.Join(lines, "\n")
 		}
 		result.Observation = scene.Observation
 		scene.ActionTarget = primary.payload.Target

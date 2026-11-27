@@ -287,6 +287,10 @@ func (n *turnNarrator) actionOpening(cmd bakeryCommand, target string, scene sim
 	switch cmd.Action {
 	case simulation.ActionMove, simulation.ActionWait:
 		return ""
+	case simulation.ActionListen:
+		if len(scene.Heard) != 0 {
+			return n.mark(outcome)
+		}
 	case simulation.ActionRest:
 		if scene.Self.Condition == simulation.SittingDown && n.previous.Self.Condition != simulation.SittingDown {
 			return ""

@@ -172,6 +172,12 @@ discreetly take the wooden spoon
 
 The pickup takes one turn. Talk to the baker, ask **“What have you seen around here?”**, then cancel and ask the porter the same question. The baker saw a hand move near the crate. The porter saw you take the spoon. Type `journal accounts` to read their words side by side. With an ordinary `take spoon`, anyone who sees both you and the spoon witnesses the pickup automatically. [Stealth and perception checkpoint](docs/plans/phase-7.md#checkpoint-20--stealth-and-perception-checks)
 
+### Listen from the street
+
+Start a fresh practice visit with `go run ./cmd/sloptown bakery -practice -play -seed 42`. At the first prompt, type `listen` or select it with the arrows and Enter. A door creaks, then you hear footsteps. Read `journal` to see how your character remembers the sounds.
+
+To hear someone around a corner, start a fresh visit with seed `4`. Go south twice, wait three times, then choose `listen`. Both workers are out of sight. You hear footsteps, and your journal records “I heard footsteps.” Listening spends one turn while the town carries on. [Listening checkpoint](docs/plans/phase-7.md#checkpoint-21--listen-from-the-street)
+
 ### Recall who told you
 
 Type `journal accounts` or select it with the arrows and Enter. This part of your journal collects accounts you personally heard about someone sitting down, opening or closing something, or moving an item. Each line is dated when you heard it. You can read it during a conversation or after reopening a save, and it costs no turn.

@@ -4,6 +4,11 @@ package simulation
 // PerceptionKind identifies a place or sensation the character can perceive.
 type PerceptionKind string
 
+// The same initial perception aptitude applies to hearing and sight.
+func perceptionAptitude(seed int64, actor string) int {
+	return int(seededSample(seed, "aptitude/perception/"+actor, 0) % 21)
+}
+
 const (
 	OnStreet        PerceptionKind = "on_street"
 	InBakeryDoorway PerceptionKind = "in_bakery_doorway"
@@ -12,6 +17,8 @@ const (
 	TiredLegs       PerceptionKind = "tired_legs"
 	FeelingRelieved PerceptionKind = "feeling_relieved"
 	LingeringRelief PerceptionKind = "lingering_relief"
+	Footsteps       PerceptionKind = "footsteps"
+	DoorCreak       PerceptionKind = "door_creak"
 )
 
 // Version 1 receipts save these exact sentences. Live scenes use the kinds
@@ -24,6 +31,8 @@ var receiptDescriptions = map[PerceptionKind]string{
 	TiredLegs:       "Your legs feel tired.",
 	FeelingRelieved: "You feel relieved.",
 	LingeringRelief: "A little of that relief lingers.",
+	Footsteps:       "You hear footsteps.",
+	DoorCreak:       "You hear a door creak.",
 }
 
 func (k PerceptionKind) Description() string { return receiptDescriptions[k] }

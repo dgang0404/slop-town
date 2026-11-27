@@ -81,6 +81,12 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 				page.WalkEnd = rest[strings.LastIndexByte(rest, '\n')+1:]
 			}
 			page.Place, page.Observations, page.FirstSeen = memory.observe(r.Result.Observation, len(entries)-1)
+			if page.Action == ActionListen {
+				page.Outcome = "" // The journal keeps what the listener perceived that turn.
+				for _, sound := range r.Result.Observation.Heard {
+					page.Observations = append(page.Observations, JournalObservation{Kind: sound, Text: sound.Description()})
+				}
+			}
 		}
 
 		if e.Kind == "actors_conversed" && (e.ActorID == actor || e.Payload.Target == actor) {

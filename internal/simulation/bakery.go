@@ -92,6 +92,7 @@ const (
 	reportContentVersion       = 10
 	itemWitnessContentVersion  = 11
 	discreetTakeContentVersion = 12
+	listenContentVersion       = 13
 	fatigueLimit               = 5 // Steps since the last rest, capped during a break.
 )
 
@@ -118,7 +119,7 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 	}
 	b.ContentVersion = personalityContentVersion
 	if setup.Practice {
-		b.ContentVersion = discreetTakeContentVersion
+		b.ContentVersion = listenContentVersion
 	}
 	*clock = staged
 	return b, nil
