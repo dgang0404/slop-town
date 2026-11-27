@@ -17,6 +17,7 @@ type NotebookEntry struct {
 	Target         string         `json:"target,omitempty"`
 	Reported       uint64         `json:"reported,omitempty"`  // Entry in the immediate teller's notebook.
 	Condition      workCondition  `json:"condition,omitempty"` // Listener's answer during this owner's own exchange.
+	Overheard      bool           `json:"overheard,omitempty"` // This owner saw the exchange without taking part.
 	Asked          bool           `json:"asked,omitempty"`
 	Container      string         `json:"container,omitempty"` // Visible destination of a put or landmark for a hand movement.
 	Sound          PerceptionKind `json:"sound,omitempty"`     // The listener recalls the sound alone.
@@ -76,6 +77,23 @@ func (b *Bakery) applySpatial(event *Event, effect spatialEffect, clock *Timelin
 	return nil
 }
 
+func (b *Bakery) overhearCheckIn(event Event, heard NotebookEntry) {
+	heard.Overheard = true
+	heard.Asked = false
+	heard.Target = event.Payload.Target
+	heard.Subject = event.ActorID
+	for id, e := range b.Entities {
+		if e.Kind != Actor || id == event.ActorID || id == event.Payload.Target {
+			continue
+		}
+		view, err := b.Observe(event.Scope, id)
+		if err != nil || !view.hasTarget(event.ActorID) || !view.hasTarget(event.Payload.Target) {
+			continue
+		}
+		b.appendSighting(id, heard)
+	}
+}
+
 func (b *Bakery) recordWitnesses(event Event) {
 	entry := NotebookEntry{Tick: event.Tick, SourceSequence: event.Sequence, Subject: event.ActorID, Target: event.Payload.Target}
 	switch event.Kind {
@@ -87,6 +105,9 @@ func (b *Bakery) recordWitnesses(event Event) {
 			b.appendSighting(event.ActorID, entry)
 			entry.Subject, entry.Asked = event.ActorID, false
 			b.appendSighting(event.Payload.Target, entry)
+			if b.ContentVersion >= groupConversationVersion {
+				b.overhearCheckIn(event, entry)
+			}
 			return
 		}
 		heard := func(owner, speaker string, source uint64) {
@@ -219,6 +240,17 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 					return fmt.Errorf("invalid hand movement sighting for %q at sequence %d", owner, e.SourceSequence)
 				}
 			case ActionSpeak:
+				if e.Overheard {
+					asker, heardAsker := b.firsthandAt(e.Subject, e.SourceSequence)
+					listener, heardListener := b.firsthandAt(e.Target, e.SourceSequence)
+					_, valid := checkInAnswers[e.Condition]
+					if b.ContentVersion < groupConversationVersion || !valid || e.Asked || e.Reported != 0 || e.Target == "" ||
+						!heardAsker || !heardListener || !asker.Asked || asker.Subject != e.Target || listener.Asked || listener.Subject != e.Subject ||
+						asker.Condition != e.Condition || listener.Condition != e.Condition {
+						return fmt.Errorf("invalid overheard check-in for %q at sequence %d", owner, e.SourceSequence)
+					}
+					break
+				}
 				if e.Condition != "" {
 					other, found := b.firsthandAt(e.Subject, e.SourceSequence)
 					_, valid := checkInAnswers[e.Condition]

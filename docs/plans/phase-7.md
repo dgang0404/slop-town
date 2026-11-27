@@ -16,6 +16,8 @@ The current bakery resolves dialogue between a speaker and one listener. The pla
 
 **Acceptance scene for implementation.** Run the same seeded party from the perspectives of a rested bystander, a tired participant and someone absorbed in a difficult exchange. Check that a third person can answer a group question, another circle can continue during that turn, and listeners leave with different accounts. Give a rested, skilled character between the two circles a routine question from each and verify they can answer both. Repeat as a resident. Give one answer personal stakes, then check that its lingering effect can make the character miss a later remark from the other circle. Move beyond earshot and verify that skill alone cannot recover the words. Switch attention midway and verify that earlier missed words stay missing. Reopen the save and replay it offline. Each participant should remember the same words, fragments and speaker uncertainties they experienced before reopening.
 
+The first slice, content version 32, lets someone who can see both people remember a check-in they did not join. Someone out of sight remembers nothing. Fresh practice towns still use the earlier conversation rules until this checkpoint is part of a new town. [Bystander check](../../internal/simulation/group_test.go)
+
 ## Checkpoint 1 — readable terminal turns
 
 Open a session with the full scene so the player can get their bearings. After each command, give the action’s outcome, then describe what changed for the player. **Bold the new or changed detail** where the terminal supports it. Unchanged surroundings can drop out of the prose. Keep `look` available for the full description and grid at any time.

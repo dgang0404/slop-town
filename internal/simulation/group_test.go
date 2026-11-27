@@ -1,0 +1,57 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+package simulation
+
+import (
+	"strings"
+	"testing"
+)
+
+func TestBystanderRemembersAVisibleCheckIn(t *testing.T) {
+	scope := Scope{"bakery", "main"}
+	c, err := (BakerySetup{Practice: true}).NewCoordinator(scope, 42)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := c.bakery
+	b.ContentVersion = groupConversationVersion
+	const baker, porter, player = "bakery/baker", "bakery/porter", "bakery/player"
+	spot := b.Entities[baker].Placement
+	for _, id := range []string{porter, player} {
+		actor := b.Entities[id]
+		actor.Placement = spot
+		b.Entities[id] = actor
+	}
+	event := Event{Scope: scope, Tick: 2, Sequence: 4, Kind: "actors_conversed", ActorID: baker,
+		Payload: EventPayload{Target: porter, Dialogue: Exchange{Condition: doingFine}}}
+	b.recordWitnesses(event)
+	notes := b.Notebooks[player]
+	if len(notes) != 1 || !notes[0].Overheard || notes[0].Subject != baker || notes[0].Target != porter || notes[0].Condition != doingFine {
+		t.Fatal(notes)
+	}
+	if err := b.validateNotebooks(event.Tick); err != nil {
+		t.Fatal(err)
+	}
+	pages, err := b.Journal(scope, player, func(yield func(Event) error) error { return yield(event) }, func(string) (*Receipt, error) { return nil, nil })
+	if err != nil || len(pages) != 1 || len(pages[0].Observations) != 1 ||
+		!strings.Contains(pages[0].Observations[0].Text, "I heard the baker check in on the porter") {
+		t.Fatal(pages, err)
+	}
+
+	away := b.Entities[player]
+	away.Placement = b.Entities["bakery/door"].Placement
+	away.Placement.Cell.X = 0
+	b.Entities[player] = away
+	b.Notebooks[player] = nil
+	b.recordWitnesses(event)
+	if len(b.Notebooks[player]) != 0 {
+		t.Fatal("a bystander out of sight remembered the check-in", b.Notebooks[player])
+	}
+
+	b.ContentVersion = conversationContentVersion
+	b.Entities[player] = SpatialEntity{Name: "player", Kind: Actor, Placement: spot}
+	b.Notebooks = nil
+	b.recordWitnesses(event)
+	if len(b.Notebooks[player]) != 0 {
+		t.Fatal("older towns recorded an overheard check-in")
+	}
+}

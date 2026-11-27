@@ -286,7 +286,7 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 				continue
 			}
 			if (line.Topic == "sounds" && fact.Action == ActionListen) ||
-				(line.Topic == "news" && fact.Reported == 0 && fact.Action != ActionListen) || (line.Topic == "conversation" && fact.Condition != "") ||
+				(line.Topic == "news" && fact.Reported == 0 && fact.Action != ActionListen) || (line.Topic == "conversation" && fact.Condition != "" && !fact.Overheard) ||
 				(fact.Action == ActionIntroduce && fact.Subject == line.Topic) {
 				x.Reply = b.sightingWords(fact, speaker, false)
 				x.ReplySource = fact.SourceSequence

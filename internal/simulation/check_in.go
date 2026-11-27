@@ -94,3 +94,8 @@ func (e NotebookEntry) checkInAccount(name string, aboutHearer, confirm bool) st
 	}
 	return "The " + name + " checked in on me. I told them I " + state + "."
 }
+
+func (e NotebookEntry) overheardCheckIn(asker, listener string) string {
+	state := checkInAnswers[e.Condition].remembered
+	return "I heard the " + asker + " check in on the " + listener + ". They said they " + state + "."
+}

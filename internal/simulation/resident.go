@@ -269,7 +269,7 @@ func (b *Bakery) recentConversation(actor, other string, tick int64) bool {
 	entries := b.Notebooks[actor]
 	for i := len(entries) - 1; i >= 0 && tick-entries[i].Tick < 8; i-- {
 		e := entries[i]
-		if e.Subject == other && (e.Condition != "" || (b.ContentVersion >= reportContentVersion && e.Reported != 0)) {
+		if e.Subject == other && !e.Overheard && (e.Condition != "" || (b.ContentVersion >= reportContentVersion && e.Reported != 0)) {
 			return true
 		}
 	}

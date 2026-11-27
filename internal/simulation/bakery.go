@@ -129,6 +129,7 @@ const (
 	regrowthContentVersion        = 29
 	bakingContentVersion          = 30 // Learnable kneading at the prep bench.
 	workroomToolUseVersion        = 31 // Baker maintains the bench after collecting the order.
+	groupConversationVersion      = 32 // A bystander can remember a check-in they can see.
 	fatigueLimit                  = 5 // Steps since the last rest, capped during a break.
 )
 
