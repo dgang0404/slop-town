@@ -49,14 +49,15 @@ type SpatialEntity struct {
 	Placement          Placement
 	Open               bool
 	Portable           bool
-	Fatigue            int            `json:",omitempty"`
-	Seated             bool           `json:",omitempty"`
-	RestInPlacePercent int            `json:",omitempty"`
-	SeekingRestSpot    bool           `json:",omitempty"`
-	WalkedCells        uint32         `json:",omitempty"`
-	EnduranceBouts     int            `json:",omitempty"`
-	ReliefTurns        int            `json:",omitempty"`
-	DropSound          PerceptionKind `json:",omitempty"` // Sound made when this item hits the floor.
+	Fatigue            int             `json:",omitempty"`
+	Seated             bool            `json:",omitempty"`
+	RestInPlacePercent int             `json:",omitempty"`
+	SeekingRestSpot    bool            `json:",omitempty"`
+	WalkedCells        uint32          `json:",omitempty"`
+	EnduranceBouts     int             `json:",omitempty"`
+	ReliefTurns        int             `json:",omitempty"`
+	DropSound          PerceptionKind  `json:",omitempty"` // Sound made when this item hits the floor.
+	StealthPractice    stealthPractice `json:",omitzero"`
 }
 
 // Bakery is authoritative fixture state. Cells are in row-major order and
@@ -82,22 +83,23 @@ type BakerySetup struct {
 }
 
 const (
-	residentContentVersion     = 2 // The original work routine.
-	restContentVersion         = 3
-	notebookContentVersion     = 4
-	personalityContentVersion  = 5
-	practiceContentVersion     = 6
-	emotionContentVersion      = 7
-	relationshipContentVersion = 8
-	conversationContentVersion = 9
-	reportContentVersion       = 10
-	itemWitnessContentVersion  = 11
-	discreetTakeContentVersion = 12
-	listenContentVersion       = 13
-	soundAccountContentVersion = 14
-	dropSoundContentVersion    = 15
-	daylightContentVersion     = 16
-	fatigueLimit               = 5 // Steps since the last rest, capped during a break.
+	residentContentVersion        = 2 // The original work routine.
+	restContentVersion            = 3
+	notebookContentVersion        = 4
+	personalityContentVersion     = 5
+	practiceContentVersion        = 6
+	emotionContentVersion         = 7
+	relationshipContentVersion    = 8
+	conversationContentVersion    = 9
+	reportContentVersion          = 10
+	itemWitnessContentVersion     = 11
+	discreetTakeContentVersion    = 12
+	listenContentVersion          = 13
+	soundAccountContentVersion    = 14
+	dropSoundContentVersion       = 15
+	daylightContentVersion        = 16
+	stealthPracticeContentVersion = 17
+	fatigueLimit                  = 5 // Steps since the last rest, capped during a break.
 )
 
 func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, error) {
@@ -123,7 +125,7 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 	}
 	b.ContentVersion = personalityContentVersion
 	if setup.Practice {
-		b.ContentVersion = daylightContentVersion
+		b.ContentVersion = stealthPracticeContentVersion
 		id := url.PathEscape(worldID) + "/spoon"
 		spoon := b.Entities[id]
 		spoon.DropSound = Clatter
@@ -248,6 +250,9 @@ func (b *Bakery) Validate() error {
 		}
 		if e.DropSound != "" && (b.ContentVersion < dropSoundContentVersion || e.Kind != Item || !e.Portable || e.DropSound != Clatter) {
 			return fmt.Errorf("invalid drop sound for %q", id)
+		}
+		if e.StealthPractice != (stealthPractice{}) && (e.Kind != Actor || b.ContentVersion < stealthPracticeContentVersion) {
+			return fmt.Errorf("unexpected stealth practice for %q", id)
 		}
 		if e.ReliefTurns != 0 && (e.Kind != Actor || b.ContentVersion < emotionContentVersion || e.ReliefTurns < 0 || e.ReliefTurns > reliefDuration) {
 			return fmt.Errorf("invalid relief for %q", id)

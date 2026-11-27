@@ -33,7 +33,7 @@ func (b *Bakery) advanceResidents(clock *Timeline, primary Event) ([]Event, []he
 			events = append(events, parent)
 		}
 		action := parent.child(primary.Sequence+uint64(len(events))+1, id, "spatial", effect.kind, effect.payload)
-		if err := b.applySpatial(action, effect, clock); err != nil {
+		if err := b.applySpatial(&action, effect, clock); err != nil {
 			return nil, nil, err
 		}
 		heard = b.soundsDuringAction(heard, primary, action)
@@ -49,7 +49,7 @@ func (b *Bakery) advanceResidents(clock *Timeline, primary Event) ([]Event, []he
 	if b.ContentVersion >= conversationContentVersion && len(events) == 0 {
 		if effect := b.residentConversation(primary); effect.kind != "" {
 			action := primary.child(primary.Sequence+1, effect.entityID, "spatial", effect.kind, effect.payload)
-			if err := b.applySpatial(action, effect, clock); err != nil {
+			if err := b.applySpatial(&action, effect, clock); err != nil {
 				return nil, nil, err
 			}
 			events = append(events, action)

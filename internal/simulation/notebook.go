@@ -24,18 +24,19 @@ type NotebookEntry struct {
 
 // Observe a take before the item enters a private inventory. A drop or put
 // becomes visible on placement, before anyone else can act on the same tick.
-func (b *Bakery) applySpatial(event Event, effect spatialEffect, clock *Timeline) error {
+// A qualifying discreet take records the actor's practice on its event.
+func (b *Bakery) applySpatial(event *Event, effect spatialEffect, clock *Timeline) error {
 	placesItem := event.Kind == "item_put" || event.Kind == "item_dropped"
 	if event.Kind == "item_taken_discreetly" {
 		if err := b.observeDiscreetTake(event, clock); err != nil {
 			return err
 		}
 	} else if b.ContentVersion >= notebookContentVersion && !placesItem {
-		b.recordWitnesses(event)
+		b.recordWitnesses(*event)
 	}
 	b.Entities[effect.entityID] = effect.entity
 	if placesItem && b.ContentVersion >= itemWitnessContentVersion {
-		b.recordWitnesses(event)
+		b.recordWitnesses(*event)
 	}
 	return nil
 }

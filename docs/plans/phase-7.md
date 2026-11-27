@@ -291,7 +291,7 @@ In new practice bakeries, a character can discreetly pick up a visible item with
 
 Just before a discreet pickup, each observer who can see the acting character makes one hidden check. The simulation weighs the actor’s stealth, the observer’s perception and their distance in tiles. Each character’s initial aptitudes come from the town seed, and each observer has their own saved sequence of draws. Players and residents use the same rules.
 
-A witness who identifies both the person and the item remembers an ordinary pickup. A partial sighting records an anonymous hand movement and names the container only when it was visible. A missed movement leaves no account to pass along. Checkpoint 21 adds deliberate listening for footsteps and doors. Checkpoint 23 adds the sound of a dropped spoon. Checkpoint 24 adds daylight to discreet pickups. Stealth skill growth and hiding remain future work. [Master design, sections 7.6, 12.2, 12.5 and 46–47](../design/Slop_Town_Master_Design_Revised_v7.docx)
+A witness who identifies both the person and the item remembers an ordinary pickup. A partial sighting records an anonymous hand movement and names the container only when it was visible. A missed movement leaves no account to pass along. Checkpoint 21 adds deliberate listening for footsteps and doors. Checkpoint 23 adds the sound of a dropped spoon. Checkpoint 24 adds daylight to discreet pickups. Checkpoint 25 adds stealth practice. Hiding remains future work. [Master design, sections 7.6, 12.2, 12.5 and 46–47](../design/Slop_Town_Master_Design_Revised_v7.docx)
 
 ### Acceptance walkthrough
 
@@ -373,3 +373,19 @@ Interrupting the SQLite receipt write preserved the closed door, the spoon in th
 New practice bakeries use content version 16. On a version 15 save from `841b9ae` with the door already shut, both executables produced the same transcript and journal. The porter identified the player and the spoon. Replay from sequences 0 and 24 reached tick 9, sequence 30, with SHA-256 `9188eeaca1283fdbbae5010625bffdb930c097d790dd7edac9ee86579fe9413c`.
 
 In a Linux terminal, Down and Enter closed the door, selected the discreet pickup, asked the porter what they saw and read the account in the journal. The full offline suite, both seed-42 smoke runs and three race-detector runs passed. The CLI cross-built for Windows amd64 and macOS arm64.
+
+## Checkpoint 25 — learning from discreet pickups
+
+Two kinds of reach offer practice in the bakery. One takes an item from an open container, the other from the floor. An attempt qualifies when another character within one square of the actor can see both the person and the item as the reach begins. The actor can learn even when the witness identifies the pickup. Once the actor has practiced both reaches, later discreet pickups get a small, lasting advantage in the existing perception check. Each actor can earn this improvement once. [Playable comparison](../../README.md#practice-a-discreet-pickup)
+
+The developer history marks the pickup that first counted for each kind of reach. Players learn what a witness noticed by asking them. Players and residents use the same rule. In a seed-5 scene the player identified the baker taking a spoon while the baker earned the second kind of practice. With the baker already practiced, the player saw only a hand movement under the same conditions and perception draw. [Resident and eligibility tests](../../internal/simulation/stealth_practice_test.go)
+
+### Checkpoint 25 results
+
+In two seed-51 visits the player made three discreet pickups, ending at the crate on tick 10. After a reach into the crate and a reach to the floor, the porter remembered a hand moving near the crate. After two earlier reaches into the crate, the porter identified the player and the wooden spoon. The player asked on tick 11. Both accounts survived reopening and retrying the visit. [SQLite walkthrough](../../internal/storage/stealth_practice_test.go)
+
+Interrupting the second qualifying pickup left the spoon on the floor and the earlier practice, perception draws and notebooks intact. After retry, replay from sequences 0, 28 and 30 reached sequence 44 with SHA-256 `454a018d6ada3d3069deeff3159a7f398c12882a35ea84abceb50a85e8affa6c`. The crate-only visit replayed from sequences 0, 25 and 27 to sequence 41 with SHA-256 `48d1f928bca04229b964c1594597cce7acfa288c79c362031943eacb8dee1fff`.
+
+New practice bakeries use content version 17. On a version 16 save from `e9cd104`, both executables produced the same transcript and journal. The porter identified the player on the final reach into the crate even after the earlier floor pickup. Both replayed from sequences 0 and 28 to tick 11, sequence 44, with SHA-256 `27fa296ea10c4d887d044be1184c412d4fa1fb9f1584acb16c1d9472ed1856f9`.
+
+Down and Enter completed the seed-51 floor-and-crate visit in a Linux terminal, including the conversation and journal lookup. The offline suite, both seed-42 smoke runs and three race-detector runs passed. The CLI cross-built for Windows amd64 and macOS arm64.

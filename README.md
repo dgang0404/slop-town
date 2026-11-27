@@ -190,6 +190,26 @@ talk to porter
 
 Closing the door dims the room. Ask **“What have you seen around here?”** The porter says, “I saw a hand move near the crate.” To see what the daylight changes, start another fresh visit with the same seed and replace `close door` with `wait`. This time the porter says, “I saw you take the wooden spoon.” Both questions reach the porter on the same turn. [Bakery daylight checkpoint](docs/plans/phase-7.md#checkpoint-24--a-discreet-pickup-in-dim-light)
 
+### Practice a discreet pickup
+
+Start a fresh visit with `go run ./cmd/sloptown bakery -practice -play -seed 51`. Try reaching into the crate and down to the floor while the workers are nearby. Enter these commands one per line, or choose the actions with the arrows and Enter.
+
+```text
+wait
+east
+east
+open crate
+wait
+discreetly take spoon
+drop spoon
+discreetly take spoon
+put spoon in crate
+discreetly take spoon
+talk to porter
+```
+
+Ask **“What have you seen around here?”** About the last pickup, the porter says, “I saw a hand move near the crate.” Run the same visit again and replace `drop spoon` with `put spoon in crate`. This time all three reaches are into the crate, and the porter says, “I saw you take the wooden spoon.” Choose `journal accounts` to read their words again. [Stealth practice checkpoint](docs/plans/phase-7.md#checkpoint-25--learning-from-discreet-pickups)
+
 ### Listen from the street
 
 Start a fresh practice visit with `go run ./cmd/sloptown bakery -practice -play -seed 42`. At the first prompt, type `listen` or select it with the arrows and Enter. A door creaks, then you hear footsteps. Read `journal` to see how your character remembers the sounds.

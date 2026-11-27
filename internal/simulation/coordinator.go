@@ -132,6 +132,7 @@ type EventPayload struct {
 	ReliefStarted     bool           `json:",omitempty"`
 	Dialogue          Exchange       `json:",omitzero"`
 	Sound             PerceptionKind `json:",omitempty"`
+	StealthPractice   string         `json:",omitempty"` // First qualifying reach from the floor or a container.
 }
 
 type requestKey struct{ actorID, requestID string }
@@ -305,17 +306,17 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 	advanced := Event{Scope: scope, ID: eventID(scope, lastSequence+1), Sequence: lastSequence + 1,
 		Tick: next.Tick(), Version: contractVersion, RequestID: p.RequestID, ActorID: actorID,
 		Engine: engine, Kind: "tick_advanced", PayloadVersion: 1, Payload: EventPayload{Delta: 1}}
-	action := advanced.child(advanced.Sequence+1, actorID, engine, kind, payload)
-	events := []Event{advanced, action}
+	events := []Event{advanced, advanced.child(advanced.Sequence+1, actorID, engine, kind, payload)}
 	result.Status = "accepted"
 	var scene Scene
 	if nextBakery == nil {
 		result.Observation = Observation{Scope: scope, Version: contractVersion, ObserverID: actorID, Text: message}
 	} else {
+		action := &events[1]
 		if err := nextBakery.applySpatial(action, primary, &next); err != nil {
 			return reject("resolution_failed", "The action could not be completed."), nil
 		}
-		residents, heard, err := nextBakery.advanceResidents(&next, action)
+		residents, heard, err := nextBakery.advanceResidents(&next, *action)
 		if err != nil {
 			return reject("resolution_failed", "The resident could not finish the turn."), nil
 		}
