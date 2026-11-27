@@ -24,6 +24,34 @@ type journalPassage struct {
 
 const emptyJournal = "I haven't recorded anything yet."
 
+func writeAccounts(dst io.Writer, accounts []simulation.HeardAccount) error {
+	out := bufio.NewWriter(dst)
+	fmt.Fprintln(out, "Accounts I've heard")
+	if len(accounts) == 0 {
+		fmt.Fprintln(out, "No one has told me about a sighting yet.")
+	}
+	for _, account := range accounts {
+		fmt.Fprintln(out)
+		heardWitness := account.OwnSighting
+		for _, note := range account.Tellings {
+			fmt.Fprintf(out, "%s — The %s ", formatBakeryDate(note.Date), note.Teller)
+			switch {
+			case note.FromWitness:
+				fmt.Fprintf(out, "told me they saw %s.\n", account.Act)
+				heardWitness = true
+			case account.OwnSighting:
+				fmt.Fprintf(out, "said I'd told them I saw %s.\n", account.Act)
+			default:
+				fmt.Fprintf(out, "said the %s saw %s.\n", account.Witness, account.Act)
+			}
+		}
+		if !heardWitness {
+			fmt.Fprintf(out, "I haven't heard it from the %s yet.\n", account.Witness)
+		}
+	}
+	return out.Flush()
+}
+
 func writeJournal(dst io.Writer, entries []simulation.JournalEntry) error {
 	out := bufio.NewWriter(dst)
 	fmt.Fprintln(out, "My journal")

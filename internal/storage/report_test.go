@@ -26,6 +26,18 @@ func TestEyewitnessReportAcrossRestart(t *testing.T) {
 	const ask = after + "north\ntalk to baker\n5\n"
 	const route = ask + "4\ncancel\njournal\n"
 	const account = "The porter told me they saw you sit down."
+	const empty = "No one has told me about a sighting yet.\n"
+	const indirect = "\nDay 1 of spring, year 1 — The baker said the porter saw me sit down.\n"
+	const pending = indirect + "I haven't heard it from the porter yet.\n"
+	const both = indirect + "Day 1 of spring, year 1 — The porter told me they saw me sit down.\n"
+	checkAccounts := func(want string) {
+		t.Helper()
+		out := play(path, "journal accounts\n", "")
+		_, notes, ok := strings.Cut(out, "Accounts I've heard\n")
+		if !ok || notes != want {
+			t.Fatalf("heard accounts: %q, want %q", notes, want)
+		}
+	}
 
 	// Interrupt first the off-screen account, then the player's discovery.
 	interrupt := func(prefix, command string) storage.ReplayReport {
@@ -46,6 +58,7 @@ func TestEyewitnessReportAcrossRestart(t *testing.T) {
 		t.Fatal(out)
 	}
 	second := interrupt(after+"north\n", ask)
+	checkAccounts(empty)
 	out := play(path, route, "")
 	_, book, ok := strings.Cut(out, "My journal\n")
 	if !ok || !strings.Contains(book, "The baker replied, “"+account+"”") || !strings.Contains(book, "Did the porter tell you they saw me sit down?") {
@@ -73,6 +86,7 @@ func TestEyewitnessReportAcrossRestart(t *testing.T) {
 		}
 	}
 	head := checkpointAtHead(t, path, scope)
+	checkAccounts(pending)
 	retry := play(path, route, "")
 	_, again, _ := strings.Cut(retry, "My journal\n")
 	if strings.Count(retry, "already completed") != 7 || book != again {
@@ -89,6 +103,7 @@ func TestEyewitnessReportAcrossRestart(t *testing.T) {
 	// write must leave the report available for the same question on retry.
 	const witnessVisit = ask + "4\ncancel\ntalk to porter\n4\ncancel\njournal\n"
 	beforeQuestion := interrupt(route, witnessVisit)
+	checkAccounts(pending)
 	witnessOut := play(path, witnessVisit, "")
 	_, witnessBook, _ := strings.Cut(witnessOut, "My journal\n")
 	const direct = "The porter replied, “I saw you sit down.”"
@@ -103,6 +118,7 @@ func TestEyewitnessReportAcrossRestart(t *testing.T) {
 		}
 	}
 	retry = play(path, witnessVisit, "")
+	checkAccounts(both)
 	_, again, _ = strings.Cut(retry, "My journal\n")
 	if strings.Count(retry, "already completed") != 8 || again != witnessBook {
 		t.Fatal(retry)

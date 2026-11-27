@@ -138,6 +138,12 @@ Enter `talk to baker` and choose **“What have you heard from other people?”*
 
 On another fresh visit, use `wait` in place of `rest` and ask the baker what they heard to see how the answer changes.
 
+### Recall who told you
+
+Type `journal accounts` or select it with the arrows and Enter. This part of your journal collects accounts you personally heard about someone sitting down, opening something or closing it. Each line is dated when you heard it. You can read it during a conversation or after reopening a save, and it costs no turn.
+
+In the visit above, read the accounts after speaking to the baker. You’ll see “The baker said the porter saw me sit down” and “I haven't heard it from the porter yet.” After you ask the porter, their own account appears beneath the baker’s. Returning to the same teller leaves one entry for that sighting.
+
 ### Read your journal
 
 Type `journal` or choose it with the arrows and Enter. After the spoon walkthrough, the journal remembers where you saw the spoon, when you took it and where you put it. In a practice bakery it can also recall a greeting you heard or a resident you saw sit down. Reading costs no game time.

@@ -152,3 +152,21 @@ A seed-42 save written by `bd1fc70` yielded two sketches before the crate opened
 An empty timeline exported a book with no pictures. A save deliberately named `slop-town-journal.html` kept its contents while successive books received new filenames. The three embedded images decoded to the bundled artwork. The export was checked at desktop and phone widths in Chrome on Linux. [Export walkthrough and privacy tests](../../cmd/sloptown/journal_illustrated_test.go)
 
 The offline build, full test suite, both seed-42 smoke runs and three race-detector runs passed. The CLI also cross-built for Windows amd64 and macOS arm64.
+
+## Checkpoint 11 — remembering who told a story
+
+Section 38 calls for story threads that can be rebuilt from the evidence available to a character. The first thread follows an account of someone sitting down, opening something or closing it. `journal accounts` collects what the character heard, who told them, and whether the named witness has spoken to them directly. It is available by typing or with the arrows and Enter. [Try the account in the bakery](../../README.md#recall-who-told-you)
+
+Each telling is dated on the day the character heard it. The simulation follows the reference the teller shared and groups accounts by the witness and the original event. Hearing the same story from the same teller twice keeps the date of the first telling. Two eyewitnesses to the same act remain separate, as do two similar acts witnessed by one person. A witness who hears their own story repeated can recognize it. Reading uses the saved notebooks and spends no turn.
+
+### Checkpoint 11 results
+
+In a seed-42 practice save created by `c085632`, the workers discussed the player’s rest out of earshot. The player’s account list stayed empty until they asked the baker for news. The baker named the porter as the witness. Interrupting the write for the porter's reply left the baker as the only source at tick 7. After retry, opening the accounts with Up and Enter showed both sources once. Replay from sequences 0 and 25 reached tick 8, sequence 27, with SHA-256 `cead21908106706c6e4c0d95f3e0486e077d18110cd040ca94dde50b14f0ae75`. The previous executable replayed the same save to the same hash. [Restart and rollback walkthrough](../../internal/storage/report_test.go)
+
+A separate test followed two witnesses with the same visible name and two sightings of the same action. It also checked the date when a later teller described a sighting the player had already heard about from the witness. [Account grouping tests](../../internal/simulation/accounts_test.go)
+
+The full offline build and tests, both seed-42 smoke runs and three race-detector runs passed. The CLI cross-built for Windows amd64 and macOS arm64. Interactive input was exercised on Linux.
+
+### Next checkpoint
+
+Run the Phase 7 bakery acceptance walkthrough across a restart. Compare a visit that follows a report to its witness with one that misses the conversation, then check the resulting accounts and both journal editions against what each player learned.

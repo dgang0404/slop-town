@@ -176,6 +176,15 @@ func BakeryNotebook(path string, scope simulation.Scope, actor string) ([]simula
 	return bakery.Notebook(actor)
 }
 
+// BakeryAccounts reads the named character's sources from one committed snapshot.
+func BakeryAccounts(path string, scope simulation.Scope, actor string) ([]simulation.HeardAccount, error) {
+	bakery, err := readBakery(path, scope)
+	if err != nil {
+		return nil, err
+	}
+	return bakery.Accounts(actor)
+}
+
 // BakeryDialogueChoices projects one speaker's lines at the committed head.
 func BakeryDialogueChoices(path string, scope simulation.Scope, actor, listener string) ([]simulation.DialogueChoice, error) {
 	bakery, err := readBakery(path, scope)
