@@ -284,3 +284,20 @@ On seed 42 the baker saw the player put the wooden spoon in the crate on tick 6 
 In a separate scene the player saw the baker take, put back, take and drop the same spoon. A second wooden spoon stayed in the baker's pocket. Two corner views tested partial sightings. In one the player could see only the baker, in the other only the open crate. Neither produced a witness account of the put. [Visibility and identity tests](../../internal/simulation/item_witness_test.go)
 
 New practice timelines use content version 11. A version 10 save from `273bb17` continued under its original rules. Both executables produced identical transcripts and journal exports and replayed it from sequences 0 and 19 to tick 7, sequence 25, with SHA-256 `b0acff82692ad0758d15bf3c870fcabc694b10ed456ebc6d171a0cd616b7cac3`. The full offline suite, both seed-42 smoke runs and three race-detector runs passed. The CLI cross-built for Windows amd64 and macOS arm64.
+
+## Checkpoint 20 — planned stealth and perception checks
+
+The first playable case will be a discreet pickup in the bakery. In today's demo, seeing the person and spoon at the instant of an ordinary pickup is sufficient to witness it. The master design calls for automatic visibility of ordinary things, hidden passive checks for subtle details, and the same skills and senses for players and NPCs. It also lists hiding and listening among the planned actions. [Master design, sections 7.6, 12.2, 12.5 and 46–47](../design/Slop_Town_Master_Design_Revised_v7.docx)
+
+Offer a discreet pickup through typing and the arrow-key action menu. The simulation first validates the usual reach and inventory rules. Resolve each observer's view just before the spoon enters the actor's inventory. For a subtle movement within sight, make a hidden, seeded check that weighs the acting character's stealth against that observer's perception and the circumstances, starting with distance. Lighting, noise and attention can contribute as those systems arrive. Exact odds and skill progression are tuning decisions.
+
+The baker might see the player take the spoon. The porter might see only a hand move near the crate. Each can recall and report only that much. Someone who misses the movement may later notice the empty crate. That discovery alone gives them no eyewitness account of who took the spoon. Hearing a clink can provide a different clue when sound is implemented.
+
+### Acceptance walkthrough
+
+| Situation | Expected result |
+| --- | --- |
+| Look at a spoon in an open crate, then close the lid. | The spoon in plain sight appears automatically. The closed lid blocks visual identification regardless of perception. |
+| Make one discreet pickup with two differently placed observers. Repeat with a resident taking the spoon. | The transfer costs its normal action time. A seeded fixture demonstrates different accounts of the same act under the same rules for players and residents. |
+| Ask each witness what happened, then read the journal and any relayed accounts. | Only a witness who identified both person and item can attribute the pickup. Partial observations retain their uncertainty. The player learns another character's reaction through observable behavior or conversation. Rolls, odds and missed checks stay hidden. |
+| Browse actions, use `look`, reopen the save and retry the original command. Interrupt a write and replay from a checkpoint. | Resolve each eligible observer once per committed action in stable order. Reads and retries cannot reroll it. The item and witness memories commit or roll back together. Earlier content versions reproduce their original sightings. |

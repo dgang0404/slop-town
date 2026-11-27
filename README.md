@@ -157,6 +157,8 @@ Wait nine more turns. Choose `talk to the porter` and ask **“What have you hea
 
 New practice timelines use these item sightings. To try one in an existing save file, add `-db bakery.sqlite -timeline spoon-news` and use a fresh timeline name. [Item eyewitness checkpoint](docs/plans/phase-7.md#checkpoint-19--witnesses-to-item-transfers)
 
+Today a worker who sees both you and the spoon records an ordinary pickup automatically. A planned discreet pickup will let two witnesses notice different details of the same act. [Stealth and perception plan](docs/plans/phase-7.md#checkpoint-20--planned-stealth-and-perception-checks)
+
 ### Recall who told you
 
 Type `journal accounts` or select it with the arrows and Enter. This part of your journal collects accounts you personally heard about someone sitting down, opening or closing something, or moving an item. Each line is dated when you heard it. You can read it during a conversation or after reopening a save, and it costs no turn.
