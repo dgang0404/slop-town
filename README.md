@@ -435,6 +435,8 @@ Start a fresh save with `go run ./cmd/sloptown bakery -workroom -play -seed 42 -
 
 ### Fill the workroom supply order
 
+**Ask the baker.** Start a fresh seed-42 workroom, type `open bakery door` and `talk to baker`, then choose “Do you need anything for the workroom?” The baker asks for the dough scraper. Later, ask again after the baker collects it. The baker can confirm having it, and can thank you personally if they saw you leave it in the workbench drawer.
+
 In a fresh seed-42 workroom, open the bakery door, then type `walk to workroom door`, `open workroom door`, `walk to drawer` and `examine order`. The slip asks for the dough scraper. Open the drawer, step north, walk to the crate, open it and take the scraper. Type `walk to drawer`, `put scraper in drawer` and `examine order` to check the delivery. Other seeds can ask for a grain scoop or flour sieve.
 
 **Stay for the collection.** In a fresh workroom the baker checks the workbench near the end of each 32-turn shift. After delivering the scraper, close the drawer and wait nearby. The baker can open the drawer and pick up the tool on separate turns. You can also leave before the collection. When you return, the drawer tells you what is there now. To learn who took something you missed, you need a witness.

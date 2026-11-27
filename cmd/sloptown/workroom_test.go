@@ -111,3 +111,23 @@ func TestBakerCollectsOrderAcrossRestart(t *testing.T) {
 		}
 	}
 }
+
+func TestAskBakerAboutSupplies(t *testing.T) {
+	t.Chdir(t.TempDir())
+	const db = "request.sqlite"
+	scope := simulation.Scope{WorldID: "bakery", TimelineID: "main"}
+	journalVisit(t, "journal\n", "-db", db, "-workroom")
+	if _, err := storage.SaveCheckpoint(db, scope); err != nil {
+		t.Fatal(err)
+	}
+	book := journalVisit(t, "open bakery door\ntalk to baker\n4\ncancel\njournal\n", "-db", db)
+	if !strings.Contains(book, "The baker replied, “I could use the dough scraper. Please leave it in the workbench drawer.”") || strings.Contains(book, "I saw the dough scraper") {
+		t.Fatal(book)
+	}
+	if reopened := journalVisit(t, "journal\n", "-db", db); reopened != book {
+		t.Fatal(reopened)
+	}
+	if report, err := storage.Replay(db, scope, 0); err != nil || report.Tick != 2 {
+		t.Fatal(report, err)
+	}
+}

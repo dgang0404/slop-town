@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package simulation
 
+import "net/url"
+
 // SpeechLine is the stable identity behind a displayed utterance. A memory
 // source identifies one event, even if two events concern the same person.
 type SpeechLine struct {
@@ -65,6 +67,10 @@ func (b *Bakery) dialogueChoices(view Observation, listener string, includeWitne
 	add(SpeechLine{Topic: "greeting", Intent: "greet", Tone: "warm"}, "Hello.")
 	add(checkInQuestion, checkInWords)
 	add(SpeechLine{Topic: "news", Intent: "ask", Tone: "curious"}, "What have you seen around here?")
+
+	if b.ContentVersion >= supplyQuestionVersion && listener == url.PathEscape(b.WorldID)+"/baker" {
+		add(SpeechLine{Topic: "workroom", Intent: "ask_supplies", Tone: "curious"}, "Do you need anything for the workroom?")
+	}
 
 	// Most recent memories first. Only a report addressed to this speaker
 	// can unlock a question about what the listener told them.
@@ -200,6 +206,23 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 	line := choice.Line
 	x := Exchange{Words: choice.Words}
 	switch line.Intent {
+	case "ask_supplies":
+		prefix := url.PathEscape(b.WorldID) + "/"
+		toolID := b.Entities[prefix+"order"].RequestedItem
+		tool := b.Entities[toolID]
+		x.Reply = "I could use the " + tool.Name + ". Please leave it in the workbench drawer."
+		if tool.Placement.HolderID == listener {
+			x.Reply = "I have the " + tool.Name + " I need for the workroom."
+		}
+		for _, note := range b.Notebooks[listener] {
+			if note.Action == ActionPut && note.Subject == speaker && note.Target == toolID && note.Container == prefix+"workbench" {
+				if tool.Placement.HolderID != listener {
+					x.Reply = "I asked for the " + tool.Name + "."
+				}
+				x.Reply += " I saw you put it in the drawer. Thank you."
+				break
+			}
+		}
 	case "ask_number":
 		x.ContactGiver = listener
 		x.Number, _ = b.phoneLine(listener)

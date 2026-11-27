@@ -501,3 +501,9 @@ On seed 42 the player learned the porter’s extension on turn 4 and got no answ
 Interrupting the SQLite receipt write during the number exchange, the missed call or the answered call preserved the preceding town and its history. Retrying the visit left one call of each kind. Replay from sequences 0, 15, 19 and 26 reached turn 8, sequence 28, with SHA-256 `08fce79c5b37c1f6705eb158e8cba5d47fd8330416c12df8fe1e7a1df3a5a649`. [SQLite restart test](../../internal/storage/phone_test.go)
 
 Fresh practice towns use content version 25. A version 24 save from `1a040cf` kept its letter walkthrough, journal and conversation choices. Both executables replayed the visit to the checkpoint 30 hash on turn 19.
+
+## Checkpoint 32 — ask the baker about the workroom order
+
+In fresh workrooms (content version 27), a character within speaking distance can ask the baker what the workroom needs. The baker names the tool chosen for that town and the intended drawer. A delivery outside the baker’s view leaves the answer unchanged until the baker collects the tool. The baker can thank the speaker for a placement personally witnessed, matching the person, tool and drawer against the baker’s notebook. The reply makes no claim about who delivered an item found during rounds.
+
+On seed 42 the player opened the bakery door and asked on turn 2, before seeing the dough scraper. Reopening the SQLite journal preserved the conversation and replay reached the same turn. Simulation checks cover an unseen delivery, collection, another person delivering the tool, a firsthand delivery and the previous workroom version. [Playable conversation](../../README.md#fill-the-workroom-supply-order)

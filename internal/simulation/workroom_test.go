@@ -78,3 +78,55 @@ func TestWorkroomRoundLeavesOtherItemsInPlace(t *testing.T) {
 		t.Fatal(action)
 	}
 }
+
+func TestBakerAnswersFromOwnKnowledge(t *testing.T) {
+	scope := Scope{"bakery", "main"}
+	c, err := (BakerySetup{Workroom: true}).NewCoordinator(scope, 42)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := c.bakery
+	const baker, player, drawer = "bakery/baker", "bakery/player", "bakery/workbench"
+	actor := b.Entities[player]
+	actor.Placement = b.Entities[baker].Placement
+	b.Entities[player] = actor
+	view, err := b.Observe(scope, player)
+	if err != nil {
+		t.Fatal(err)
+	}
+	line := SpeechLine{Topic: "workroom", Intent: "ask_supplies", Tone: "curious"}
+	ask := func() string {
+		t.Helper()
+		effect, fail := b.speak(view, baker, line)
+		if fail != nil {
+			t.Fatal(fail)
+		}
+		return effect.payload.Dialogue.Reply
+	}
+	toolID := b.Entities["bakery/order"].RequestedItem
+	tool := b.Entities[toolID]
+	before := ask()
+	tool.Placement = Placement{HolderID: drawer}
+	b.Entities[toolID] = tool
+	if got := ask(); got != before {
+		t.Fatal("unseen delivery changed the answer", got)
+	}
+	tool.Placement = Placement{HolderID: baker}
+	b.Entities[toolID] = tool
+	collected := ask()
+	if collected != "I have the dough scraper I need for the workroom." {
+		t.Fatal(collected)
+	}
+	b.Notebooks = map[string][]NotebookEntry{baker: {{Subject: "bakery/porter", Action: ActionPut, Target: toolID, Container: drawer}}}
+	if got := ask(); got != collected {
+		t.Fatal("credited wrong speaker", got)
+	}
+	b.Notebooks[baker][0].Subject = player
+	if got := ask(); got != collected+" I saw you put it in the drawer. Thank you." {
+		t.Fatal(got)
+	}
+	b.ContentVersion = workroomRoundsVersion
+	if _, fail := b.speak(view, baker, line); fail == nil {
+		t.Fatal("old timeline accepted new line")
+	}
+}

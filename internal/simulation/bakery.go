@@ -120,6 +120,7 @@ const (
 	mailContentVersion            = 24
 	phoneContentVersion           = 25
 	workroomRoundsVersion         = 26
+	supplyQuestionVersion         = 27
 	fatigueLimit                  = 5 // Steps since the last rest, capped during a break.
 )
 
