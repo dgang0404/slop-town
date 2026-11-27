@@ -21,3 +21,5 @@ The checker reads one regular file named `manifest.json` from the chosen directo
 Treat mod files as untrusted data. The checker opens a directory selected by the caller and reads the manifest under that root. It rejects linked manifests and treats dependency IDs as names. Validation checks declarations only. A future loader must resolve dependencies from locally installed packs, detect missing dependencies and cycles, and verify referenced assets stay within the pack root before activation.
 
 The fixture contains only metadata. Validation runs offline and requires no credentials. Keep service keys in user-controlled settings outside both the pack and version control. For third-party material, include the source, author, license and required notices alongside the files before distributing a pack. The repository's [license notes](../README.md#license) cover project code and documentation.
+
+Community realism packs may replace the foundation’s food-egg supply chain and introduce adult intimacy or character death. This is a design boundary for future mods. [Base-game rules](plans/phase-6.md#base-game-food-and-community-realism-mods)

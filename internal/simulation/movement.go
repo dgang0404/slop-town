@@ -270,7 +270,7 @@ func (b *Bakery) setOpen(actorCell CellPosition, target string, open bool) (spat
 		return spatialEffect{}, targetUnavailable()
 	}
 	name := entity.Name
-	if entity.Kind == Door {
+	if entity.Kind == Door && b.GeneratorVersion < 3 {
 		name = "door"
 	}
 	if entity.Open == open {

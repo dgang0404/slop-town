@@ -25,19 +25,22 @@ func RestoreBakery(data []byte, world string, clock *Timeline) (*Bakery, error) 
 		return nil, err
 	}
 	b := saved.Bakery
-	if saved.Version != 1 || b == nil || b.GeneratorVersion < 1 || b.GeneratorVersion > 2 || b.ContentVersion < 1 || b.ContentVersion > phoneContentVersion {
+	if saved.Version != 1 || b == nil || b.GeneratorVersion < 1 || b.GeneratorVersion > 3 || b.ContentVersion < 1 || b.ContentVersion > phoneContentVersion {
 		return nil, fmt.Errorf("unsupported bakery snapshot or content version")
 	}
 	if clock == nil || b.WorldID != world || b.Seed != clock.seed || clock.draws["geography"] != 1 {
 		return nil, fmt.Errorf("bakery does not match the committed world and clock")
 	}
-	if b.GeneratorVersion == 2 && (b.ContentVersion < phoneContentVersion || clock.draws["furnishing"] != 5) {
+	if b.GeneratorVersion >= 2 && (b.ContentVersion < phoneContentVersion || clock.draws["furnishing"] != 5) {
 		return nil, fmt.Errorf("invalid furnished bakery version or stream")
 	}
 	if err := b.Validate(); err != nil {
 		return nil, err
 	}
 	prefix := url.PathEscape(world) + "/"
+	if b.GeneratorVersion == 3 && !b.validWorkroom(prefix) {
+		return nil, fmt.Errorf("invalid saved workroom")
+	}
 	if b.ContentVersion >= phoneContentVersion && (b.Entities[prefix+"street-phone"].Kind != Telephone || b.Entities[prefix+"bakery-phone"].Kind != Telephone) {
 		return nil, fmt.Errorf("missing telephone")
 	}

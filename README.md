@@ -429,6 +429,10 @@ On this seed, type `open door`, `walk to crate`, `open crate`, then `examine scr
 
 The room and street still have the same footprint. The crate, both phones and the planter get their places at creation, with a clear aisle to each. The original `-practice` walkthroughs keep their reference layouts. [Generation checks](docs/plans/phase-2.md#furnish-a-bakery-at-creation)
 
+### Visit the bakery workroom
+
+Start a fresh save with `go run ./cmd/sloptown bakery -workroom -play -seed 42 -db workroom.sqlite`. Open the bakery door, walk east three times, then type `open workroom door`. On this seed the workroom is two steps south. Inside, try `close workroom door`, `open drawer` and `rest`. You can quit here and reopen the same save. To return to the street, open the workroom door, walk north twice and west three times. The room lies north of the main aisle on seeds with the opposite layout.
+
 ### Export an illustrated journal
 
 Type `export illustrated journal` or choose it with the arrows and Enter. Open `slop-town-journal.html` in a browser. The maps travel with the file, so you can copy it to another device and read it offline. Later exports use the next available filename.

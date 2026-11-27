@@ -20,6 +20,9 @@ func (b *Bakery) furnish(clock *Timeline, prefix string) error {
 	prep, _ := door.neighbor(East)
 	shopfront, _ := door.neighbor(West)
 	used := make(map[CellPosition]bool)
+	if b.GeneratorVersion == 3 {
+		used[b.Entities[prefix+"workroom-door"].Placement.Cell] = true
+	}
 	for _, slot := range []struct{ id, space string }{
 		{"bakery-phone", b.InteriorID}, {"crate", b.InteriorID},
 		{"street-phone", b.StreetID}, {"mint", b.StreetID},
@@ -72,7 +75,9 @@ func (b *Bakery) furnish(clock *Timeline, prefix string) error {
 	}
 	b.Entities[prefix+supply.ID] = SpatialEntity{Name: supply.Name, Kind: Item, Portable: true,
 		Placement: Placement{HolderID: prefix + "crate"}, CloseDetail: supply.Detail, DropSound: Clatter}
-	b.GeneratorVersion = 2
+	if b.GeneratorVersion == 1 {
+		b.GeneratorVersion = 2
+	}
 	if err := b.Validate(); err != nil {
 		return err
 	}

@@ -89,6 +89,7 @@ type Bakery struct {
 type BakerySetup struct {
 	Resident  bool
 	Practice  bool // Includes both workers in a bakery with use-based endurance.
+	Workroom  bool // Add a linked workroom to a generated bakery.
 	Generated bool // Furnish a new practice bakery from its seed.
 }
 
@@ -121,6 +122,7 @@ const (
 )
 
 func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, error) {
+	setup.Generated = setup.Generated || setup.Workroom
 	if (!setup.Resident && !setup.Practice && !setup.Generated) || clock == nil {
 		return GenerateBakery(worldID, clock)
 	}
@@ -168,6 +170,11 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 		b.Entities[prefix+"mint"] = SpatialEntity{Name: "mint planter", Kind: Planter, Placement: at,
 			CloseDetail: "a brass watering spout over the soil"}
 		if setup.Generated {
+			if setup.Workroom {
+				if err := b.addWorkroom(prefix); err != nil {
+					return nil, err
+				}
+			}
 			if err := b.furnish(&staged, prefix); err != nil {
 				return nil, err
 			}
@@ -274,7 +281,7 @@ func (b *Bakery) Validate() error {
 	}
 	for y, row := range b.Cells {
 		for x, cell := range row {
-			if cell.SpaceID != b.StreetID && cell.SpaceID != b.InteriorID {
+			if cell.SpaceID != b.StreetID && cell.SpaceID != b.InteriorID && !(b.GeneratorVersion == 3 && cell.SpaceID == prefix+"workroom") {
 				return fmt.Errorf("cell (%d,%d) references unknown space %q", x, y, cell.SpaceID)
 			}
 		}

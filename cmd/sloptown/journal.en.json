@@ -9,6 +9,7 @@
     "journal": "I reached the {object}."
   },
   "perceptions": {
+    "in_workroom": "I was in the bakery workroom.",
     "on_street": "I was on the street.",
     "in_bakery_doorway": "I was in the bakery doorway.",
     "in_bakery": "I was in the bakery.",

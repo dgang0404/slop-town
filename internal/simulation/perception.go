@@ -15,6 +15,7 @@ func perceptionAptitude(seed int64, actor string) int {
 }
 
 const (
+	InWorkroom      PerceptionKind = "in_workroom"
 	OnStreet        PerceptionKind = "on_street"
 	InBakeryDoorway PerceptionKind = "in_bakery_doorway"
 	InBakery        PerceptionKind = "in_bakery"
@@ -35,6 +36,7 @@ const crouchingBehind = "You are crouching behind the "
 // Version 1 receipts save these exact sentences. Live scenes use the kinds
 // directly, and old journals recover them from the observer's own receipt.
 var receiptDescriptions = map[PerceptionKind]string{
+	InWorkroom:      "You are in the bakery workroom.",
 	OnStreet:        "You are on the street.",
 	InBakeryDoorway: "You are in the bakery doorway.",
 	InBakery:        "You are in the bakery.",
@@ -52,10 +54,13 @@ var receiptDescriptions = map[PerceptionKind]string{
 // Daylight enters this bakery through its street door. There is enough
 // ambient light to see ordinary objects even with the door shut.
 func (b *Bakery) dimAt(cell CellPosition) bool {
-	if b.ContentVersion < daylightContentVersion || b.Cells[cell.Y][cell.X].SpaceID != b.InteriorID {
+	if b.ContentVersion < daylightContentVersion || b.Cells[cell.Y][cell.X].SpaceID == b.StreetID {
 		return false
 	}
 	door := b.Entities[url.PathEscape(b.WorldID)+"/door"]
+	if b.visiblePlace(cell, door.Placement.Cell) == InWorkroom && !b.Entities[url.PathEscape(b.WorldID)+"/workroom-door"].Open {
+		return true
+	}
 	return !door.Open && cell != door.Placement.Cell
 }
 
@@ -66,11 +71,16 @@ func (b *Bakery) visiblePlace(cell, doorway CellPosition) PerceptionKind {
 	if b.Cells[cell.Y][cell.X].SpaceID == b.StreetID {
 		return OnStreet
 	}
+	if b.Cells[cell.Y][cell.X].SpaceID != b.InteriorID {
+		return InWorkroom
+	}
 	return InBakery
 }
 
 func (k PerceptionKind) landmark() string {
 	switch k {
+	case InWorkroom:
+		return "inside the bakery workroom"
 	case OnStreet:
 		return "outside on the street"
 	case InBakery:

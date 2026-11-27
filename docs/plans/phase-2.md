@@ -8,7 +8,11 @@ The first playable extension beyond the reference layout uses `bakery -generated
 
 On 27 November 2026, seeds 0 through 99 produced 68 distinct arrangements of the four furnishings and all three tools. The test opened the door, walked inside, opened the crate and took the spoon for every seed. Repeating a seed after an unrelated weather draw produced the same layout. On seed 42 the player found a dough scraper, examined the rivet in its handle and took it. Reopening with different creation options preserved the item and layout. Replaying from the initial checkpoint and the approach to the crate reached turn 7, sequence 24, SHA-256 `764ca86c94f0ba52b1bb0229e772e4c9490ecaa9e891dac250ed5ff1e3a8226e`. [Generation tests](../../internal/simulation/furnishing_test.go) · [Saved visit](../../cmd/sloptown/journal_illustrated_test.go)
 
-**Next generation checkpoint.** Give a second room or shop its own footprint, linked entrance and work area from reusable content definitions. Verify a playable route from the street to each required interaction and back, with room to use the door, work and rest. Save generated instances and the content revision. Exercise those routes across seeds alongside the fixed bakery regressions. The longer Phase 8 hundred-town campaign will also exercise residents and event chains over time.
+### A linked workroom
+
+Generator version 3 (`bakery -workroom`) fits a separate workroom into the existing shop footprint. Its [room plan](../../internal/simulation/bakery-workroom.layout) places a wall, an entrance and a workbench drawer. The generator mirrors the room to fit the bakery aisle and reserves the entrance before placing the other furnishings. Opening the inner door reveals the drawer. The journal and terminal identify the workroom by name. The original furnished bakery remains available with `-generated`. [Playable visit](../../README.md#visit-the-bakery-workroom)
+
+Across 100 seeds the player opened both doors, entered the workroom, closed its door, used the drawer, rested and returned to the street. On seed 42 the SQLite visit reopened inside on turn 10 with the door closed and the drawer open. Replay from the start and the turn-10 bookmark both reached the saved turn-16 state. [Seed sweep](../../internal/simulation/workroom_test.go) · [Restart and replay](../../cmd/sloptown/workroom_test.go)
 
 ## First checkpoint — generate a place
 
