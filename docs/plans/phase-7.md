@@ -423,3 +423,19 @@ Interrupting the receipt write rolled back the turn and its memories. After retr
 New practice timelines use content version 19. A version 18 save from `94beab3` produced the same seed-2 hiding transcript and journal in both executables. Replay from sequences 0 and 26 reached tick 12, sequence 45, with SHA-256 `655b64ef3ad3786d7cf81ce00225a615bd7710af06b558b7fd4f370b9b45977d`.
 
 The offline suite and both seed-42 smoke runs passed. The terminal, simulation and storage packages passed three race-detector runs each. The CLI cross-built for Windows amd64 and macOS arm64.
+
+## Checkpoint 28 — examine a visible person or object
+
+The master design’s examination command takes one turn in the practice bakery. A character can examine any person or object in their current view. An open container reveals its directly visible contents. Posture, lids and doors can be seen at a distance. A small distinguishing mark requires daylight and a place within arm’s reach. The bundled English descriptions are saved with the individual people and objects when the town is created. [Play the seed-42 visit](../../README.md#examine-the-bakery-crate)
+
+### Checkpoint 28 results
+
+On seed 42, the player examined the closed bakery door and saw the worn brass around the latch. The baker opened it later that turn. Examining the crate revealed a scrape on the closed lid. Opening the crate and examining the spoon revealed a notch in its handle. After taking the spoon, the player found the crate empty. The journal kept both examinations in order after reopening the save. Down and Enter completed the nine-turn visit in a Linux terminal. [SQLite walkthrough](../../internal/storage/examine_test.go)
+
+The porter’s frayed sleeve became visible on the second examination, after they moved closer. Replaying the first request returned the original, more distant view. When the baker examined an open crate in a separate scene, they could see a flour tin and a wooden spoon. A key inside the closed tin and a pencil carried by someone else stayed private. Closing the street door hid the fine scrape on the lid in the dim room. [Visibility and timing tests](../../internal/simulation/examine_test.go)
+
+A failed receipt write rolled back the examination and that turn’s worker activity. After retry, replay from sequences 0 and 19 reached tick 9, sequence 31, with SHA-256 `40555b8b5b065d2a04882a46bfa257fc2115557df88a83e07f565503863af859`.
+
+New practice towns use content version 20. A version 19 save from `250e6c6` kept its earlier actions. Both executables produced identical seed-43 knock transcripts and journals. Replay from sequences 0 and 6 reached tick 3, sequence 14, with SHA-256 `ccb381f0dbcf0eb5c3354adee06110eaac7b6656dd89a60970a0a3ee68d6b7fb`.
+
+The offline suite and both seed-42 smoke runs passed. The terminal, simulation and storage packages each passed three race-detector runs. The CLI cross-built for Windows amd64 and macOS arm64.

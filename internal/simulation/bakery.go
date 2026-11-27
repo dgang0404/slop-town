@@ -60,6 +60,7 @@ type SpatialEntity struct {
 	StealthPractice    stealthPractice `json:",omitzero"`
 	ProvidesCover      bool            `json:",omitempty"`
 	HiddenBehind       string          `json:",omitempty"` // Reference to the cover beside a crouching actor.
+	CloseDetail        string          `json:",omitempty"` // A visible distinguishing mark within arm's reach.
 }
 
 // Bakery is authoritative fixture state. Cells are in row-major order and
@@ -103,6 +104,7 @@ const (
 	stealthPracticeContentVersion = 17
 	coverContentVersion           = 18
 	knockContentVersion           = 19
+	examineContentVersion         = 20
 	fatigueLimit                  = 5 // Steps since the last rest, capped during a break.
 )
 
@@ -129,8 +131,14 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 	}
 	b.ContentVersion = personalityContentVersion
 	if setup.Practice {
-		b.ContentVersion = knockContentVersion
+		b.ContentVersion = examineContentVersion
 		prefix := url.PathEscape(worldID) + "/"
+		for localID, detail := range bakeryCloseDetails {
+			id := prefix + localID
+			entity := b.Entities[id]
+			entity.CloseDetail = detail
+			b.Entities[id] = entity
+		}
 		spoon := b.Entities[prefix+"spoon"]
 		spoon.DropSound = Clatter
 		b.Entities[prefix+"spoon"] = spoon
@@ -254,6 +262,9 @@ func (b *Bakery) Validate() error {
 		}
 		if _, err := b.PositionOf(id); err != nil {
 			return err
+		}
+		if e.CloseDetail != "" && b.ContentVersion < examineContentVersion {
+			return fmt.Errorf("unexpected examination detail for %q", id)
 		}
 		if e.ProvidesCover && (b.ContentVersion < coverContentVersion || e.Kind != Container || e.Portable || e.Placement.HolderID != "") {
 			return fmt.Errorf("invalid cover for %q", id)

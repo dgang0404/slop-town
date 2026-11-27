@@ -30,6 +30,7 @@ const (
 	ActionMove         ActionKind = "move"
 	ActionOpen         ActionKind = "open"
 	ActionKnock        ActionKind = "knock"
+	ActionExamine      ActionKind = "examine"
 	ActionClose        ActionKind = "close"
 	ActionTake         ActionKind = "take"
 	ActionDiscreetTake ActionKind = "discreet_take"

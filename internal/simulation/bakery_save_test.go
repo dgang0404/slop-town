@@ -12,6 +12,9 @@ import (
 func usePracticeVersion(b *Bakery, version int) {
 	b.ContentVersion = version
 	for id, e := range b.Entities {
+		if version < examineContentVersion {
+			e.CloseDetail = ""
+		}
 		if version < coverContentVersion {
 			e.ProvidesCover = false
 		}

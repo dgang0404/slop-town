@@ -315,7 +315,7 @@ func remembered(sentence string) string {
 	for _, verb := range []struct{ present, past string }{
 		{"introduce yourself", "introduced myself"}, {"discreetly take", "discreetly took"}, {"walk", "walked"}, {"move", "moved"},
 		{"open", "opened"}, {"close", "closed"}, {"take", "took"}, {"put", "put"}, {"drop", "dropped"},
-		{"crouch", "crouched"}, {"stand", "stood"}, {"knock", "knocked"},
+		{"crouch", "crouched"}, {"stand", "stood"}, {"knock", "knocked"}, {"find", "found"},
 		{"feel", "felt"}, {"wait", "waited"}, {"are", "was"}, {"see", "saw"}, {"carry", "carried"},
 	} {
 		if tail, ok := strings.CutPrefix(sentence, "You "+verb.present); ok && (tail == "." || strings.HasPrefix(tail, " ")) {

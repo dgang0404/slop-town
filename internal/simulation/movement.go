@@ -109,7 +109,7 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 		if !validID(args.Target) || !validID(args.Container) || args != (ActionArgs{Target: args.Target, Container: args.Container}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Choose an item and a destination container."}
 		}
-	case ActionOpen, ActionClose, ActionKnock, ActionTake, ActionDiscreetTake, ActionDrop, ActionIntroduce, ActionApproach, ActionHide:
+	case ActionOpen, ActionClose, ActionKnock, ActionExamine, ActionTake, ActionDiscreetTake, ActionDrop, ActionIntroduce, ActionApproach, ActionHide:
 		if !validID(args.Target) || args != (ActionArgs{Target: args.Target}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Choose one target."}
 		}
@@ -122,6 +122,9 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 	var failure *actionFailure
 	args.Target, failure = view.selectTarget(args.Target, p.ByName, p.Observed.Target)
 	if failure != nil {
+		if action == ActionExamine && failure.code == "target_unavailable" {
+			return spatialEffect{}, &actionFailure{failure.code, "You can't see that here."}
+		}
 		return spatialEffect{}, failure
 	}
 	if action == ActionPut {
@@ -135,6 +138,13 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 	}
 	if action == ActionApproach {
 		return b.approach(view.ObserverID, args.Target)
+	}
+	if action == ActionExamine {
+		if b.ContentVersion < examineContentVersion {
+			return spatialEffect{}, &actionFailure{"action_unavailable", "Examination is unavailable here."}
+		}
+		return spatialEffect{kind: "target_examined", payload: EventPayload{Target: args.Target}, entityID: view.ObserverID, entity: actor,
+			message: b.examination(view, args.Target)}, nil
 	}
 	if action == ActionKnock {
 		if b.ContentVersion < knockContentVersion {

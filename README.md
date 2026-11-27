@@ -240,6 +240,25 @@ Start a fresh visit with `go run ./cmd/sloptown bakery -practice -play -seed 43`
 2. Choose **cancel**, then **talk to the baker**. Ask **“What sounds have you heard lately?”** The baker was inside when you knocked and replies, “I heard a knock.”
 3. Read `journal accounts` to see both accounts of that one moment. [Door-knocking checkpoint](docs/plans/phase-7.md#checkpoint-27--a-knock-at-the-bakery-door)
 
+### Examine the bakery crate
+
+Start a fresh visit with `go run ./cmd/sloptown bakery -practice -play -seed 42`. Try these commands one per line, or choose the named targets with the arrows and Enter.
+
+```text
+examine door
+east
+walk to crate
+examine crate
+open it
+examine it
+examine spoon
+take it
+examine crate
+journal
+```
+
+Each examination takes one turn. Up close in daylight, you can see a scrape across the crate’s lid and a notch in the spoon’s handle. The last examination finds the crate empty. Your journal also remembers when the spoon was inside. Use `look` to read the current scene for free. [Examination checkpoint](docs/plans/phase-7.md#checkpoint-28--examine-a-visible-person-or-object)
+
 ### Listen from the street
 
 Start a fresh practice visit with `go run ./cmd/sloptown bakery -practice -play -seed 42`. At the first prompt, type `listen` or select it with the arrows and Enter. A door creaks, then you hear footsteps. Read `journal` to see how your character remembers the sounds.

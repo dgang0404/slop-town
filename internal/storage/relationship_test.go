@@ -3,7 +3,7 @@ package storage_test
 
 import (
 	"bytes"
-	"net/url"
+	"encoding/json"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -17,10 +17,22 @@ import (
 // Replay historical practice histories from the original tick-zero rules.
 func usePracticeVersion(t *testing.T, path string, scope simulation.Scope, version int) {
 	t.Helper()
-	// These early fixtures predate the spoon's clatter and the crate's cover.
-	entity := `$.bakery.Entities."` + url.PathEscape(scope.WorldID)
-	execSQL(t, path, `UPDATE timeline_state SET bakery=CAST(json_remove(json_set(bakery, '$.bakery.ContentVersion', ?), ?, ?) AS BLOB)
-		WHERE world=? AND timeline=? AND last_sequence=0`, version, entity+`/spoon".DropSound`, entity+`/crate".ProvidesCover`, scope.WorldID, scope.TimelineID)
+	// These early fixtures predate clatter, cover and examination marks.
+	var saved struct{ Bakery simulation.Bakery }
+	if err := json.Unmarshal(bakeryBytes(t, path, scope), &saved); err != nil {
+		t.Fatal(err)
+	}
+	b := &saved.Bakery
+	b.ContentVersion = version
+	for id, e := range b.Entities {
+		e.DropSound, e.ProvidesCover, e.CloseDetail = "", false, ""
+		b.Entities[id] = e
+	}
+	data, err := b.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	execSQL(t, path, `UPDATE timeline_state SET bakery=? WHERE world=? AND timeline=? AND last_sequence=0`, data, scope.WorldID, scope.TimelineID)
 }
 
 func TestIntroductionAcrossRestart(t *testing.T) {

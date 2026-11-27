@@ -46,6 +46,9 @@ func (b *Bakery) AvailableActions(scope Scope, actorID string) ([]ActionOption, 
 	for _, target := range view.Targets {
 		args := ActionArgs{Target: target.Ref}
 		offer(ActionApproach, args)
+		if b.ContentVersion >= examineContentVersion {
+			add(ActionExamine, args) // Any target in this actor's view can be examined.
+		}
 		switch b.Entities[target.Ref].Kind {
 		case Actor:
 			offer(ActionIntroduce, args)
