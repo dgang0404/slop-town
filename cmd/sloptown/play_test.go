@@ -101,19 +101,20 @@ func TestBakerTerminalSession(t *testing.T) {
 	if err != nil || cp.Tick != 0 || strings.Contains(start, "the baker ") || !strings.Contains(start, "  wait\n") {
 		t.Fatalf("starting street: %s, checkpoint %+v, %v", start, cp, err)
 	}
-	first := run("", "-batch", "visit", "wait")
+	first := run("", "-full", "-batch", "visit", "wait")
 	if !strings.Contains(first, "You see the open bakery door") || !strings.Contains(first, "You see the baker to the east.") {
 		t.Fatal(first)
 	}
 	visit := run("wait\nwait\nwait\nlook\n", "-play", "-batch", "visit")
-	if strings.Count(visit, "already completed") != 1 || strings.Count(visit, "You wait.") != 2 || !strings.Contains(visit, "You see the baker here.") {
+	if strings.Count(visit, "already completed") != 1 || strings.Contains(visit, "You wait.") ||
+		!strings.Contains(visit, "The baker draws closer.") || !strings.Contains(visit, "You see the baker here.") {
 		t.Fatal(visit)
 	}
 	head, err := storage.Replay(path, s, 0)
 	if err != nil || head.Tick != 3 || head.Sequence != 11 {
 		t.Fatalf("resumed visit: %+v, %v", head, err)
 	}
-	if !strings.Contains(start, "  rest\n") || !strings.Contains(run("", "-batch", "break", "rest"), "You are sitting down.") {
+	if !strings.Contains(start, "  rest\n") || !strings.Contains(run("", "-batch", "break", "rest"), "You sit down.") {
 		t.Fatal("the terminal should offer rest and commit the player's break")
 	}
 	if out := run("rest\nlook\n", "-batch", "break", "-play"); !strings.Contains(out, "already completed") || !strings.Contains(out, "You are sitting down.") {

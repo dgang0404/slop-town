@@ -94,7 +94,7 @@ You can use a short name such as `door` or `spoon`. If several visible objects m
 
 Opening the crate gives you “You open the crate. Inside lies **a wooden spoon**.” If you wait there and nothing changes, you get “You wait.” Type `look` whenever you want the full description and grid. To turn off bold, start the game with `NO_COLOR=1`. Redirected output is always plain text.
 
-For a fuller passage, type `narration story` or select it with the arrows and Enter. As you step into the bakery, you’ll read “You step east **into the bakery**. The closed crate is **beside you now**.” Type `narration` to check the setting or `narration brief` to switch back. Changing the setting takes no game time. Each session starts in brief unless you launch it with `-narration story`.
+For a fuller passage, type `narration story` or select it with the arrows and Enter. As you step into the bakery, you’ll read “You enter **the bakery**. The closed crate is **beside you now**.” If a worker speaks while you wait, you hear the worker straight away. On an uneventful compass step, a short “One step east.” acknowledges the move. Type `narration` to check the setting or `narration brief` to switch back. Changing the setting takes no game time. Each session starts in brief unless you launch it with `-narration story`.
 
 Type `help` for the command forms or `quit` to leave. Add `-db bakery.sqlite` to resume the same town on your next visit. Each visit opens with the full current scene.
 
@@ -104,7 +104,7 @@ From the repository root, run the street-to-crate walkthrough in a fresh, in-mem
 go run ./cmd/sloptown bakery -seed 42 open "bakery door" move east move east open crate
 ```
 
-This command-line walkthrough prints the full player view after each action. On the grid, `@` marks the player, `?` a square out of sight, and `#` a wall. Opening the lid changes the crate's square from `C` to `c*` as the spoon comes into view. Omit `-db` for a fresh in-memory session.
+This command-line walkthrough shows the opening scene and then the changes. To inspect the grid at every step, add `-full` before `open`. On the grid, `@` marks the player, `?` a square out of sight, and `#` a wall. Opening the lid changes the crate's square from `C` to `c*` as the spoon comes into view. Omit `-db` for a fresh in-memory session.
 
 ### Talk to a worker
 
@@ -156,6 +156,8 @@ Type `calendar` or choose it with the arrows and Enter to check today's date. Th
 
 The first thing your character records on a new day starts a dated chapter. If you walk into the bakery for the first time as spring turns to summer, the heading reads “Day 1 of summer, year 1 · Inside the bakery.” A day with no memories gets no chapter.
 
+In the spoon walkthrough, that arrival heading leads straight to “I opened the crate. I saw the wooden spoon in the crate.” Travel goes into the story when it reveals something, changes how you feel, or gets interrupted. [Phase 7 bakery acceptance](docs/plans/phase-7-results.md)
+
 Type `export journal` or select it with the arrows and Enter to save the chaptered text in the directory where you started the game. The first available name is `slop-town-journal.txt`, followed by `slop-town-journal-2.txt`, `slop-town-journal-3.txt` and so on. This also works during an in-memory visit.
 
 To export directly from an existing save, give the shell a destination filename. Add `-timeline NAME` to select another timeline in that save.
@@ -175,6 +177,8 @@ To make the same book from an existing save, choose a new output filename and ru
 ```sh
 go run ./cmd/sloptown journal -illustrated -db bakery.sqlite > my-bakery-visit.html
 ```
+
+The sketches illustrate memories in the book. For the full-town client, the planned navigation view is text and a local grid, with an optional picture of the current scene. [Town display plan](docs/plans/phase-7.md#the-full-town-display)
 
 ### Browse actions and walk to a destination
 

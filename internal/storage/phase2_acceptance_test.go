@@ -98,7 +98,7 @@ func TestPhase2Acceptance(t *testing.T) {
 		tick := i + 1
 		batch := fmt.Sprintf("step-%02d", tick)
 		// Supplying a different seed on every reopen must keep the original layout.
-		args := []string{"bakery", "-seed", "43", "-batch", batch, string(step.action), step.arg}
+		args := []string{"bakery", "-full", "-seed", "43", "-batch", batch, string(step.action), step.arg}
 		if tick == 5 {
 			execSQL(t, path, `CREATE TRIGGER fail_pickup BEFORE INSERT ON request_receipt WHEN NEW.request='step-05/1'
 				BEGIN SELECT RAISE(FAIL, 'injected pickup failure'); END`)

@@ -36,7 +36,7 @@ func TestBakeryCommand(t *testing.T) {
 	if hidden == "" || hidden != missing {
 		t.Fatal("name selection disclosed a hidden object")
 	}
-	out, _ := call(0, "open", "bakery door", "move", "east", "move", "east", "open", "crate", "take", "wooden spoon", "put", "wooden spoon", "crate")
+	out, _ := call(0, "-full", "open", "bakery door", "move", "east", "move", "east", "open", "crate", "take", "wooden spoon", "put", "wooden spoon", "crate")
 	if !strings.Contains(out, "You carry the wooden spoon.") || !strings.Contains(out, "You put the wooden spoon in the crate.") ||
 		!strings.Contains(out, "c*") {
 		t.Fatalf("visible targets did not work through the terminal: %s", out)

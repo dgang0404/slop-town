@@ -76,7 +76,7 @@ func composeJournal(entries []simulation.JournalEntry) []journalChapter {
 		chapter.Passages = append(chapter.Passages, journalPassage{words, firstSeen})
 	}
 	chapters := journalChapters{met: make(map[string]bool)}
-	var continuingTo string
+	var continuingTo, place, describedPlace string
 	quietWaits := 0
 	flushWaits := func() {
 		switch quietWaits {
@@ -90,9 +90,16 @@ func composeJournal(entries []simulation.JournalEntry) []journalChapter {
 	}
 	for _, entry := range entries {
 		newDay := entry.Date != chapters.date
-		if title := chapters.begin(entry); title != "" {
+		if entry.Place != "" {
+			place = entry.Place
+		}
+		title, coveredPlace := chapters.begin(entry)
+		if title != "" {
 			flushWaits()
 			book = append(book, journalChapter{Number: chapters.number, Title: title})
+			if coveredPlace != "" {
+				describedPlace = coveredPlace
+			}
 		}
 		continuation := entry.Action == simulation.ActionApproach && continuingTo != "" && entry.WalkTarget == continuingTo
 		continuingTo = ""
@@ -105,7 +112,8 @@ func composeJournal(entries []simulation.JournalEntry) []journalChapter {
 		}
 		flushWaits()
 		var lines []string
-		if entry.Outcome != "" && !continuation {
+		// A routine step or wait can bring news; the news carries the passage.
+		if entry.Outcome != "" && !continuation && entry.Action != simulation.ActionMove && entry.Action != simulation.ActionWait {
 			lines = append(lines, remembered(entry.Outcome))
 		} else if continuation && newDay {
 			lines = append(lines, strings.Replace(remembered(entry.Outcome), "I walked toward ", "I continued toward ", 1))
@@ -132,9 +140,16 @@ func composeJournal(entries []simulation.JournalEntry) []journalChapter {
 			lines = append(lines, remembered(entry.WalkEnd))
 		}
 		for _, sight := range entry.Observations {
-			lines = append(lines, remembered(sight))
+			if entry.Action != simulation.ActionRest || sight != "You are sitting down." {
+				lines = append(lines, remembered(sight))
+			}
 		}
 		if len(lines) != 0 {
+			// Place the next incident, skipping uneventful steps between settings.
+			if place != "" && place != describedPlace {
+				lines = append([]string{remembered(place)}, lines...)
+				describedPlace = place
+			}
 			addPassage(strings.Join(lines, " "), entry.FirstSeen)
 		}
 	}
@@ -154,14 +169,14 @@ func formatBakeryDate(date simulation.BakeryDate) string {
 }
 
 // A new date and a milestone on the same recorded turn share one heading.
-func (c *journalChapters) begin(entry simulation.JournalEntry) string {
-	var title string
+func (c *journalChapters) begin(entry simulation.JournalEntry) (title, coveredPlace string) {
 	if c.number == 0 {
 		title = "The visit begins"
 	}
-	if !c.inside && slices.Contains(entry.Observations, "You are in the bakery.") {
+	if !c.inside && entry.Place == "You are in the bakery." {
 		c.inside = true
 		title = "Inside the bakery"
+		coveredPlace = entry.Place
 	}
 	var names []string
 	var sameName bool
@@ -181,8 +196,10 @@ func (c *journalChapters) begin(entry simulation.JournalEntry) string {
 	}
 	if sameName {
 		title = "Introductions"
+		coveredPlace = ""
 	} else if len(names) > 0 {
 		title = "Meeting " + proseList(names)
+		coveredPlace = "" // The meeting heading leaves the arrival to the prose.
 	}
 	if entry.Date != c.date {
 		c.date = entry.Date
@@ -195,7 +212,7 @@ func (c *journalChapters) begin(entry simulation.JournalEntry) string {
 	if title != "" {
 		c.number++
 	}
-	return title
+	return title, coveredPlace
 }
 
 // These are the sentences in a saved action outcome or observation. Change

@@ -78,6 +78,28 @@ func TestNarrationNamesOnlyWitnessedActions(t *testing.T) {
 	}
 }
 
+func TestTerminalMovementKeepsOnlyUsefulFeedback(t *testing.T) {
+	for _, tc := range []struct {
+		args  []string
+		input string
+	}{
+		{[]string{"-play"}, "open door\ne\ne\nopen crate\ne\n"},
+		{[]string{"-play", "-narration", "story"}, "open door\ne\ne\nopen crate\ne\n"},
+		{[]string{"open", "door", "move", "east", "move", "east", "open", "crate", "move", "east"}, ""},
+	} {
+		var out, diag bytes.Buffer
+		if code := runBakery(tc.args, strings.NewReader(tc.input), &out, &diag); code != 0 {
+			t.Fatal(code, &diag)
+		}
+		s := out.String()
+		if strings.Count(s, "You enter the bakery.") != 1 || strings.Contains(s, "You move east.") ||
+			strings.Contains(s, "You are in the bakery.") || strings.Contains(s, "crate is now open") ||
+			strings.Count(s, "wooden spoon") != 1 || !strings.HasSuffix(s, "One step east.\n") {
+			t.Fatal(s)
+		}
+	}
+}
+
 func TestWalkNarrationKeepsWitnessedInterruption(t *testing.T) {
 	scope := simulation.Scope{WorldID: "bakery", TimelineID: "main"}
 	const player, crate = "bakery/player", "bakery/crate"
@@ -161,7 +183,7 @@ func TestNarrationChoiceAcrossReplay(t *testing.T) {
 		}
 		if mode == "brief" && !strings.Contains(out, "Inside lies a wooden spoon.") ||
 			mode != "brief" && !strings.Contains(out, "You open the crate and find a wooden spoon inside.\n\nYou pick up the wooden spoon you saw in the crate.") ||
-			mode == "story" && !strings.Contains(out, "You step east into the bakery. The closed crate is beside you now.") ||
+			mode == "story" && !strings.Contains(out, "You enter the bakery. The closed crate is beside you now.") ||
 			mode == "switch" && !strings.Contains(out, "Narration is story. Choose narration brief or narration story.") {
 			t.Fatal(out)
 		}
@@ -223,7 +245,8 @@ func TestStoryGroupsVisibleContentsOfSelectedCrate(t *testing.T) {
 	}
 	var out bytes.Buffer
 	n := turnNarrator{style: "story", previous: prior, bold: true}
-	turn := simulation.Turn{Result: simulation.Result{Message: "You open the crate.", SelectedTarget: "first"}, Scene: current}
+	current.ActionTarget = "first"
+	turn := simulation.Turn{Result: simulation.Result{Message: "You open the crate."}, Scene: current}
 	n.write(&out, bakeryCommand{Proposal: simulation.Proposal{Action: simulation.ActionOpen}}, turn)
 	if !strings.HasPrefix(out.String(), "\nYou open the crate and find \x1b[1man apple\x1b[0m and \x1b[1ma wooden spoon\x1b[0m inside.") ||
 		!strings.Contains(out.String(), "You see \x1b[1mthe cup\x1b[0m in the crate.") {
@@ -242,7 +265,7 @@ func TestNarrateReplacedSpoonByReference(t *testing.T) {
 	turn := simulation.Turn{Result: simulation.Result{Message: "You wait."}, Scene: spoon("second", "to the north")}
 	var out bytes.Buffer
 	n.write(&out, bakeryCommand{Proposal: simulation.Proposal{Action: simulation.ActionWait}}, turn)
-	const want = "\nYou wait. You see \x1b[1mthe wooden spoon\x1b[0m to the north. You lose sight of \x1b[1mthe wooden spoon here\x1b[0m.\n"
+	const want = "\nYou see \x1b[1mthe wooden spoon\x1b[0m to the north. You lose sight of \x1b[1mthe wooden spoon here\x1b[0m.\n"
 	if out.String() != want {
 		t.Fatalf("got %q, want %q", out.String(), want)
 	}

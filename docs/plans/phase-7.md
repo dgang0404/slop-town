@@ -38,7 +38,7 @@ The bakery starts with brief turn descriptions. Choose `narration story` at the 
 
 | Seed-42 command | Brief | Story |
 | --- | --- | --- |
-| Step east from the bakery doorway | You move east. **You are in the bakery.** | You step east **into the bakery**. The closed crate is **beside you now**. |
+| Step east from the bakery doorway | You enter **the bakery**. | You enter **the bakery**. The closed crate is **beside you now**. |
 | Open the crate | You open the crate. Inside lies **a wooden spoon**. | You open the crate and find **a wooden spoon** inside. |
 | Take the spoon | You **take** the wooden spoon. | You **pick up** the wooden spoon you saw in the crate. |
 | Wait when nothing else changes | You wait. | You wait. |
@@ -167,6 +167,18 @@ A separate test followed two witnesses with the same visible name and two sighti
 
 The full offline build and tests, both seed-42 smoke runs and three race-detector runs passed. The CLI cross-built for Windows amd64 and macOS arm64. Interactive input was exercised on Linux.
 
-### Next checkpoint
+## Checkpoint 12 — tell the reader what matters
 
-Run the Phase 7 bakery acceptance walkthrough across a restart. Compare a visit that follows a report to its witness with one that misses the conversation, then check the resulting accounts and both journal editions against what each player learned.
+Use a chapter heading to establish the place once. Under “Inside the bakery,” the spoon walkthrough opens with “I opened the crate. I saw the wooden spoon in the crate.” Skip uneventful compass steps in the journal. When something happens away from the last narrated place, give that incident its setting. Keep concrete discoveries, fatigue, named destinations, interruptions and the words the character heard.
+
+Apply the same editing rule during play. A new location, discovery or encounter can carry the turn on its own. A quiet step or wait still gets a short acknowledgement so a player using the arrows or a screen reader knows it succeeded. The opening scene and `look` give the full description and grid. Scripted positional actions also use concise narration by default, with `-full` available for per-step snapshots.
+
+The acceptance walkthrough reopens two visits at the same corner. One player asks the baker and the porter about a sighting and opens the crate. The other stays around the corner. The test compares their accounts, journal text, illustrations and replays. [Phase 7 bakery acceptance results](phase-7-results.md)
+
+## The full-town display
+
+Use text and the local top-down grid as the default navigation view. The grid follows the player and updates the visible cells, people and objects after each committed action. If the baker steps into a doorway beside the player, the grid can show both occupants at that location. Names and actions remain available through text. Closed containers and rooms outside the character’s view conceal their contents.
+
+Offer one optional picture-book scene for atmosphere. For example, one picture can show the player’s view of the baker beside the open crate. Build it from the same visible people, objects and surroundings used for the grid. Reuse the picture while that view still matches. If a new scene is still being drawn, keep play responsive and show the result only if it still matches the player’s view. With illustrations off, text and grid support the whole visit. The journal’s object sketches remain attached to the passages where they were discovered.
+
+The bakery currently has a text grid and illustrated HTML export. The graphical grid and optional live scene belong to later client work. [Master design, sections 7.8 and 47](../design/Slop_Town_Master_Design_Revised_v7.docx)

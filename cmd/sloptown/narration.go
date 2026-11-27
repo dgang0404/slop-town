@@ -44,24 +44,15 @@ func (n *turnNarrator) write(out io.Writer, cmd bakeryCommand, turn simulation.T
 		return
 	}
 	current := turn.Scene
-	target := turn.SelectedTarget
-	if target == "" {
-		target = cmd.target.ref
-	}
+	target := current.ActionTarget
 	prior := n.previous
 	message, news, _ := strings.Cut(turn.Message, "\n")
 	continuing := cmd.continuation && n.walking
-	var place string
-	if current.Self.Place != prior.Self.Place {
-		place = current.Self.Place
-	}
 	var lines []string
 	if !continuing {
-		opening := message
-		if n.style == "story" {
-			opening, place = n.storyAction(cmd, target, current, message, place)
+		if opening := n.actionOpening(cmd, target, current, message); opening != "" {
+			lines = append(lines, opening)
 		}
-		lines = append(lines, opening)
 	}
 	for line := range strings.SplitSeq(news, "\n") {
 		// Name a lost destination once below, using its last visible description.
@@ -69,8 +60,17 @@ func (n *turnNarrator) write(out io.Writer, cmd bakeryCommand, turn simulation.T
 			lines = append(lines, n.mark(line))
 		}
 	}
-	if place != "" {
-		lines = append(lines, n.mark(place))
+	if place := current.Self.Place; place != "" && place != prior.Self.Place {
+		switch place {
+		case "You are in the bakery.":
+			lines = append(lines, "You enter "+n.mark("the bakery")+".")
+		case "You are in the bakery doorway.":
+			lines = append(lines, "You reach "+n.mark("the bakery doorway")+".")
+		case "You are on the street.":
+			lines = append(lines, "You step onto "+n.mark("the street")+".")
+		default:
+			lines = append(lines, n.mark(place))
+		}
 	}
 	lines = append(lines, n.describeSelf(prior.Self, current.Self)...)
 
@@ -125,6 +125,13 @@ func (n *turnNarrator) write(out io.Writer, cmd bakeryCommand, turn simulation.T
 		lines[0] = strings.TrimSuffix(message, ".") + " and find " + proseList(revealed) + " inside."
 	}
 	lines = append(lines, n.lostFromView(current)...)
+	if len(lines) == 0 && !continuing {
+		if cmd.Action == simulation.ActionMove {
+			lines = append(lines, "One step "+n.mark(string(cmd.Args.Direction))+".")
+		} else {
+			lines = append(lines, message)
+		}
+	}
 	if len(lines) != 0 {
 		if !continuing {
 			fmt.Fprintln(out)
@@ -146,7 +153,9 @@ func (n *turnNarrator) describeSelf(was, now simulation.ObserverDetail) []string
 	if was.Seated && !now.Seated {
 		lines = append(lines, n.mark("You get back on your feet."))
 	}
-	if now.Condition != "" && now.Condition != was.Condition {
+	if now.Seated && !was.Seated && now.Condition == "You are sitting down." {
+		lines = append(lines, n.mark("You sit down."))
+	} else if now.Condition != "" && now.Condition != was.Condition {
 		lines = append(lines, n.mark(now.Condition))
 	}
 	if now.Feeling != was.Feeling {
@@ -262,25 +271,23 @@ func proseList(items []string) string {
 	}
 }
 
-// Use the actor's last view for recollections and the current view for arrivals.
-func (n *turnNarrator) storyAction(cmd bakeryCommand, target string, scene simulation.Scene, outcome, place string) (string, string) {
+// Movement and waiting need a separate acknowledgement only on a quiet turn.
+func (n *turnNarrator) actionOpening(cmd bakeryCommand, target string, scene simulation.Scene, outcome string) string {
 	switch cmd.Action {
-	case simulation.ActionMove:
-		for _, entry := range []struct{ prefix, destination string }{
-			{"You are in ", "into "}, {"You are on ", "onto "},
-		} {
-			if where, ok := strings.CutPrefix(place, entry.prefix); ok {
-				return "You step " + string(cmd.Args.Direction) + " " + n.mark(entry.destination+strings.TrimSuffix(where, ".")) + ".", ""
-			}
+	case simulation.ActionMove, simulation.ActionWait:
+		return ""
+	case simulation.ActionRest:
+		if scene.Self.Seated && !n.previous.Self.Seated && scene.Self.Condition == "You are sitting down." {
+			return ""
 		}
 	case simulation.ActionTake:
 		was := n.previous.Details[target]
 		now := scene.Details[target]
-		if now.Holder == scene.ObserverID && was.Holder != "" && was.Holder != scene.ObserverID {
-			return "You " + n.mark("pick up") + " the " + now.Label + " you saw " + was.Location + ".", place
+		if n.style == "story" && now.Holder == scene.ObserverID && was.Holder != "" && was.Holder != scene.ObserverID {
+			return "You " + n.mark("pick up") + " the " + now.Label + " you saw " + was.Location + "."
 		}
 	}
-	return outcome, place
+	return outcome
 }
 
 func squaredDistance(a, b simulation.CellPosition) int {

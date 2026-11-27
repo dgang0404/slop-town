@@ -30,7 +30,7 @@ func TestChapteredJournalExport(t *testing.T) {
 	if err != nil || before.Tick != 4 {
 		t.Fatalf("before export: %+v, %v", before, err)
 	}
-	const meeting = "I waited a while.\n\nChapter 2 — Meeting the baker and the porter\n\nI waited. The baker introduced themselves to me. The porter introduced themselves to me."
+	const meeting = "I waited a while.\n\nChapter 2 — Meeting the baker and the porter\n\nThe baker introduced themselves to me. The porter introduced themselves to me."
 	if !strings.Contains(book, meeting) || strings.Count(book, "Chapter ") != 2 {
 		t.Fatal(book)
 	}
@@ -69,9 +69,10 @@ func TestChapteredJournalExport(t *testing.T) {
 }
 
 func TestChaptersUseFirsthandMilestones(t *testing.T) {
-	book := journalVisit(t, "open door\ne\ne\nw\nw\ne\ne\njournal\n")
+	book := journalVisit(t, "open door\ne\ne\nw\nw\ne\ne\nopen crate\ntake spoon\nw\nw\ndrop spoon\njournal\n")
 	if strings.Count(book, "Chapter ") != 2 ||
-		!strings.Contains(book, "Chapter 2 — Inside the bakery\n\nI moved east. I was in the bakery.") {
+		!strings.HasSuffix(book, "Chapter 2 — Inside the bakery\n\nI opened the crate. I saw the wooden spoon in the crate.\n"+
+			"I took the wooden spoon.\nI was on the street. I dropped the wooden spoon.\n") {
 		t.Fatal(book)
 	}
 	outgoing := journalVisit(t, "south\nintroduce yourself to the porter\nintroduce yourself to the porter\njournal\n", "-practice")
@@ -87,22 +88,22 @@ func TestChaptersUseFirsthandMilestones(t *testing.T) {
 	heard := func(person simulation.ObservedTarget) simulation.WitnessedAction {
 		return simulation.WitnessedAction{Actor: person, Action: simulation.ActionIntroduce}
 	}
-	if title := c.begin(simulation.JournalEntry{IntroducedTo: one}); title != "Meeting the porter" || c.number != 1 {
+	if title, _ := c.begin(simulation.JournalEntry{IntroducedTo: one}); title != "Meeting the porter" || c.number != 1 {
 		t.Fatal(title, c.number)
 	}
-	if title := c.begin(simulation.JournalEntry{Witnessed: []simulation.WitnessedAction{heard(one)}}); title != "" || c.number != 1 {
+	if title, _ := c.begin(simulation.JournalEntry{Witnessed: []simulation.WitnessedAction{heard(one)}}); title != "" || c.number != 1 {
 		t.Fatal(title, c.number)
 	}
-	if title := c.begin(simulation.JournalEntry{Witnessed: []simulation.WitnessedAction{heard(two)}}); title != "Meeting the porter" || c.number != 2 {
+	if title, _ := c.begin(simulation.JournalEntry{Witnessed: []simulation.WitnessedAction{heard(two)}}); title != "Meeting the porter" || c.number != 2 {
 		t.Fatal(title, c.number)
 	}
 	// When the first recorded turn contains several milestones, it has one opening.
 	c = journalChapters{met: make(map[string]bool)}
-	first := simulation.JournalEntry{Observations: []string{"You are in the bakery."}, Witnessed: []simulation.WitnessedAction{heard(one), heard(two)}}
-	if title := c.begin(first); title != "Introductions" || c.number != 1 {
+	first := simulation.JournalEntry{Place: "You are in the bakery.", Witnessed: []simulation.WitnessedAction{heard(one), heard(two)}}
+	if title, covered := c.begin(first); title != "Introductions" || covered != "" || c.number != 1 {
 		t.Fatal(title, c.number)
 	}
-	if title := c.begin(first); title != "" || c.number != 1 {
+	if title, _ := c.begin(first); title != "" || c.number != 1 {
 		t.Fatal(title, c.number)
 	}
 }

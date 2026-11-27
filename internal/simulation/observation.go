@@ -18,10 +18,11 @@ func (c *Coordinator) Observe(actorID string) (Observation, error) {
 // Scene carries live presentation details separately from the versioned observation in a receipt.
 type Scene struct {
 	Observation
-	Date      BakeryDate
-	Self      ObserverDetail
-	Details   map[string]VisibleDetail
-	Witnessed []WitnessedAction // During this turn. Empty on a look.
+	ActionTarget string // Resolved object of the observer's action. Empty on a look.
+	Date         BakeryDate
+	Self         ObserverDetail
+	Details      map[string]VisibleDetail
+	Witnessed    []WitnessedAction // During this turn. Empty on a look.
 }
 
 // ObserverDetail contains only the surroundings and sensations described to the actor.

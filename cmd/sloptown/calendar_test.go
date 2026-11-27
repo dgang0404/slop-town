@@ -53,8 +53,8 @@ func TestCalendarAcrossRestart(t *testing.T) {
 
 func TestSeasonChapterSharesAnArrival(t *testing.T) {
 	// Cross the threshold into the bakery on the first turn of summer.
-	book := journalVisit(t, strings.Repeat("wait\n", 165)+"open door\ne\ne\njournal\n")
-	want := "Chapter 8 — Day 1 of summer, year 1 · Inside the bakery\n\nI moved east. I was in the bakery."
+	book := journalVisit(t, strings.Repeat("wait\n", 165)+"open door\ne\ne\nopen crate\njournal\n")
+	want := "Chapter 8 — Day 1 of summer, year 1 · Inside the bakery\n\nI opened the crate. I saw the wooden spoon in the crate."
 	if !strings.Contains(book, want) || strings.Count(book, "Chapter ") != 8 {
 		t.Fatal(book)
 	}

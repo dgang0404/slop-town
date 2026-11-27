@@ -320,6 +320,7 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 			return reject("resolution_failed", "You cannot observe your surroundings."), nil
 		}
 		result.Observation = scene.Observation
+		scene.ActionTarget = primary.payload.Target
 		// The notebook records visibility at the instant of each effect, even
 		// if a later effect moves its subject out of the final scene.
 		for _, entry := range nextBakery.Notebooks[actorID][len(bakery.Notebooks[actorID]):] {

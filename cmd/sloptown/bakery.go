@@ -22,6 +22,7 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	timeline := flags.String("timeline", "main", "bakery timeline")
 	batch := flags.String("batch", "", "repeat the same batch ID to retry its ordered requests")
 	play := flags.Bool("play", false, "read one player command per line")
+	full := flags.Bool("full", false, "show a full scene and grid after each positional action")
 	var style string
 	flags.Func("narration", "choose brief or story narration in play", func(value string) error {
 		if !validNarration(value) {
@@ -33,7 +34,7 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	resident := flags.Bool("resident", false, "include the baker's work routine when creating a new timeline")
 	practice := flags.Bool("practice", false, "create a resident bakery with use-based endurance")
 	flags.Usage = func() {
-		fmt.Fprintln(stderr, "Usage: sloptown bakery [-seed N] [-resident] [-practice] [-db PATH] [-timeline NAME] [-batch ID] [-play [-narration brief|story] | ACTION ...]")
+		fmt.Fprintln(stderr, "Usage: sloptown bakery [-seed N] [-resident] [-practice] [-db PATH] [-timeline NAME] [-batch ID] [-play [-narration brief|story] | [-full] ACTION ...]")
 		fmt.Fprintln(stderr, "Actions: wait | rest | move DIRECTION | open NAME | close NAME | take NAME | drop NAME | put ITEM CONTAINER | introduce PERSON | approach NAME")
 	}
 	if err := flags.Parse(args); err != nil {
@@ -42,7 +43,7 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		}
 		return 2
 	}
-	if *play && flags.NArg() != 0 {
+	if *play && (flags.NArg() != 0 || *full) {
 		flags.Usage()
 		return 2
 	}
@@ -57,7 +58,7 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	setup := simulation.BakerySetup{Resident: *resident, Practice: *practice}
 	const player = "bakery/player"
 	var session bakerySession
-	if *play {
+	if !*full {
 		session.narrator = &turnNarrator{bold: terminalBold(stdout), style: style}
 	}
 	var submit func(simulation.Proposal, *simulation.CommandInput) (simulation.Turn, error)
