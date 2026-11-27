@@ -17,7 +17,8 @@
     "feeling_relieved": "I felt relieved.",
     "lingering_relief": "A little of that relief lingered.",
     "door_creak": "I heard a door creak.",
-    "footsteps": "I heard footsteps."
+    "footsteps": "I heard footsteps.",
+    "clatter": "I heard a clatter."
   },
   "discoveryIndex": {
     "title": "My first sightings",

@@ -83,8 +83,11 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 			page.Place, page.Observations, page.FirstSeen = memory.observe(r.Result.Observation, len(entries)-1)
 			if page.Action == ActionListen {
 				page.Outcome = "" // The journal keeps what the listener perceived that turn.
-				for _, sound := range r.Result.Observation.Heard {
-					page.Observations = append(page.Observations, JournalObservation{Kind: sound, Text: sound.Description()})
+				if b.ContentVersion < dropSoundContentVersion {
+					// Earlier timelines kept journal sounds in the listening receipt.
+					for _, sound := range r.Result.Observation.Heard {
+						page.Observations = append(page.Observations, JournalObservation{Kind: sound, Text: sound.Description()})
+					}
 				}
 			}
 		}
@@ -122,7 +125,13 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 		if len(sightings) > 0 && sightings[0].SourceSequence == e.Sequence {
 			s := sightings[0]
 			sightings = sightings[1:]
-			if s.Action != ActionIntroduce && s.Action != ActionSpeak && s.Action != ActionListen {
+			if s.Action == ActionListen {
+				if b.ContentVersion >= dropSoundContentVersion {
+					// An impact may be heard during another character's turn.
+					page := entryAt(e.Tick)
+					page.Observations = append(page.Observations, JournalObservation{Kind: s.Sound, Text: s.Sound.Description()})
+				}
+			} else if s.Action != ActionIntroduce && s.Action != ActionSpeak {
 				page := entryAt(e.Tick)
 				page.Witnessed = append(page.Witnessed, b.witnessedAction(s))
 			}

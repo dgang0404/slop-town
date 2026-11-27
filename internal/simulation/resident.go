@@ -1,14 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package simulation
 
-import (
-	"net/url"
-	"slices"
-)
+import "net/url"
 
 // Workers take at most one spatial action in this fixed order, after the
 // primary actor. A break decision is logged immediately before its effect.
-func (b *Bakery) advanceResidents(clock *Timeline, primary Event) ([]Event, []PerceptionKind, error) {
+func (b *Bakery) advanceResidents(clock *Timeline, primary Event) ([]Event, []heardSound, error) {
 	if b.ContentVersion < residentContentVersion {
 		return nil, nil, nil
 	}
@@ -17,7 +14,7 @@ func (b *Bakery) advanceResidents(clock *Timeline, primary Event) ([]Event, []Pe
 		roles = append(roles, "porter")
 	}
 	var events []Event
-	var heard []PerceptionKind
+	heard := b.soundsDuringAction(nil, primary, primary)
 	for _, role := range roles {
 		id := url.PathEscape(b.WorldID) + "/" + role
 		if id == primary.ActorID {
@@ -39,12 +36,7 @@ func (b *Bakery) advanceResidents(clock *Timeline, primary Event) ([]Event, []Pe
 		if err := b.applySpatial(action, effect, clock); err != nil {
 			return nil, nil, err
 		}
-		if primary.Kind == "actor_listened" {
-			sound := b.audibleAction(primary.ActorID, action)
-			if sound != "" && !slices.Contains(heard, sound) {
-				heard = append(heard, sound)
-			}
-		}
+		heard = b.soundsDuringAction(heard, primary, action)
 		if choice != nil && effect.kind != "actor_rested" {
 			worker := b.Entities[id]
 			worker.SeekingRestSpot = true

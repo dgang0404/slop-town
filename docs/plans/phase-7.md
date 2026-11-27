@@ -291,7 +291,7 @@ In new practice bakeries, a character can discreetly pick up a visible item with
 
 Just before a discreet pickup, each observer who can see the acting character makes one hidden check. The simulation weighs the actor’s stealth, the observer’s perception and their distance in tiles. Each character’s initial aptitudes come from the town seed, and each observer has their own saved sequence of draws. Players and residents use the same rules.
 
-A witness who identifies both the person and the item remembers an ordinary pickup. A partial sighting records an anonymous hand movement and names the container only when it was visible. A missed movement leaves no account to pass along. Checkpoint 21 adds deliberate listening for footsteps and doors. Lighting, sounds from handling items, skill growth and hiding remain future work. [Master design, sections 7.6, 12.2, 12.5 and 46–47](../design/Slop_Town_Master_Design_Revised_v7.docx)
+A witness who identifies both the person and the item remembers an ordinary pickup. A partial sighting records an anonymous hand movement and names the container only when it was visible. A missed movement leaves no account to pass along. Checkpoint 21 adds deliberate listening for footsteps and doors. Checkpoint 23 adds the sound of a dropped spoon. Lighting, skill growth and hiding remain future work. [Master design, sections 7.6, 12.2, 12.5 and 46–47](../design/Slop_Town_Master_Design_Revised_v7.docx)
 
 ### Acceptance walkthrough
 
@@ -316,7 +316,7 @@ The offline suite, both seed-42 smoke runs and three race-detector runs passed. 
 
 In a new practice bakery, a player or resident can spend one turn listening. A step makes a footfall at the square where the walker lands. A moving door creaks at its hinge. The simulation checks how far each sound can travel at the moment it occurs. Nearby footsteps can carry around an open doorway. A closed door blocks footsteps passing through it, and its own creak can reach either side. [Playable walkthrough](../../README.md#listen-from-the-street)
 
-For this fixture, footsteps carry three floor squares and a creak carries four. Characters in the upper third of the existing perception aptitude range hear one square farther. Each sound takes the shortest connected route through adjacent floor squares. The listener remembers the distinct sounds in the order they heard them. Hearing alone supplies no name or selectable target. The journal keeps sounds and any other discoveries made during that turn. Checkpoint 22 brings these sounds into conversation. Noises from handling objects remain future work.
+For this fixture, footsteps carry three floor squares and a creak carries four. Characters in the upper third of the existing perception aptitude range hear one square farther. Each sound takes the shortest connected route through adjacent floor squares. The listener remembers the distinct sounds in the order they heard them. Hearing alone supplies no name or selectable target. The journal keeps sounds and any other discoveries made during that turn. Checkpoint 22 brings these sounds into conversation. Checkpoint 23 introduces the first sound from handling an object.
 
 ### Checkpoint 21 results
 
@@ -341,3 +341,19 @@ In a SQLite visit the porter took the listening turn. The baker asked the porter
 New practice timelines use content version 14. A version 13 save from `87f610e` kept its original listening and dialogue behavior. Both builds replayed it from sequences 0 and 4 to tick 3, sequence 12, with SHA-256 `01142b74d8fce6611514cb86d66be56db78ec75d790349ac0701c90d4f34676b`.
 
 The offline suite, both seed-42 smoke runs and three race-detector runs passed. The CLI cross-built for Windows amd64 and macOS arm64.
+
+## Checkpoint 23 — hear a spoon hit the floor
+
+In a new practice bakery, dropping the wooden spoon makes a clatter. Anyone within earshot can hear it while going about their work, including the player when a resident drops the spoon. The sound travels up to three floor squares along an open route, or four for a character in the upper third of the seeded perception range. The simulation uses the listeners’ positions and the state of the door at the instant the spoon hits the floor. [Playable walkthrough](../../README.md#drop-the-spoon-around-the-corner)
+
+The floor sound belongs to the item. Picking up the spoon or putting it into the crate is quiet. A character who only heard the drop can remember “I heard a clatter” in their journal and say it in conversation. Identifying who dropped which object still requires seeing the transfer.
+
+### Checkpoint 23 results
+
+On seed 42 the player dropped the spoon outside on tick 9, walked back to the porter, and asked what they had heard. The porter answered, “I heard a clatter.” Down and Enter selected the drop, the walk, the conversation and the question in a Linux terminal. The account survived reopening the save. An interrupted SQLite write rolled back the drop and every listener’s memory together. After retry, replay from sequences 0 and 27 reached tick 11, sequence 44, with SHA-256 `db62a367b969ca5bfc477b0bb438428bc4258174ffe52bed3b086f7adbaa7f3a`. [Restart and replay test](../../internal/storage/drop_sound_test.go)
+
+In a separate scene the baker dropped the spoon around the corner. With the door open, the player and porter heard it. A more distant customer missed it. With the door closed, only the baker heard the impact, even though the porter opened the door later that turn. A second wooden spoon with the same name and no assigned sound fell quietly. [Hearing and identity tests](../../internal/simulation/drop_sound_test.go)
+
+New practice timelines use content version 15. On a version 14 save from `50bfef7`, the spoon still fell quietly and the journal kept the earlier creak and footsteps. Both executables produced the same transcript and replayed from sequences 0 and 29 to tick 10, sequence 39, with SHA-256 `bbfa7ceee8201fc89f51c06e43fd94f761cb86e5344b7977ead3e883a00c40cf`.
+
+The offline suite and both seed-42 smoke runs passed. The terminal, simulation and storage packages each passed three race-detector runs. The CLI cross-built for Windows amd64 and macOS arm64.

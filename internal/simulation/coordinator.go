@@ -327,20 +327,23 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 		if err != nil {
 			return reject("resolution_failed", "You cannot observe your surroundings."), nil
 		}
-		scene.Heard = heard
-		if len(heard) != 0 {
-			var lines []string
-			for _, sound := range heard {
-				lines = append(lines, sound.Description())
-				if nextBakery.ContentVersion >= soundAccountContentVersion {
-					// A listener can later choose which sound to mention. Its source
-					// identifies this perception, even if they also saw someone move.
-					memory := action.child(events[len(events)-1].Sequence+1, actorID, "perception", "sound_heard", EventPayload{Sound: sound})
-					events = append(events, memory)
-					nextBakery.appendSighting(actorID, NotebookEntry{Tick: memory.Tick, SourceSequence: memory.Sequence, Action: ActionListen, Sound: sound})
-				}
+		var soundLines []string
+		for _, sound := range heard {
+			if sound.listener == actorID {
+				scene.Heard = append(scene.Heard, sound.kind)
+				soundLines = append(soundLines, sound.kind.Description())
 			}
-			message = strings.Join(lines, "\n")
+			if nextBakery.ContentVersion >= soundAccountContentVersion {
+				memory := sound.cause.child(events[len(events)-1].Sequence+1, sound.listener, "perception", "sound_heard", EventPayload{Sound: sound.kind})
+				events = append(events, memory)
+				nextBakery.appendSighting(sound.listener, NotebookEntry{Tick: memory.Tick, SourceSequence: memory.Sequence, Action: ActionListen, Sound: sound.kind})
+			}
+		}
+		if len(soundLines) != 0 {
+			if p.Action != ActionListen {
+				soundLines = append([]string{message}, soundLines...)
+			}
+			message = strings.Join(soundLines, "\n")
 		}
 		result.Observation = scene.Observation
 		scene.ActionTarget = primary.payload.Target

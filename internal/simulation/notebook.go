@@ -166,7 +166,8 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 			}
 			switch e.Action {
 			case ActionListen:
-				if b.ContentVersion < soundAccountContentVersion || e.Subject != "" || e.Target != "" || e.Sound.SoundPhrase() == "" {
+				if b.ContentVersion < soundAccountContentVersion || e.Subject != "" || e.Target != "" || e.Sound.SoundPhrase() == "" ||
+					(e.Sound == Clatter && b.ContentVersion < dropSoundContentVersion) {
 					return fmt.Errorf("invalid sound memory for %q at sequence %d", owner, e.SourceSequence)
 				}
 			case SightHandMovement:

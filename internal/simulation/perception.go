@@ -19,6 +19,7 @@ const (
 	LingeringRelief PerceptionKind = "lingering_relief"
 	Footsteps       PerceptionKind = "footsteps"
 	DoorCreak       PerceptionKind = "door_creak"
+	Clatter         PerceptionKind = "clatter"
 )
 
 // Version 1 receipts save these exact sentences. Live scenes use the kinds
@@ -33,6 +34,7 @@ var receiptDescriptions = map[PerceptionKind]string{
 	LingeringRelief: "A little of that relief lingers.",
 	Footsteps:       "You hear footsteps.",
 	DoorCreak:       "You hear a door creak.",
+	Clatter:         "You hear a clatter.",
 }
 
 func (k PerceptionKind) Description() string { return receiptDescriptions[k] }
@@ -44,6 +46,8 @@ func (k PerceptionKind) SoundPhrase() string {
 		return "footsteps"
 	case DoorCreak:
 		return "a door creak"
+	case Clatter:
+		return "a clatter"
 	default:
 		return ""
 	}

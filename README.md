@@ -184,6 +184,26 @@ In a fresh seed-42 practice bakery, choose `listen`, then `talk to the porter`. 
 
 While you’re still talking, ask **“What sounds have you heard lately?”** The porter has no firsthand sound to recall on this visit. Ask **“What have you heard from other people?”** and the porter replies, “You told me you heard footsteps.” Cancel the conversation and choose `journal accounts` to read who told you the story. [Sound accounts checkpoint](docs/plans/phase-7.md#checkpoint-22--talk-about-what-you-heard)
 
+### Drop the spoon around the corner
+
+Start a fresh practice bakery with `go run ./cmd/sloptown bakery -practice -play -seed 42`. Carry the spoon outside and drop it while the porter is still inside. Enter these commands one per line, or choose the actions with the arrows and Enter.
+
+```text
+wait
+east
+east
+open crate
+take spoon
+west
+west
+south
+drop it
+walk to porter
+talk to porter
+```
+
+Ask **“What sounds have you heard lately?”** The porter replies, “I heard a clatter.” The doorway let the sound carry around the corner. The porter heard it while working and never saw the drop. Open `journal accounts` to read the porter's words after the conversation. [Dropped spoon checkpoint](docs/plans/phase-7.md#checkpoint-23--hear-a-spoon-hit-the-floor)
+
 ### Recall who told you
 
 Type `journal accounts` or select it with the arrows and Enter. This part of your journal collects accounts you personally heard about someone sitting down, opening or closing something, moving an item, or hearing a sound. Each line is dated when you heard it. You can read it during a conversation or after reopening a save, and it costs no turn.

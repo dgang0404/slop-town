@@ -1,6 +1,40 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package simulation
 
+import (
+	"maps"
+	"slices"
+)
+
+// Sample each listener before the next actor moves. The cause stays in the
+// replay history; the listener's notebook carries only the sound.
+type heardSound struct {
+	listener string
+	kind     PerceptionKind
+	cause    Event
+}
+
+func (b *Bakery) soundsDuringAction(heard []heardSound, primary, event Event) []heardSound {
+	if event.Kind == "item_dropped" && b.ContentVersion >= dropSoundContentVersion {
+		sound := b.Entities[event.Payload.Target].DropSound
+		if sound != "" {
+			for _, id := range slices.Sorted(maps.Keys(b.Entities)) {
+				if b.Entities[id].Kind == Actor && b.withinEarshot(id, event.Payload.Destination, 3) {
+					heard = append(heard, heardSound{id, sound, event})
+				}
+			}
+		}
+		return heard
+	}
+	if primary.Kind == "actor_listened" {
+		sound := b.audibleAction(primary.ActorID, event)
+		if sound != "" && !slices.ContainsFunc(heard, func(h heardSound) bool { return h.listener == primary.ActorID && h.kind == sound }) {
+			heard = append(heard, heardSound{primary.ActorID, sound, primary})
+		}
+	}
+	return heard
+}
+
 // Sample the room when the effect occurs. Another worker may move or open a
 // door later on the same turn. Only the kind of sound enters the receipt.
 func (b *Bakery) audibleAction(listener string, event Event) PerceptionKind {
@@ -18,13 +52,17 @@ func (b *Bakery) audibleAction(listener string, event Event) PerceptionKind {
 	default:
 		return ""
 	}
-	if perceptionAptitude(b.Seed, listener) >= 14 {
-		reach++
-	}
-	if b.soundReaches(source, b.Entities[listener].Placement.Cell, reach) {
+	if b.withinEarshot(listener, source, reach) {
 		return sound
 	}
 	return ""
+}
+
+func (b *Bakery) withinEarshot(listener string, source CellPosition, reach int) bool {
+	if perceptionAptitude(b.Seed, listener) >= 14 {
+		reach++
+	}
+	return b.soundReaches(source, b.Entities[listener].Placement.Cell, reach)
 }
 
 // Sound travels through adjacent floor cells and around corners. A closed
