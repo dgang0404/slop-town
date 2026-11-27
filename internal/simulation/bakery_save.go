@@ -25,7 +25,7 @@ func RestoreBakery(data []byte, world string, clock *Timeline) (*Bakery, error) 
 		return nil, err
 	}
 	b := saved.Bakery
-	if saved.Version != 1 || b == nil || b.GeneratorVersion < 1 || b.GeneratorVersion > 3 || b.ContentVersion < 1 || b.ContentVersion > phoneContentVersion {
+	if saved.Version != 1 || b == nil || b.GeneratorVersion < 1 || b.GeneratorVersion > 4 || b.ContentVersion < 1 || b.ContentVersion > phoneContentVersion {
 		return nil, fmt.Errorf("unsupported bakery snapshot or content version")
 	}
 	if clock == nil || b.WorldID != world || b.Seed != clock.seed || clock.draws["geography"] != 1 {
@@ -38,8 +38,15 @@ func RestoreBakery(data []byte, world string, clock *Timeline) (*Bakery, error) 
 		return nil, err
 	}
 	prefix := url.PathEscape(world) + "/"
-	if b.GeneratorVersion == 3 && !b.validWorkroom(prefix) {
+	if b.GeneratorVersion >= 3 && !b.validWorkroom(prefix) {
 		return nil, fmt.Errorf("invalid saved workroom")
+	}
+	if b.GeneratorVersion == 4 {
+		order := b.Entities[prefix+"order"]
+		tool := b.Entities[order.RequestedItem]
+		if order.Kind != Item || order.Portable || order.Placement != b.Entities[prefix+"workbench"].Placement || tool.Kind != Item || !tool.Portable {
+			return nil, fmt.Errorf("invalid workroom supply order")
+		}
 	}
 	if b.ContentVersion >= phoneContentVersion && (b.Entities[prefix+"street-phone"].Kind != Telephone || b.Entities[prefix+"bakery-phone"].Kind != Telephone) {
 		return nil, fmt.Errorf("missing telephone")

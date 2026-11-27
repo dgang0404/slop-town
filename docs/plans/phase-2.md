@@ -14,6 +14,10 @@ Generator version 3 (`bakery -workroom`) fits a separate workroom into the exist
 
 Across 100 seeds the player opened both doors, entered the workroom, closed its door, used the drawer, rested and returned to the street. On seed 42 the SQLite visit reopened inside on turn 10 with the door closed and the drawer open. Replay from the start and the turn-10 bookmark both reached the saved turn-16 state. [Seed sweep](../../internal/simulation/workroom_test.go) · [Restart and replay](../../cmd/sloptown/workroom_test.go)
 
+### Workroom supply order
+
+Fresh workrooms use generator version 4. A pinned order names the utensil selected for the crate during generation. Examining the order up close in sufficient light reveals the request. With the drawer open, the character can verify delivery against the actual tool in the drawer. Taking it away makes the order outstanding again. Earlier workroom saves keep their original contents. The SQLite walkthrough reads the slip, checks an empty drawer, collects the tool, reopens the save, delivers it and retries the delivery batch. [Play the supply order](../../README.md#fill-the-workroom-supply-order)
+
 ## First checkpoint — generate a place
 
 Use one floor with five columns and four rows. Coordinates start at the northwest corner. East increases `x`; south increases `y`. Columns 0–1 are the street, column 2 is the bakery wall, and columns 3–4 are the bakery interior. One wall cell contains a closed door. Opening it makes that cell passable and transparent.

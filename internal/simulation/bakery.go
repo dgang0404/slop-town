@@ -46,6 +46,7 @@ const (
 )
 
 type SpatialEntity struct {
+	RequestedItem      string `json:",omitempty"` // Tool named on a workroom supply order.
 	Name               string
 	Kind               EntityKind
 	Placement          Placement
@@ -281,12 +282,15 @@ func (b *Bakery) Validate() error {
 	}
 	for y, row := range b.Cells {
 		for x, cell := range row {
-			if cell.SpaceID != b.StreetID && cell.SpaceID != b.InteriorID && !(b.GeneratorVersion == 3 && cell.SpaceID == prefix+"workroom") {
+			if cell.SpaceID != b.StreetID && cell.SpaceID != b.InteriorID && !(b.GeneratorVersion >= 3 && cell.SpaceID == prefix+"workroom") {
 				return fmt.Errorf("cell (%d,%d) references unknown space %q", x, y, cell.SpaceID)
 			}
 		}
 	}
 	for id, e := range b.Entities {
+		if e.RequestedItem != "" && (b.GeneratorVersion != 4 || id != prefix+"order") {
+			return fmt.Errorf("unexpected supply order on %q", id)
+		}
 		localID, inWorld := strings.CutPrefix(id, prefix)
 		if !inWorld || !validID(localID) {
 			return fmt.Errorf("invalid entity ID %q for world %q", id, b.WorldID)

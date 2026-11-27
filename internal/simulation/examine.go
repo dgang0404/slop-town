@@ -4,6 +4,7 @@ package simulation
 import (
 	_ "embed"
 	"encoding/json"
+	"net/url"
 	"strings"
 )
 
@@ -45,6 +46,10 @@ func (b *Bakery) examination(view Observation, ref string) (finding, detail stri
 			}
 		}
 	case Item:
+		if target.RequestedItem != "" {
+			state = "pinned to the workbench"
+			break
+		}
 		switch holder := target.Placement.HolderID; holder {
 		case view.ObserverID:
 			state = "in hand"
@@ -61,6 +66,16 @@ func (b *Bakery) examination(view Observation, ref string) (finding, detail stri
 	if target.CloseDetail != "" && inReach(observer, at) && !b.dimAt(at) {
 		detail = target.CloseDetail
 		finding += ", " + detail
+	}
+	if target.RequestedItem != "" && detail != "" {
+		drawer := url.PathEscape(b.WorldID) + "/workbench"
+		if view.hasTarget(drawer) && b.Entities[drawer].Open {
+			if view.hasTarget(target.RequestedItem) && b.Entities[target.RequestedItem].Placement.HolderID == drawer {
+				finding += ". The requested tool is in the drawer"
+			} else {
+				finding += ". The requested tool is missing from the open drawer"
+			}
+		}
 	}
 	return finding + ".", detail
 }

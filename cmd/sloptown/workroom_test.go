@@ -2,6 +2,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/dgang0404/slop-town/internal/simulation"
@@ -35,5 +36,36 @@ func TestSavedWorkroom(t *testing.T) {
 		if err != nil || report.Tick != 16 {
 			t.Fatal(report, err)
 		}
+	}
+}
+
+func TestWorkroomSupplyOrder(t *testing.T) {
+	t.Chdir(t.TempDir())
+	const db = "order.sqlite"
+	scope := simulation.Scope{WorldID: "bakery", TimelineID: "main"}
+	visit := func(commands string, flags ...string) string {
+		t.Helper()
+		return journalVisit(t, commands+"journal\n", append([]string{"-db", db}, flags...)...)
+	}
+	visit("", "-workroom")
+	if _, err := storage.SaveCheckpoint(db, scope); err != nil {
+		t.Fatal(err)
+	}
+	const start = "open bakery door\nwalk to workroom door\nopen workroom door\nwalk to drawer\nexamine order\n"
+	book := visit(start)
+	if !strings.Contains(book, "leave the dough scraper in the workbench drawer") || strings.Contains(book, "requested tool is") {
+		t.Fatal(book)
+	}
+	book = visit("open drawer\nexamine order\nnorth\nwalk to crate\nopen crate\ntake scraper\n")
+	if !strings.Contains(book, "missing from the open drawer") {
+		t.Fatal(book)
+	}
+	const finish = "put scraper in drawer\nexamine order\n"
+	book = visit(finish, "-batch", "deliver")
+	if !strings.Contains(book, "The requested tool is in the drawer.") || visit(finish, "-batch", "deliver") != book {
+		t.Fatal(book)
+	}
+	if _, err := storage.Replay(db, scope, 0); err != nil {
+		t.Fatal(err)
 	}
 }
