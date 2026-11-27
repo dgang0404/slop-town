@@ -2,6 +2,25 @@
 
 The master design calls for plants that grow with town time, including when nobody is looking. This phase starts with watering an individual plant and observing it again later. The first two checkpoints cover growth and harvesting. Animal interactions and trading produce come later. [Master design, sections 29 and 50](../design/Slop_Town_Master_Design_Revised_v7.docx)
 
+## Town settings and population over time
+
+The following controls are planned for **New Game**. Show the resulting starting resident count and town dimensions before the player confirms. Exact preset counts and hardware limits need testing.
+
+| Setting | Choices | What changes |
+| --- | --- | --- |
+| Town size | Small, medium, large | The area available for streets, lots and interiors. |
+| Starting population | Few, standard, many | How many people move in initially. Offer combinations the town can house and the device can simulate. |
+| Plant density | Sparse, standard, lush | How densely suitable ground starts planted. Reserve paths, entrances and working space at every density. |
+| Town theme | Wholesome Whimsy foundation, plus compatible optional packs | The foundation supplies everyday residents, food and shops. A foodie pack could favor growers, kitchens and restaurant work. Horror or other themed packs can give the same underlying town mechanics a different emphasis. |
+
+Save these creation settings with the seed and pack versions. **During play**, allow changes to narration detail, illustration display, accessibility and content presentation. Changing how much the player sees must preserve the people, plants and history already in the save. Gardening, arrivals and departures can change the living town through play.
+
+**Residents.** Include women, men and nonbinary people in the population, including trans residents. Let players choose their own character’s gender and pronouns. A trans woman can simply be the town’s baker. Her gender tells the simulation nothing about her baking skill, fertility or desire to have children.
+
+**Long-running towns — exploratory.** A later life-cycle option could support households having children, residents aging, and people moving into or out of town. Let spare housing and sustainable population limits shape future arrivals and household growth. A full town need not evict someone when a child is born. Keep departed residents in family histories and journals. Before adopting this feature, simulate several generations in a small town and measure population, save growth and turn time. Check that children can grow up, that shops can change hands and that old letters still identify their writers.
+
+The player character’s old age remains an open design question. Possibilities include choosing retirement and continuing as another resident, or ending that character’s journal at death. Decide how long a lifetime feels in playable turns and what happens to the town and journal before committing to either outcome.
+
 ## Planned scenario — a restaurant supplied by the town
 
 A restaurant can be common across generated towns where there are enough customers, workers and suppliers to sustain one. Give each restaurant a menu its cooks can make with the equipment on hand and ingredients they can obtain. A riverside town and a farming village may serve different lunches. Some towns can have a smaller menu or no restaurant at all. The frequency is open for playtesting.
