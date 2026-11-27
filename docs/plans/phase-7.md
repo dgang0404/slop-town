@@ -214,3 +214,17 @@ A seed-42 save made by `4c18125` reopened with the spoon still hidden. After ope
 A separate test gave two wooden spoons the same name and placed one on the street and one inside the crate. Each kept its own first sighting. In an illustrated journal test, hearing about a spoon produced dialogue, and seeing it later produced the discovery paragraph and its sketch. [Discovery tests](../../internal/simulation/discovery_test.go) · [Illustrated journal tests](../../cmd/sloptown/journal_illustrated_test.go)
 
 The full offline build and tests, two seed-42 smoke runs and three race-detector runs passed. The terminal also cross-built for Windows amd64 and macOS arm64.
+
+## Checkpoint 15 — look up a first sighting
+
+`journal discoveries` lists the character’s recorded first sightings in order. Each date appears once and the setting changes when the sights do. Use the arrow menu to open the full list, or type a name such as `journal discoveries wooden spoon` to narrow it. A whole word or phrase matches the name the character observed. Two objects called “wooden spoon” can each have an entry. A mention during a conversation stays in the ordinary journal until the character has a sighting of their own to look up.
+
+The terminal reads the existing journal for the current character and timeline. A search spends no turn and preserves a pending numbered choice and the object referred to by `it`. The list uses the same offline wording as the full journal. [Try the lookup](../../README.md#read-your-journal)
+
+### Checkpoint 15 results
+
+A seed-42 save created by `49c2f53` had reached tick 23 with the crate closed. A search for “spoon” found no entry. The player opened the crate on day 2, took the spoon outside and dropped it. On reopening, the street view showed the spoon at the player’s feet. Choosing the index with Up and Enter in a Linux terminal recalled the bakery and the crate on day 2.
+
+Reading the index preserved the save. The old and new builds replayed from sequences 0 and 46 to tick 28, sequence 56, with SHA-256 `0b03fe7af6828a754b3a3013d057c25bd94cc1172b77d1a3dde5db92b58469c3`. The text and illustrated editions matched across builds. Other checks covered an in-memory visit, an empty timeline, a secondhand mention, and searching for two identically named spoons while choosing a destination box. [Discovery lookup tests](../../cmd/sloptown/journal_discoveries_test.go) · [Numbered choice walkthrough](../../cmd/sloptown/targets_test.go)
+
+The offline build, full test suite, both smoke runs and three race-detector runs passed. The terminal cross-built for Windows amd64 and macOS arm64.

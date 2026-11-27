@@ -8,6 +8,11 @@
     "feeling_relieved": "I felt relieved.",
     "lingering_relief": "A little of that relief lingered."
   },
+  "discoveryIndex": {
+    "title": "My first sightings",
+    "empty": "I haven’t recorded any first sightings yet.",
+    "noMatch": "I haven’t recorded a first sighting by that name."
+  },
   "discoveries": {
     "unspecified": "I saw the {object}.",
     "here": "I saw the {object} here.",

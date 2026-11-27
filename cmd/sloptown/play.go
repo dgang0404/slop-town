@@ -13,7 +13,7 @@ import (
 	"github.com/dgang0404/slop-town/internal/simulation"
 )
 
-const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use walk to NAME to approach a visible destination. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. Use introduce yourself to NAME or talk to NAME when someone is nearby. Short names work. Use it for the last object you acted on. Type actions for choices here, look for the current scene, calendar for today's date, journal to read your memories or quit to leave. Use journal accounts to recall who told you about a sighting. Use export journal for a text copy or export illustrated journal for a book you can open in a browser. Choose narration brief or narration story to change how turns read."
+const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use walk to NAME to approach a visible destination. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. Use introduce yourself to NAME or talk to NAME when someone is nearby. Short names work. Use it for the last object you acted on. Type actions for choices here, look for the current scene, calendar for today's date, journal to read your memories or quit to leave. Use journal accounts to recall who told you about a sighting. Use journal discoveries to recall first sightings, or journal discoveries NAME to find one by name. Use export journal for a text copy or export illustrated journal for a book you can open in a browser. Choose narration brief or narration story to change how turns read."
 
 type bakerySession struct {
 	narrator  *turnNarrator
@@ -65,6 +65,21 @@ func (s bakerySession) play(in io.Reader, out io.Writer) error {
 				fmt.Fprintf(out, "Narration is %s.\n", style)
 			default:
 				fmt.Fprintln(out, "Choose narration brief or narration story.")
+			}
+			continue
+		}
+		const find = "journal discoveries"
+		if line == find || strings.HasPrefix(line, find+" ") {
+			entries, err := s.journal()
+			if err != nil {
+				return err
+			}
+			name := strings.TrimSpace(strings.TrimPrefix(line, find))
+			if words := strings.Fields(name); len(words) > 1 {
+				name = noun(words)
+			}
+			if err := writeDiscoveries(out, entries, name); err != nil {
+				return err
 			}
 			continue
 		}

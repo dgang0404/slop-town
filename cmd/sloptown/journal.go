@@ -24,6 +24,41 @@ type journalPassage struct {
 
 const emptyJournal = "I haven't recorded anything yet."
 
+// The index uses the date and setting of each original sighting, even if
+// the character has since moved the object or heard someone describe it.
+func writeDiscoveries(dst io.Writer, entries []simulation.JournalEntry, name string) error {
+	out := bufio.NewWriter(dst)
+	fmt.Fprintln(out, journalPhrases.DiscoveryIndex.Title)
+	var date simulation.BakeryDate
+	var place simulation.JournalObservation
+	printed := false
+	for _, entry := range entries {
+		for _, sight := range entry.FirstSeen {
+			if name != "" && !strings.Contains(" "+strings.ToLower(sight.Target.Name)+" ", " "+name+" ") {
+				continue
+			}
+			if !printed || entry.Date != date {
+				fmt.Fprintln(out)
+				fmt.Fprintln(out, formatBakeryDate(entry.Date))
+				date, place = entry.Date, simulation.JournalObservation{}
+			}
+			if entry.Place.Text != "" && !entry.Place.SameAs(place) {
+				fmt.Fprint(out, rememberedObservation(entry.Place), " ")
+			}
+			fmt.Fprintln(out, rememberedDiscovery(sight))
+			printed, place = true, entry.Place
+		}
+	}
+	if !printed {
+		message := journalPhrases.DiscoveryIndex.Empty
+		if name != "" {
+			message = journalPhrases.DiscoveryIndex.NoMatch
+		}
+		fmt.Fprintln(out, message)
+	}
+	return out.Flush()
+}
+
 func writeAccounts(dst io.Writer, accounts []simulation.HeardAccount) error {
 	out := bufio.NewWriter(dst)
 	fmt.Fprintln(out, "Accounts I've heard")

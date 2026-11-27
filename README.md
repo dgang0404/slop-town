@@ -162,6 +162,8 @@ In the spoon walkthrough, that arrival heading leads straight to “I opened the
 
 The offline journal gets what your character saw through a local call to the simulation. If you play with `-db`, SQLite keeps that history on your device. The game ships the English phrases for places, sensations and discoveries in its executable, so opening the journal works without downloading prose. [English phrases](cmd/sloptown/journal.en.json) · [How discoveries are recorded](docs/plans/phase-7.md#checkpoint-14--where-i-first-saw-it)
 
+Type `journal discoveries spoon` to recall when and where you first saw a spoon. After you open the crate, that entry reads “I was in the bakery. I saw the wooden spoon in the crate.” It keeps that first sighting even after you carry the spoon outside. Type `journal discoveries`, or choose it with the arrows and Enter, to list all first sightings by date. Reading takes no turn. [First-sighting lookup](docs/plans/phase-7.md#checkpoint-15--look-up-a-first-sighting)
+
 Type `export journal` or select it with the arrows and Enter to save the chaptered text in the directory where you started the game. The first available name is `slop-town-journal.txt`, followed by `slop-town-journal-2.txt`, `slop-town-journal-3.txt` and so on. This also works during an in-memory visit.
 
 To export directly from an existing save, give the shell a destination filename. Add `-timeline NAME` to select another timeline in that save.

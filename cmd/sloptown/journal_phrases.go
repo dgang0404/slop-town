@@ -13,8 +13,9 @@ import (
 var journalEnglish []byte
 
 var journalPhrases struct {
-	Perceptions map[simulation.PerceptionKind]string
-	Discoveries map[simulation.DiscoveryLocation]string
+	Perceptions    map[simulation.PerceptionKind]string
+	Discoveries    map[simulation.DiscoveryLocation]string
+	DiscoveryIndex struct{ Title, Empty, NoMatch string }
 }
 
 func init() {
