@@ -194,6 +194,8 @@ Start `go run ./cmd/sloptown bakery -practice -play -seed 42`. In an interactive
 
 Try `walk to the porter` from the starting street. When the crate is visible along a clear route, `walk to the crate` brings you within reach so you can open it. If two objects match, choose one by location. You can still choose a compass direction for an individual step.
 
+Try `west` and then `walk to door` in a fresh seed-42 bakery without workers. The one-step return reads “You reach the bakery door.” Open your journal to see “I reached the bakery door.” You can then type `open it`. [Walking and journal examples](docs/plans/phase-7.md#checkpoint-17--describe-a-walks-arrival-once)
+
 **Time passes one step at a time.** A three-square walk costs three ticks. Choosing `rest` or `wait` costs one tick each. Looking, browsing, cancelling, or asking to approach something already within reach costs none. Residents act after each step. If someone introduces themselves to you on the way, the walk pauses and gives you the turn. You can choose another action or select the destination again to continue.
 
 To see a moving destination interrupt a walk, start a fresh seed-42 practice session. Wait three turns, step west, step north, then enter `walk to the baker`. You take one step before the baker slips out of sight. [Checkpoint results](docs/plans/phase-5.md#checkpoint-4-demo-controls)

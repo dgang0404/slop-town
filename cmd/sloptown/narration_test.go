@@ -100,6 +100,21 @@ func TestTerminalMovementKeepsOnlyUsefulFeedback(t *testing.T) {
 	}
 }
 
+func TestOneStepWalkDescribesArrivalOnce(t *testing.T) {
+	const input = "west\nwalk to door\njournal\nopen it\n"
+	for _, style := range []string{"brief", "story"} {
+		var out, diag bytes.Buffer
+		if code := runBakery([]string{"-play", "-narration", style}, strings.NewReader(input), &out, &diag); code != 0 {
+			t.Fatal(code, &diag)
+		}
+		_, walk, ok := strings.Cut(out.String(), "One step west.\n\n")
+		if !ok || !strings.HasPrefix(walk, "You reach the bakery door.\nMy journal\n") ||
+			!strings.HasSuffix(walk, "I saw the closed bakery door to the east.\nI reached the bakery door.\n\nYou open the door.\n") {
+			t.Fatal(&out)
+		}
+	}
+}
+
 func TestWalkNarrationKeepsWitnessedInterruption(t *testing.T) {
 	scope := simulation.Scope{WorldID: "bakery", TimelineID: "main"}
 	const player, crate = "bakery/player", "bakery/crate"
@@ -138,7 +153,7 @@ func TestWalkNarrationKeepsWitnessedInterruption(t *testing.T) {
 	}
 	for _, out := range []string{transcript.String(), passage.String()} {
 		if strings.Count(out, "You walk toward the crate.") != 1 || !strings.Contains(out, "introduces themselves to you. You pause your walk.") ||
-			strings.Contains(out, "within reach") || state.Clock.Tick() != 4 {
+			strings.Contains(out, "You reach the crate.") || state.Clock.Tick() != 4 {
 			t.Fatal(out)
 		}
 	}

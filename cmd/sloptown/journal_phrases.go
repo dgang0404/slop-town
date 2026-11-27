@@ -13,6 +13,7 @@ import (
 var journalEnglish []byte
 
 var journalPhrases struct {
+	WalkArrival                   struct{ Live, Journal string }
 	Perceptions                   map[simulation.PerceptionKind]string
 	Discoveries, LastSeen         map[simulation.DiscoveryLocation]string
 	DiscoveryIndex, LastSeenIndex struct{ Title, Empty, NoMatch string }

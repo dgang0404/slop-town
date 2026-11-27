@@ -46,10 +46,17 @@ func (n *turnNarrator) write(out io.Writer, cmd bakeryCommand, turn simulation.T
 	current := turn.Scene
 	target := current.ActionTarget
 	prior := n.previous
-	message, news, _ := strings.Cut(turn.Message, "\n")
+	message := turn.Message
+	var arrival simulation.ObservedTarget
+	if cmd.Action == simulation.ActionApproach {
+		message, arrival = turn.SplitWalkArrival()
+	}
+	message, news, _ := strings.Cut(message, "\n")
 	continuing := cmd.continuation && n.walking
 	var lines []string
-	if !continuing {
+	if arrival.Ref != "" {
+		lines = append(lines, strings.ReplaceAll(journalPhrases.WalkArrival.Live, "{object}", n.mark(arrival.Name)))
+	} else if !continuing {
 		if opening := n.actionOpening(cmd, target, current, message); opening != "" {
 			lines = append(lines, opening)
 		}
@@ -110,7 +117,7 @@ func (n *turnNarrator) write(out io.Writer, cmd bakeryCommand, turn simulation.T
 			} else {
 				lines = append(lines, "Inside lies "+item+".")
 			}
-		} else if detail := n.describeTarget(obj, current, explained[obj.Ref]); detail != "" {
+		} else if detail := n.describeTarget(obj, current, explained[obj.Ref], obj.Ref == arrival.Ref); detail != "" {
 			lines = append(lines, detail)
 		}
 		if now.Recognition != "" && now.Recognition != was.Recognition && !introduced[obj.Ref] {
@@ -168,7 +175,7 @@ func (n *turnNarrator) describeSelf(was, now simulation.ObserverDetail) []string
 	return lines
 }
 
-func (n *turnNarrator) describeTarget(obj simulation.ObservedTarget, scene simulation.Scene, explained bool) string {
+func (n *turnNarrator) describeTarget(obj simulation.ObservedTarget, scene simulation.Scene, explained, reached bool) string {
 	now := scene.Details[obj.Ref]
 	was, seen := n.previous.Details[obj.Ref]
 	subject := "The " + obj.Name
@@ -199,7 +206,7 @@ func (n *turnNarrator) describeTarget(obj simulation.ObservedTarget, scene simul
 		default:
 			return subject + " " + n.mark("takes a step") + "."
 		}
-	case n.style == "story" && now.Holder == "" && was.Holder == "" &&
+	case !reached && n.style == "story" && now.Holder == "" && was.Holder == "" &&
 		squaredDistance(n.previous.Self.Cell, was.Cell) > 1 && squaredDistance(scene.Self.Cell, now.Cell) == 1:
 		// The observer has stepped alongside something they could already see.
 		return "The " + now.Label + " is " + n.mark("beside you now") + "."

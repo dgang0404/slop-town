@@ -351,7 +351,7 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 				was, _ := bakery.PositionOf(ref)
 				switch {
 				case inReach(nextBakery.Entities[actorID].Placement.Cell, dest):
-					result.Message += "\nYou are within reach of the " + nextBakery.Entities[ref].Name + "."
+					result.Message += "\n" + walkArrivalMessage(nextBakery.Entities[ref].Name)
 				case dest != was:
 					result.Message += "\nYour destination moved. You pause."
 				default:

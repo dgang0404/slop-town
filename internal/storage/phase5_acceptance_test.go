@@ -34,7 +34,7 @@ func TestPhase5Acceptance(t *testing.T) {
 	const recovered = atCrate + "rest\n"
 	const visit = recovered + "south\nsouth\nwest\nnorth\nnorth\neast\n"
 	play(clean, visit, "")
-	if out := play(interrupted, atCrate, ""); strings.Count(out, "You walk toward the crate.") != 1 || !strings.Contains(out, "You are within reach of the crate.") {
+	if out := play(interrupted, atCrate, ""); strings.Count(out, "You walk toward the crate.") != 1 || !strings.Contains(out, "You reach the crate.") {
 		t.Fatal(out)
 	}
 

@@ -61,11 +61,18 @@ func TestSeasonChapterSharesAnArrival(t *testing.T) {
 }
 
 func TestJournalWalkAcrossDays(t *testing.T) {
-	route := "open door\ne\ne\ne\ns\ns\n" + strings.Repeat("wait\n", 16) + "walk to crate\njournal\n"
-	book := journalVisit(t, route)
-	oldDay, newDay, ok := strings.Cut(book, "Day 2 of spring, year 1\n\n")
-	if !ok || strings.Count(oldDay, "I walked toward the crate.") != 1 ||
-		!strings.HasPrefix(newDay, "I continued toward the crate.") || !strings.Contains(newDay, "I was within reach of the crate.") {
-		t.Fatal(book)
+	for _, tc := range []struct {
+		waits  int
+		dayTwo string
+	}{
+		{15, "I reached the crate.\n"},
+		{16, "I continued toward the crate.\nI reached the crate.\n"},
+	} {
+		route := "open door\ne\ne\ne\ns\ns\n" + strings.Repeat("wait\n", tc.waits) + "walk to crate\njournal\n"
+		book := journalVisit(t, route)
+		oldDay, newDay, ok := strings.Cut(book, "Day 2 of spring, year 1\n\n")
+		if !ok || strings.Count(oldDay, "I walked toward the crate.") != 1 || newDay != tc.dayTwo {
+			t.Fatal(book)
+		}
 	}
 }

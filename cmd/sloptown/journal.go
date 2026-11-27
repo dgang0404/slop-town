@@ -156,7 +156,9 @@ func composeJournal(entries []simulation.JournalEntry) []journalChapter {
 		flushWaits()
 		var lines []string
 		// A routine step or wait can bring news; the news carries the passage.
-		if entry.Outcome != "" && !continuation && entry.Action != simulation.ActionMove && entry.Action != simulation.ActionWait {
+		if entry.WalkArrival.Ref != "" {
+			lines = append(lines, strings.ReplaceAll(journalPhrases.WalkArrival.Journal, "{object}", entry.WalkArrival.Name))
+		} else if entry.Outcome != "" && !continuation && entry.Action != simulation.ActionMove && entry.Action != simulation.ActionWait {
 			lines = append(lines, remembered(entry.Outcome))
 		} else if continuation && newDay {
 			lines = append(lines, strings.Replace(remembered(entry.Outcome), "I walked toward ", "I continued toward ", 1))

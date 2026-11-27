@@ -150,7 +150,7 @@ func TestJournalHearsAnotherActorsTurn(t *testing.T) {
 
 func TestJournalRecallsAWalk(t *testing.T) {
 	book := journalVisit(t, "wait\neast\neast\neast\nsouth\nsouth\nwalk to crate\nopen it\njournal\n", "-practice")
-	if strings.Count(book, "I walked toward the crate.") != 1 || !strings.Contains(book, "I was within reach of the crate.") ||
+	if strings.Count(book, "I walked toward the crate.") != 1 || strings.Count(book, "I reached the crate.") != 1 ||
 		!strings.Contains(book, "My legs felt tired.") || !strings.Contains(book, "I opened the crate.") {
 		t.Fatal(book)
 	}

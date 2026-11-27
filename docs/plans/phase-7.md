@@ -242,3 +242,17 @@ A seed-42 save from `e7348f3` recorded the spoon in the bakery crate on day 1. O
 In a second visit, the baker took the spoon behind a closed door. The player recalled the crate and the baker recalled carrying the spoon. The player saw the new location after returning and taking a turn with the spoon visible again. [Observer and same-name tests](../../internal/simulation/discovery_test.go) · [Lookup and restart tests](../../cmd/sloptown/journal_discoveries_test.go)
 
 Up and Enter opened the index in a Linux terminal. Both executables replayed the saved visit from sequences 0 and 46 to tick 27, sequence 54, with SHA-256 `aa20f9649978f08649874146dd4fa32e6bb58d1f7d8e140899394ac3b5c7d9df`. The plain and illustrated journal exports matched across builds. The full offline suite, both smoke runs and three race-detector runs passed. The terminal cross-built for Windows amd64 and macOS arm64.
+
+## Checkpoint 17 — describe a walk’s arrival once
+
+In a fresh seed-42 bakery, step west and choose `walk to door`. Brief and story mode both say “You reach the bakery door.” The journal records “I reached the bakery door.” On a longer walk the player can read about a departure, a change along the way, and an arrival on different turns. A greeting that interrupts a walk still gives the player the next choice.
+
+The arrival comes from the selected destination in the walker’s saved observation. A second object with the same name has its own reference. Story mode skips the extra “beside you now” for the destination and still describes other things the player notices. Both journal editions use the same bundled first-person phrase. [Walk receipt tests](../../internal/simulation/approach_test.go) · [Terminal walkthroughs](../../cmd/sloptown/narration_test.go)
+
+### Checkpoint 17 results
+
+A save from `1b4666c` recorded the short walk to the bakery door. Reopening it with the new build gave the shorter arrival in the plain and illustrated journals. After a longer walk to the crate, `open it` revealed the spoon. Both builds replayed the visit from sequences 0 and 4 to tick 27, sequence 54, with SHA-256 `577bb5784076a6702bf54f7ea87e84fd12522521657c61efdce7cc1bf0abb107`.
+
+A walk that ended on the first turn of day two opened the new chapter with “I reached the crate.” A walk that still had a step left at daybreak recorded the continuation and then the arrival. [Calendar tests](../../cmd/sloptown/calendar_test.go)
+
+In a Linux terminal, Down and Enter selected the west step, the return walk and the journal. The arrival highlighted **bakery door** and the save ended at tick 2. The full offline test suite, both seed-42 smoke runs and three race-detector runs passed. The CLI also cross-built for Windows amd64 and macOS arm64.

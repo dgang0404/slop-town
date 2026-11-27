@@ -25,6 +25,7 @@ type JournalEntry struct {
 	Outcome      string
 	WalkEnd      string
 	WalkTarget   string
+	WalkArrival  ObservedTarget
 	ContinueWalk bool
 	IntroducedTo ObservedTarget
 	Witnessed    []WitnessedAction
@@ -67,11 +68,15 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 			}
 			page := entryAt(e.Tick)
 			page.Action = r.Proposal.Action
-			outcome, rest, _ := strings.Cut(r.Result.Message, "\n")
+			message := r.Result.Message
+			if page.Action == ActionApproach {
+				message, page.WalkArrival = r.Result.SplitWalkArrival()
+			}
+			outcome, rest, _ := strings.Cut(message, "\n")
 			page.Outcome = outcome
 			page.WalkTarget, page.ContinueWalk = r.Result.SelectedTarget, r.Result.ContinueWalk
-			if page.Action == ActionApproach && !page.ContinueWalk && rest != "" {
-				// The last line records arrival or interruption. Addressed speech
+			if page.Action == ActionApproach && !page.ContinueWalk && page.WalkArrival.Ref == "" && rest != "" {
+				// The last line records the interruption. Addressed speech
 				// has its own event and is included below in the order it was heard.
 				page.WalkEnd = rest[strings.LastIndexByte(rest, '\n')+1:]
 			}

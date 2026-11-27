@@ -7,6 +7,22 @@ import (
 	"testing"
 )
 
+func TestWalkArrivalUsesTheSelectedVisibleDestination(t *testing.T) {
+	const prefix = "You walk toward the spoon.\nAnother sound."
+	const message = prefix + "\nYou are within reach of the spoon."
+	second := ObservedTarget{Ref: "second", Name: "spoon"}
+	r := Result{Message: message, SelectedTarget: second.Ref,
+		Observation: Observation{Targets: []ObservedTarget{{Ref: "first", Name: "spoon"}, second}}}
+	if rest, reached := r.SplitWalkArrival(); rest != prefix || reached != second {
+		t.Fatal(rest, reached)
+	}
+	// A namesake in the final view cannot stand in for the selected spoon.
+	r.Observation.Targets = r.Observation.Targets[:1]
+	if rest, reached := r.SplitWalkArrival(); rest != message || reached.Ref != "" {
+		t.Fatal(rest, reached)
+	}
+}
+
 func TestWalkInterruptedAtShopfront(t *testing.T) {
 	c, err := (BakerySetup{Practice: true}).NewCoordinator(Scope{"bakery", "main"}, 42)
 	if err != nil {
