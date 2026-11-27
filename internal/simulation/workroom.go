@@ -27,7 +27,7 @@ func (b *Bakery) workroomOrigin(prefix string) (CellPosition, int) {
 func (b *Bakery) addWorkroom(prefix string) error {
 	at, step := b.workroomOrigin(prefix)
 	b.GeneratorVersion = 4
-	b.ContentVersion = supplyQuestionVersion
+	b.ContentVersion = helperGreetingVersion
 	for row, line := range strings.Split(strings.TrimSpace(workroomPlan), "\n") {
 		for x, tile := range line {
 			cell := CellPosition{b.FloorID, at.X + x, at.Y + row*step}

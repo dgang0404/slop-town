@@ -441,6 +441,8 @@ In a fresh seed-42 workroom, open the bakery door, then type `walk to workroom d
 
 **Stay for the collection.** In a fresh workroom the baker checks the workbench near the end of each 32-turn shift. After delivering the scraper, close the drawer and wait nearby. The baker can open the drawer and pick up the tool on separate turns. You can also leave before the collection. When you return, the drawer tells you what is there now. To learn who took something you missed, you need a witness.
 
+**Say hello after the pickup.** If the baker saw you put the requested tool in the drawer, introduce yourself to the baker, then choose “Hello.” after they collect it. The baker offers their number if you haven’t exchanged it in that direction yet. Type `journal people baker` to look it up. On seed 42, it’s extension 201 at the bakery phone.
+
 ### Export an illustrated journal
 
 Type `export illustrated journal` or choose it with the arrows and Enter. Open `slop-town-journal.html` in a browser. The maps travel with the file, so you can copy it to another device and read it offline. Later exports use the next available filename.

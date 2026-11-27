@@ -130,3 +130,43 @@ func TestBakerAnswersFromOwnKnowledge(t *testing.T) {
 		t.Fatal("old timeline accepted new line")
 	}
 }
+
+func TestHelperGreetingRequiresRecognitionAndWitnessedDelivery(t *testing.T) {
+	scope := Scope{"bakery", "main"}
+	c, err := (BakerySetup{Workroom: true}).NewCoordinator(scope, 42)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := c.bakery
+	const baker, helper = "bakery/baker", "bakery/porter"
+	toolID := b.Entities["bakery/order"].RequestedItem
+	tool := b.Entities[toolID]
+	intro := NotebookEntry{Action: ActionIntroduce, Subject: helper, Target: baker}
+	sight := NotebookEntry{Action: ActionPut, Subject: helper, Target: toolID, Container: "bakery/workbench"}
+	view, err := b.Observe(scope, baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	greet := func(want bool) {
+		t.Helper()
+		reply := b.answer(helper, view, DialogueChoice{Line: SpeechLine{Intent: "greet"}, Words: "Hello."})
+		if (reply.Number != "") != want {
+			t.Fatal(reply)
+		}
+	}
+	b.Notebooks = map[string][]NotebookEntry{baker: {intro, sight}}
+	greet(false)
+	tool.Placement = Placement{HolderID: baker}
+	b.Entities[toolID] = tool
+	b.Notebooks[baker] = []NotebookEntry{sight}
+	greet(false)
+	b.Notebooks[baker] = []NotebookEntry{intro}
+	greet(false)
+	b.Notebooks[baker] = append(b.Notebooks[baker], sight)
+	greet(true)
+	b.ContentVersion = supplyQuestionVersion
+	greet(false)
+	b.ContentVersion = helperGreetingVersion
+	b.Contacts = []sharedContact{{Owner: helper, Person: baker, Number: "201"}}
+	greet(false)
+}

@@ -102,3 +102,9 @@ The offline Linux suite and three race-detector runs passed. The Windows amd64 a
 ## Checkpoint 5 results
 
 A seed-42 player introduced themselves to the porter, walked to the crate, and rested in sight of both workers. A failed save rolled back the second endurance improvement, the feeling of relief and both witnesses’ notebook entries together. After retry, the player walked six steps before feeling tired. The uninterrupted and restarted visits ended with matching views for all three characters and identical event histories. Three replays reached tick 23, sequence 80. [Phase 5 acceptance results](phase-5-results.md)
+
+## A favor remembered on the next greeting
+
+In a fresh workroom (content version 28), the baker can volunteer their phone number to a helper they recognize. The baker must have the requested tool in hand and a firsthand memory of that person putting it into the workbench drawer. The greeting uses the existing one-way contact exchange. A second greeting can be warm without repeating the number. The player can miss this exchange, and the same rule applies when the porter greets the baker. [Try the delivery and greeting](../../README.md#fill-the-workroom-supply-order)
+
+In the seed-42 visit the baker collected the scraper on turn 27, received the player’s introduction on turn 28 and shared extension 201 on turn 29. After retry and restart, only the player’s phone book contained the new contact. Replay from the open drawer on turn 26 reproduced the final state. Tests also cover an unwitnessed favor, an unfamiliar helper, a previously shared number and the version 27 greeting. [SQLite visit](../../cmd/sloptown/workroom_test.go) · [Greeting rules](../../internal/simulation/workroom_test.go)

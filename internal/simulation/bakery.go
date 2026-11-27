@@ -121,6 +121,7 @@ const (
 	phoneContentVersion           = 25
 	workroomRoundsVersion         = 26
 	supplyQuestionVersion         = 27
+	helperGreetingVersion         = 28
 	fatigueLimit                  = 5 // Steps since the last rest, capped during a break.
 )
 

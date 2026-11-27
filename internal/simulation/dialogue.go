@@ -214,14 +214,11 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 		if tool.Placement.HolderID == listener {
 			x.Reply = "I have the " + tool.Name + " I need for the workroom."
 		}
-		for _, note := range b.Notebooks[listener] {
-			if note.Action == ActionPut && note.Subject == speaker && note.Target == toolID && note.Container == prefix+"workbench" {
-				if tool.Placement.HolderID != listener {
-					x.Reply = "I asked for the " + tool.Name + "."
-				}
-				x.Reply += " I saw you put it in the drawer. Thank you."
-				break
+		if b.sawSupplyDelivery(listener, speaker, toolID, prefix+"workbench") {
+			if tool.Placement.HolderID != listener {
+				x.Reply = "I asked for the " + tool.Name + "."
 			}
+			x.Reply += " I saw you put it in the drawer. Thank you."
 		}
 	case "ask_number":
 		x.ContactGiver = listener
@@ -254,6 +251,9 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 		x.Reply = "Hello."
 		if b.recognizes(listener, speaker) {
 			x.Reply = "Good to see you again."
+			if b.ContentVersion >= helperGreetingVersion {
+				b.offerHelperNumber(&x, listener, speaker)
+			}
 		}
 	case "notice":
 		x.Reply = "I can't see it from here."
@@ -295,4 +295,29 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 		}
 	}
 	return x
+}
+
+func (b *Bakery) sawSupplyDelivery(witness, helper, tool, drawer string) bool {
+	for _, note := range b.Notebooks[witness] {
+		if note.Action == ActionPut && note.Subject == helper && note.Target == tool && note.Container == drawer {
+			return true
+		}
+	}
+	return false
+}
+
+// The baker can follow up on a favor they personally witnessed. This passes
+// one person's number to one listener through the ordinary disclosure event.
+func (b *Bakery) offerHelperNumber(x *Exchange, baker, helper string) {
+	prefix := url.PathEscape(b.WorldID) + "/"
+	if baker != prefix+"baker" || b.contact(helper, baker, ActionCall).Number != "" {
+		return
+	}
+	tool := b.Entities[prefix+"order"].RequestedItem
+	if b.Entities[tool].Placement.HolderID != baker || !b.sawSupplyDelivery(baker, helper, tool, prefix+"workbench") {
+		return
+	}
+	x.ContactGiver = baker
+	x.Number, _ = b.phoneLine(baker)
+	x.Reply += " Thanks for bringing the " + b.Entities[tool].Name + ". " + b.shareNumberWords(baker)
 }

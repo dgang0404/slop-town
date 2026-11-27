@@ -110,6 +110,29 @@ func TestBakerCollectsOrderAcrossRestart(t *testing.T) {
 			t.Fatal(r, err)
 		}
 	}
+	visit("introduce yourself to baker\n")
+	const hello = "talk to baker\n1\ncancel\n"
+	book := visit(hello, "-batch", "helper-greeting")
+	if !strings.Contains(book, "Thanks for bringing the dough scraper. You can reach me on 201") || visit(hello, "-batch", "helper-greeting") != book {
+		t.Fatal(book)
+	}
+	for _, actor := range []string{"player", "baker", "porter"} {
+		scene, err := storage.OpenBakeryScene(db, scope, 42, "bakery/"+actor)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if actor == "player" {
+			if len(scene.PhoneBook.People) != 1 || scene.PhoneBook.Details["bakery/baker"] != "201" {
+				t.Fatal(scene.PhoneBook)
+			}
+		} else if len(scene.PhoneBook.People) != 0 {
+			t.Fatal(scene.PhoneBook)
+		}
+	}
+	if r, err := storage.Replay(db, scope, mid.Sequence); err != nil || r.Tick != 29 {
+		t.Fatal(r, err)
+	}
+
 }
 
 func TestAskBakerAboutSupplies(t *testing.T) {
