@@ -62,6 +62,14 @@ func runActorInspection(command string, args []string, stdout, stderr io.Writer)
 			continue
 		}
 		saw := "sit down"
+		if e.Action == simulation.SightHandMovement {
+			where := ""
+			if e.Container != "" {
+				where = " near " + e.Container
+			}
+			fmt.Fprintf(stdout, "Tick %d, event %d — saw a hand move%s.\n", e.Tick, e.SourceSequence, where)
+			continue
+		}
 		if e.Action == simulation.ActionIntroduce {
 			fmt.Fprintf(stdout, "Tick %d, event %d — %s introduced themselves to you.\n", e.Tick, e.SourceSequence, e.Subject)
 			continue

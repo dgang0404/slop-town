@@ -57,6 +57,7 @@ func (b *Bakery) AvailableActions(scope Scope, actorID string) ([]ActionOption, 
 			offer(ActionClose, args)
 		case Item:
 			offer(ActionTake, args)
+			offer(ActionDiscreetTake, args)
 			offer(ActionDrop, args)
 			for _, dest := range view.Targets {
 				if b.Entities[dest.Ref].Kind == Container {

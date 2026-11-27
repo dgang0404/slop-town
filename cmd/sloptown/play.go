@@ -13,7 +13,7 @@ import (
 	"github.com/dgang0404/slop-town/internal/simulation"
 )
 
-const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use walk to NAME to approach a visible destination. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. Use introduce yourself to NAME or talk to NAME when someone is nearby. Short names work. Use it for the last object you acted on. Type actions for choices here, look for the current scene, calendar for today's date, journal to read your memories or quit to leave. Use journal accounts to recall who told you about a sighting, or journal leads to see which witnesses you could ask. Use journal discoveries for first sightings or journal last seen for the latest. Add a name to search either list. Use export journal for a text copy or export illustrated journal for a book you can open in a browser. Choose narration brief or narration story to change how turns read."
+const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use walk to NAME to approach a visible destination. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. In a new practice bakery, try discreetly take NAME for a careful pickup. Use introduce yourself to NAME or talk to NAME when someone is nearby. Short names work. Use it for the last object you acted on. Type actions for choices here, look for the current scene, calendar for today's date, journal to read your memories or quit to leave. Use journal accounts to recall who told you about a sighting, or journal leads to see which witnesses you could ask. Use journal discoveries for first sightings or journal last seen for the latest. Add a name to search either list. Use export journal for a text copy or export illustrated journal for a book you can open in a browser. Choose narration brief or narration story to change how turns read."
 
 const leadsCommand = "journal leads"
 const firstSightingsCommand = "journal discoveries"
@@ -275,6 +275,8 @@ func actionCommand(option simulation.ActionOption) string {
 		return "go " + string(option.Args.Direction)
 	case simulation.ActionApproach:
 		return "walk to the " + option.Args.Target
+	case simulation.ActionDiscreetTake:
+		return "discreetly take the " + option.Args.Target
 	case simulation.ActionSpeak:
 		return "talk to the " + option.Args.Target
 	case simulation.ActionIntroduce:
@@ -363,6 +365,11 @@ func parseBakeryAction(words []string) (simulation.ActionKind, simulation.Action
 		verb, rest = "take", rest[1:]
 	case "get":
 		verb = "take"
+	case "discreetly", "quietly":
+		if len(rest) == 0 || rest[0] != "take" || noun(rest[1:]) == "" {
+			return "", args, errors.New("Use discreetly take NAME.")
+		}
+		return simulation.ActionDiscreetTake, simulation.ActionArgs{Target: noun(rest[1:])}, nil
 	case "open", "close", "take", "drop":
 	default:
 		return "", args, errors.New("I don't understand that command. Type help for commands.")

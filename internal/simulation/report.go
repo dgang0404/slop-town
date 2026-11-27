@@ -7,7 +7,7 @@ const reportThanks = "Thanks for telling me."
 
 func (e NotebookEntry) isObservation() bool {
 	switch e.Action {
-	case ActionRest, ActionOpen, ActionClose, ActionTake, ActionPut, ActionDrop:
+	case ActionRest, ActionOpen, ActionClose, ActionTake, ActionPut, ActionDrop, SightHandMovement:
 		return true
 	}
 	return false
@@ -15,6 +15,9 @@ func (e NotebookEntry) isObservation() bool {
 
 func (b *Bakery) observedAct(fact NotebookEntry, me, you string) string {
 	sight := b.witnessedAction(fact)
+	if fact.Action == SightHandMovement {
+		return sight.HandMovementPhrase()
+	}
 	who := "the " + sight.Actor.Name
 	switch fact.Subject {
 	case me:
@@ -29,7 +32,11 @@ func (b *Bakery) observedAct(fact NotebookEntry, me, you string) string {
 }
 
 func (e NotebookEntry) speechLine(intent, tone string) SpeechLine {
-	return SpeechLine{Topic: e.Subject, Intent: intent, Tone: tone, Source: e.SourceSequence}
+	topic := e.Subject
+	if e.Action == SightHandMovement {
+		topic = string(SightHandMovement)
+	}
+	return SpeechLine{Topic: topic, Intent: intent, Tone: tone, Source: e.SourceSequence}
 }
 
 // A memory offers either the owner's account or a follow-up to the person

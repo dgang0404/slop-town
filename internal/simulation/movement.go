@@ -90,9 +90,12 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 		if !validID(args.Target) || !validID(args.Container) || args != (ActionArgs{Target: args.Target, Container: args.Container}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Choose an item and a destination container."}
 		}
-	case ActionOpen, ActionClose, ActionTake, ActionDrop, ActionIntroduce, ActionApproach:
+	case ActionOpen, ActionClose, ActionTake, ActionDiscreetTake, ActionDrop, ActionIntroduce, ActionApproach:
 		if !validID(args.Target) || args != (ActionArgs{Target: args.Target}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Choose one target."}
+		}
+		if action == ActionDiscreetTake && b.ContentVersion < discreetTakeContentVersion {
+			return spatialEffect{}, &actionFailure{"action_unavailable", "Discreet pickups are unavailable here."}
 		}
 	default:
 		return spatialEffect{}, &actionFailure{"invalid_request", "Unknown spatial action."}
@@ -171,9 +174,13 @@ func (b *Bakery) move(actorID string, actor SpatialEntity, dir Direction) (spati
 }
 
 func inReach(a, b CellPosition) bool {
+	return a.FloorID == b.FloorID && manhattanDistance(a, b) <= 1
+}
+
+func manhattanDistance(a, b CellPosition) int {
 	dx := max(a.X, b.X) - min(a.X, b.X)
 	dy := max(a.Y, b.Y) - min(a.Y, b.Y)
-	return a.FloorID == b.FloorID && dx+dy <= 1
+	return dx + dy
 }
 
 func (b *Bakery) setOpen(actorCell CellPosition, target string, open bool) (spatialEffect, *actionFailure) {

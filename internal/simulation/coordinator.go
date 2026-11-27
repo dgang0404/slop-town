@@ -21,17 +21,18 @@ type Scope struct {
 type ActionKind string
 
 const (
-	ActionWait      ActionKind = "wait"
-	ActionRest      ActionKind = "rest"
-	ActionMove      ActionKind = "move"
-	ActionOpen      ActionKind = "open"
-	ActionClose     ActionKind = "close"
-	ActionTake      ActionKind = "take"
-	ActionPut       ActionKind = "put"
-	ActionDrop      ActionKind = "drop"
-	ActionIntroduce ActionKind = "introduce"
-	ActionApproach  ActionKind = "approach"
-	ActionSpeak     ActionKind = "speak"
+	ActionWait         ActionKind = "wait"
+	ActionRest         ActionKind = "rest"
+	ActionMove         ActionKind = "move"
+	ActionOpen         ActionKind = "open"
+	ActionClose        ActionKind = "close"
+	ActionTake         ActionKind = "take"
+	ActionDiscreetTake ActionKind = "discreet_take"
+	ActionPut          ActionKind = "put"
+	ActionDrop         ActionKind = "drop"
+	ActionIntroduce    ActionKind = "introduce"
+	ActionApproach     ActionKind = "approach"
+	ActionSpeak        ActionKind = "speak"
 )
 
 type ActionArgs struct {
@@ -306,7 +307,9 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 	if nextBakery == nil {
 		result.Observation = Observation{Scope: scope, Version: contractVersion, ObserverID: actorID, Text: message}
 	} else {
-		nextBakery.applySpatial(action, primary)
+		if err := nextBakery.applySpatial(action, primary, &next); err != nil {
+			return reject("resolution_failed", "The action could not be completed."), nil
+		}
 		residents, err := nextBakery.advanceResidents(&next, action)
 		if err != nil {
 			return reject("resolution_failed", "The resident could not finish the turn."), nil

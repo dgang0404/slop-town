@@ -32,7 +32,9 @@ func (b *Bakery) advanceResidents(clock *Timeline, primary Event) ([]Event, erro
 			events = append(events, parent)
 		}
 		action := parent.child(primary.Sequence+uint64(len(events))+1, id, "spatial", effect.kind, effect.payload)
-		b.applySpatial(action, effect)
+		if err := b.applySpatial(action, effect, clock); err != nil {
+			return nil, err
+		}
 		if choice != nil && effect.kind != "actor_rested" {
 			worker := b.Entities[id]
 			worker.SeekingRestSpot = true
@@ -45,7 +47,9 @@ func (b *Bakery) advanceResidents(clock *Timeline, primary Event) ([]Event, erro
 	if b.ContentVersion >= conversationContentVersion && len(events) == 0 {
 		if effect := b.residentConversation(primary); effect.kind != "" {
 			action := primary.child(primary.Sequence+1, effect.entityID, "spatial", effect.kind, effect.payload)
-			b.applySpatial(action, effect)
+			if err := b.applySpatial(action, effect, clock); err != nil {
+				return nil, err
+			}
 			events = append(events, action)
 		}
 	}

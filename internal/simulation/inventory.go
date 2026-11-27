@@ -8,13 +8,14 @@ func (b *Bakery) openContainerInReach(actorCell CellPosition, id string) bool {
 
 func (b *Bakery) transferItem(actorID string, actorCell CellPosition, action ActionKind, args ActionArgs) (spatialEffect, *actionFailure) {
 	item := b.Entities[args.Target]
-	if action != ActionTake && (item.Placement.HolderID != actorID || item.Kind != Item || !item.Portable) {
+	taking := action == ActionTake || action == ActionDiscreetTake
+	if !taking && (item.Placement.HolderID != actorID || item.Kind != Item || !item.Portable) {
 		return spatialEffect{}, targetUnavailable()
 	}
 
 	var kind, message string
 	switch action {
-	case ActionTake:
+	case ActionTake, ActionDiscreetTake:
 		from := item.Placement
 		reachable := inReach(actorCell, from.Cell)
 		if from.HolderID != "" {
@@ -28,6 +29,9 @@ func (b *Bakery) transferItem(actorID string, actorCell CellPosition, action Act
 		}
 		item.Placement = Placement{HolderID: actorID}
 		kind, message = "item_taken", "You take the "+item.Name+"."
+		if action == ActionDiscreetTake {
+			kind, message = "item_taken_discreetly", "You discreetly take the "+item.Name+"."
+		}
 	case ActionPut:
 		if !b.openContainerInReach(actorCell, args.Container) {
 			return spatialEffect{}, targetUnavailable()

@@ -42,14 +42,18 @@ func (t *Timeline) Draw(name string) (uint64, error) {
 	if index == math.MaxUint64 {
 		return 0, fmt.Errorf("stream %q exhausted", name)
 	}
-	input := binary.BigEndian.AppendUint64(nil, uint64(t.seed))
-	input = binary.BigEndian.AppendUint64(input, index)
-	sum := sha256.Sum256(append(input, name...))
 	if t.draws == nil {
 		t.draws = make(map[string]uint64)
 	}
 	t.draws[name] = index + 1
-	return binary.BigEndian.Uint64(sum[:8]), nil
+	return seededSample(t.seed, name, index), nil
+}
+
+func seededSample(seed int64, name string, index uint64) uint64 {
+	input := binary.BigEndian.AppendUint64(nil, uint64(seed))
+	input = binary.BigEndian.AppendUint64(input, index)
+	sum := sha256.Sum256(append(input, name...))
+	return binary.BigEndian.Uint64(sum[:8])
 }
 
 // Pointers distinguish missing clock and seed fields from legitimate zeroes.

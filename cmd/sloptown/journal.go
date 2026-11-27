@@ -197,6 +197,8 @@ func composeJournal(entries []simulation.JournalEntry) []journalChapter {
 		for _, sight := range entry.Witnessed {
 			who := "the " + sight.Actor.Name
 			switch sight.Action {
+			case simulation.SightHandMovement:
+				lines = append(lines, "I saw "+sight.HandMovementPhrase()+".")
 			case simulation.ActionIntroduce:
 				lines = append(lines, "The "+sight.Actor.Name+" introduced themselves to me.")
 			case simulation.ActionRest:
@@ -301,7 +303,7 @@ func remembered(sentence string) string {
 		return "I rested."
 	}
 	for _, verb := range []struct{ present, past string }{
-		{"introduce yourself", "introduced myself"}, {"walk", "walked"}, {"move", "moved"},
+		{"introduce yourself", "introduced myself"}, {"discreetly take", "discreetly took"}, {"walk", "walked"}, {"move", "moved"},
 		{"open", "opened"}, {"close", "closed"}, {"take", "took"}, {"put", "put"}, {"drop", "dropped"},
 		{"feel", "felt"}, {"wait", "waited"}, {"are", "was"}, {"see", "saw"}, {"carry", "carried"},
 	} {

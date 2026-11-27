@@ -285,13 +285,13 @@ In a separate scene the player saw the baker take, put back, take and drop the s
 
 New practice timelines use content version 11. A version 10 save from `273bb17` continued under its original rules. Both executables produced identical transcripts and journal exports and replayed it from sequences 0 and 19 to tick 7, sequence 25, with SHA-256 `b0acff82692ad0758d15bf3c870fcabc694b10ed456ebc6d171a0cd616b7cac3`. The full offline suite, both seed-42 smoke runs and three race-detector runs passed. The CLI cross-built for Windows amd64 and macOS arm64.
 
-## Checkpoint 20 — planned stealth and perception checks
+## Checkpoint 20 — stealth and perception checks
 
-The first playable case will be a discreet pickup in the bakery. In today's demo, seeing the person and spoon at the instant of an ordinary pickup is sufficient to witness it. The master design calls for automatic visibility of ordinary things, hidden passive checks for subtle details, and the same skills and senses for players and NPCs. It also lists hiding and listening among the planned actions. [Master design, sections 7.6, 12.2, 12.5 and 46–47](../design/Slop_Town_Master_Design_Revised_v7.docx)
+In new practice bakeries, a character can discreetly pick up a visible item within reach. A player can type `discreetly take NAME` or choose it with the arrows and Enter. The pickup takes one turn. Ordinary pickups still produce an eyewitness account for everyone who can see the person and the item. [Playable discreet pickup](../../README.md#try-a-discreet-pickup)
 
-Offer a discreet pickup through typing and the arrow-key action menu. The simulation first validates the usual reach and inventory rules. Resolve each observer's view just before the spoon enters the actor's inventory. For a subtle movement within sight, make a hidden, seeded check that weighs the acting character's stealth against that observer's perception and the circumstances, starting with distance. Lighting, noise and attention can contribute as those systems arrive. Exact odds and skill progression are tuning decisions.
+Just before a discreet pickup, each observer who can see the acting character makes one hidden check. The simulation weighs the actor’s stealth, the observer’s perception and their distance in tiles. Each character’s initial aptitudes come from the town seed, and each observer has their own saved sequence of draws. Players and residents use the same rules.
 
-The baker might see the player take the spoon. The porter might see only a hand move near the crate. Each can recall and report only that much. Someone who misses the movement may later notice the empty crate. That discovery alone gives them no eyewitness account of who took the spoon. Hearing a clink can provide a different clue when sound is implemented.
+A witness who identifies both the person and the item remembers an ordinary pickup. A partial sighting records an anonymous hand movement and names the container only when it was visible. A missed movement leaves no account to pass along. Lighting, sound, attention, skill growth and actions such as hiding and listening remain future work. [Master design, sections 7.6, 12.2, 12.5 and 46–47](../design/Slop_Town_Master_Design_Revised_v7.docx)
 
 ### Acceptance walkthrough
 
@@ -301,3 +301,13 @@ The baker might see the player take the spoon. The porter might see only a hand 
 | Make one discreet pickup with two differently placed observers. Repeat with a resident taking the spoon. | The transfer costs its normal action time. A seeded fixture demonstrates different accounts of the same act under the same rules for players and residents. |
 | Ask each witness what happened, then read the journal and any relayed accounts. | Only a witness who identified both person and item can attribute the pickup. Partial observations retain their uncertainty. The player learns another character's reaction through observable behavior or conversation. Rolls, odds and missed checks stay hidden. |
 | Browse actions, use `look`, reopen the save and retry the original command. Interrupt a write and replay from a checkpoint. | Resolve each eligible observer once per committed action in stable order. Reads and retries cannot reroll it. The item and witness memories commit or roll back together. Earlier content versions reproduce their original sightings. |
+
+### Checkpoint 20 results
+
+On seed 4 the player discreetly took the wooden spoon on tick 6. Asked immediately, the porter identified the player and the spoon. The baker saw only a hand move near the crate. In a second run the player waited until the workers had spoken, then heard the baker’s account from the porter. Asking the baker directly confirmed the hand movement and closed the journal lead. In a Linux terminal, Down and Enter selected the pickup and both eyewitness questions. [Rollback, dialogue and replay test](../../internal/storage/discreet_take_test.go)
+
+The same rule handled a resident taking an item. With the baker picking up a spoon from the floor, the player saw a hand move and could name neither the person nor the object. A witness on the other side of a closed door missed the movement entirely. At an open doorway, seeing just the actor allowed an anonymous sighting, while seeing just the item produced no eyewitness account. [Visibility tests](../../internal/simulation/discreet_take_test.go)
+
+An interrupted SQLite write rolled back the pickup, notebooks and perception draws together. After retry, replay from sequences 0 and 19 reached tick 17, sequence 60, with SHA-256 `ea026b91111c8258a910b8ecce73ac15097ea4a2fbf044292f797857629b1797`. New practice timelines use content version 12. On a version 11 save from `7744c0a`, both executables produced the same ordinary pickup transcript and replayed to tick 7 with SHA-256 `25bca1e85ac15f2d14a71dc8541238efe1a74ff6c253fa777d360486c368ac6c`.
+
+The offline suite, both seed-42 smoke runs and three race-detector runs passed. The CLI cross-built for Windows amd64 and macOS arm64.

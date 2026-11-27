@@ -18,20 +18,25 @@ type NotebookEntry struct {
 	Reported       uint64        `json:"reported,omitempty"`  // Entry in the immediate teller's notebook.
 	Condition      workCondition `json:"condition,omitempty"` // Listener's answer during this owner's own exchange.
 	Asked          bool          `json:"asked,omitempty"`
-	Container      string        `json:"container,omitempty"` // Visible destination of a witnessed put.
+	Container      string        `json:"container,omitempty"` // Visible destination of a put or landmark for a hand movement.
 }
 
 // Observe a take before the item enters a private inventory. A drop or put
 // becomes visible on placement, before anyone else can act on the same tick.
-func (b *Bakery) applySpatial(event Event, effect spatialEffect) {
+func (b *Bakery) applySpatial(event Event, effect spatialEffect, clock *Timeline) error {
 	placesItem := event.Kind == "item_put" || event.Kind == "item_dropped"
-	if b.ContentVersion >= notebookContentVersion && !placesItem {
+	if event.Kind == "item_taken_discreetly" {
+		if err := b.observeDiscreetTake(event, clock); err != nil {
+			return err
+		}
+	} else if b.ContentVersion >= notebookContentVersion && !placesItem {
 		b.recordWitnesses(event)
 	}
 	b.Entities[effect.entityID] = effect.entity
 	if placesItem && b.ContentVersion >= itemWitnessContentVersion {
 		b.recordWitnesses(event)
 	}
+	return nil
 }
 
 func (b *Bakery) recordWitnesses(event Event) {
@@ -153,10 +158,16 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 		for _, e := range entries {
 			if e.Tick <= 0 || e.Tick < prev.Tick || e.Tick > tick || e.SourceSequence <= prev.SourceSequence ||
 				(e.Action != ActionSpeak && (e.Reported != 0 || e.Condition != "")) || (e.Asked && e.Condition == "") ||
-				(e.Container != "" && e.Action != ActionPut) || e.Subject == owner || b.Entities[e.Subject].Kind != Actor {
+				(e.Container != "" && e.Action != ActionPut && e.Action != SightHandMovement) || e.Subject == owner ||
+				(e.Action != SightHandMovement && b.Entities[e.Subject].Kind != Actor) {
 				return fmt.Errorf("invalid notebook sighting for %q at sequence %d", owner, e.SourceSequence)
 			}
 			switch e.Action {
+			case SightHandMovement:
+				if b.ContentVersion < discreetTakeContentVersion || e.Subject != "" || e.Target != "" ||
+					(e.Container != "" && b.Entities[e.Container].Kind != Container) {
+					return fmt.Errorf("invalid hand movement sighting for %q at sequence %d", owner, e.SourceSequence)
+				}
 			case ActionSpeak:
 				if e.Condition != "" {
 					other, found := b.firsthandAt(e.Subject, e.SourceSequence)

@@ -27,6 +27,8 @@ func TestParseBakeryAction(t *testing.T) {
 		{"walk west", simulation.ActionMove, simulation.ActionArgs{Direction: simulation.West}},
 		{"pick up the wooden spoon", simulation.ActionTake, simulation.ActionArgs{Target: "wooden spoon"}},
 		{"get wooden spoon", simulation.ActionTake, simulation.ActionArgs{Target: "wooden spoon"}},
+		{"discreetly take the wooden spoon", simulation.ActionDiscreetTake, simulation.ActionArgs{Target: "wooden spoon"}},
+		{"quietly take it", simulation.ActionDiscreetTake, simulation.ActionArgs{Target: "it"}},
 		{"put a wooden spoon into the crate", simulation.ActionPut, simulation.ActionArgs{Target: "wooden spoon", Container: "crate"}},
 		{"drop the wooden spoon", simulation.ActionDrop, simulation.ActionArgs{Target: "wooden spoon"}},
 	} {
@@ -35,7 +37,7 @@ func TestParseBakeryAction(t *testing.T) {
 			t.Errorf("%q produced %q %+v, %v", tc.line, action, args, err)
 		}
 	}
-	for _, line := range []string{"rest baker", "wait twice", "open the", "pick", "pick up", "go northeast", "east twice", "put spoon", "put the in crate", "put spoon in", "dance"} {
+	for _, line := range []string{"rest baker", "wait twice", "open the", "pick", "pick up", "discreetly", "quietly take the", "quietly open crate", "go northeast", "east twice", "put spoon", "put the in crate", "put spoon in", "dance"} {
 		if _, _, err := parseBakeryAction(strings.Fields(line)); err == nil {
 			t.Errorf("accepted malformed command %q", line)
 		}

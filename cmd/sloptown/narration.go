@@ -85,12 +85,14 @@ func (n *turnNarrator) write(out io.Writer, cmd bakeryCommand, turn simulation.T
 	explained := make(map[string]simulation.WitnessedAction)
 	introduced := make(map[string]bool)
 	switch cmd.Action {
-	case simulation.ActionOpen, simulation.ActionClose, simulation.ActionPut, simulation.ActionDrop, simulation.ActionTake:
+	case simulation.ActionOpen, simulation.ActionClose, simulation.ActionPut, simulation.ActionDrop, simulation.ActionTake, simulation.ActionDiscreetTake:
 		explained[target] = simulation.WitnessedAction{Action: cmd.Action}
 	}
 	for _, event := range current.Witnessed {
 		actor := "The " + event.Actor.Name
 		switch event.Action {
+		case simulation.SightHandMovement:
+			lines = append(lines, "You see "+n.mark(event.HandMovementPhrase())+".")
 		case simulation.ActionIntroduce:
 			// The addressed greeting is already in the action's outcome.
 			introduced[event.Actor.Ref] = true
