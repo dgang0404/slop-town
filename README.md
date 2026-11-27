@@ -164,6 +164,8 @@ The offline journal gets what your character saw through a local call to the sim
 
 Type `journal discoveries spoon` to recall when and where you first saw a spoon. After you open the crate, that entry reads “I was in the bakery. I saw the wooden spoon in the crate.” It keeps that first sighting even after you carry the spoon outside. Type `journal discoveries`, or choose it with the arrows and Enter, to list all first sightings by date. Reading takes no turn. [First-sighting lookup](docs/plans/phase-7.md#checkpoint-15--look-up-a-first-sighting)
 
+To remember where you last saw something, type `journal last seen spoon`. If you carried the spoon outside and dropped it, the entry recalls the street. If the spoon disappeared behind a closed lid, the entry keeps the date and place of the last turn you saw it. Choose `journal last seen` with the arrows and Enter to browse the latest sighting of each person or object. [Last-sighting lookup](docs/plans/phase-7.md#checkpoint-16--where-i-last-saw-it)
+
 Type `export journal` or select it with the arrows and Enter to save the chaptered text in the directory where you started the game. The first available name is `slop-town-journal.txt`, followed by `slop-town-journal-2.txt`, `slop-town-journal-3.txt` and so on. This also works during an in-memory visit.
 
 To export directly from an existing save, give the shell a destination filename. Add `-timeline NAME` to select another timeline in that save.

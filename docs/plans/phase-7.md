@@ -228,3 +228,17 @@ A seed-42 save created by `49c2f53` had reached tick 23 with the crate closed. A
 Reading the index preserved the save. The old and new builds replayed from sequences 0 and 46 to tick 28, sequence 56, with SHA-256 `0b03fe7af6828a754b3a3013d057c25bd94cc1172b77d1a3dde5db92b58469c3`. The text and illustrated editions matched across builds. Other checks covered an in-memory visit, an empty timeline, a secondhand mention, and searching for two identically named spoons while choosing a destination box. [Discovery lookup tests](../../cmd/sloptown/journal_discoveries_test.go) · [Numbered choice walkthrough](../../cmd/sloptown/targets_test.go)
 
 The offline build, full test suite, both smoke runs and three race-detector runs passed. The terminal cross-built for Windows amd64 and macOS arm64.
+
+## Checkpoint 16 — where I last saw it
+
+`journal last seen spoon` recalls the most recent saved turn on which this character could see a matching object. Typing `journal last seen` or selecting it with the arrows and Enter lists one memory per person or object, grouped by the original observation date and setting. Two spoons with the same name keep separate memories. Reading takes no turn and preserves a pending choice.
+
+The journal takes the name and location from the character’s own saved observation. Carrying an object is a sighting. After a lid closes or someone leaves the character’s view, the earlier sighting keeps its date. Someone else’s account can be read under `journal accounts`. Browsing, `look` and reopening a save do not create a saved turn. Both sighting indexes work with existing saves and in-memory visits. [Try both lookups](../../README.md#read-your-journal)
+
+### Checkpoint 16 results
+
+A seed-42 save from `e7348f3` recorded the spoon in the bakery crate on day 1. On day 2 the player carried it to the street. A failed SQLite write while dropping it left the journal saying “I was carrying the wooden spoon.” Retrying the drop updated the last sighting to “I was on the street. I last saw the wooden spoon right beside me.” The first sighting still named the crate.
+
+In a second visit, the baker took the spoon behind a closed door. The player recalled the crate and the baker recalled carrying the spoon. The player saw the new location after returning and taking a turn with the spoon visible again. [Observer and same-name tests](../../internal/simulation/discovery_test.go) · [Lookup and restart tests](../../cmd/sloptown/journal_discoveries_test.go)
+
+Up and Enter opened the index in a Linux terminal. Both executables replayed the saved visit from sequences 0 and 46 to tick 27, sequence 54, with SHA-256 `aa20f9649978f08649874146dd4fa32e6bb58d1f7d8e140899394ac3b5c7d9df`. The plain and illustrated journal exports matched across builds. The full offline suite, both smoke runs and three race-detector runs passed. The terminal cross-built for Windows amd64 and macOS arm64.

@@ -85,9 +85,13 @@ func TestBakeryClarification(t *testing.T) {
 		replay() != initial {
 		t.Fatalf("unexpected clarification or changed save: %s", s)
 	}
-	s = play(strings.NewReader("take spoon\n2\nput spoon in box\n2\njournal discoveries spoon\n2\njournal discoveries box\ntake it\ndrop it\n"))
+	s = play(strings.NewReader("take spoon\n2\nput spoon in box\n2\njournal discoveries spoon\njournal last seen spoon\n2\njournal last seen spoon\njournal discoveries box\ntake it\ndrop it\n"))
 	if !strings.Contains(s, "I was on the street. I saw the wooden spoon to the north.\nI carried the wooden spoon.\n") {
 		t.Fatalf("lookup lost one of two identically named spoons: %s", s)
+	}
+	if !strings.Contains(s, "I last saw the wooden spoon to the north.\nI was carrying the wooden spoon.") ||
+		!strings.Contains(s, "I last saw the wooden spoon to the north.\nI last saw the wooden spoon in the tea box.") {
+		t.Fatalf("last sightings lost the transfer or mixed up the spoons: %s", s)
 	}
 	if !strings.Contains(s, "Which box") || !strings.Contains(s, "You put the wooden spoon in the tea box.") ||
 		strings.Count(s, "You take the wooden spoon.") != 2 || replay().Tick != 4 {

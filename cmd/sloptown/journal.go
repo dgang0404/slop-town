@@ -24,16 +24,23 @@ type journalPassage struct {
 
 const emptyJournal = "I haven't recorded anything yet."
 
-// The index uses the date and setting of each original sighting, even if
-// the character has since moved the object or heard someone describe it.
-func writeDiscoveries(dst io.Writer, entries []simulation.JournalEntry, name string) error {
+// Both indexes use the date and setting of the character's own saved view.
+func writeSightingIndex(dst io.Writer, entries []simulation.JournalEntry, name string, latest bool) error {
 	out := bufio.NewWriter(dst)
-	fmt.Fprintln(out, journalPhrases.DiscoveryIndex.Title)
+	index, phrases := journalPhrases.DiscoveryIndex, journalPhrases.Discoveries
+	if latest {
+		index, phrases = journalPhrases.LastSeenIndex, journalPhrases.LastSeen
+	}
+	fmt.Fprintln(out, index.Title)
 	var date simulation.BakeryDate
 	var place simulation.JournalObservation
 	printed := false
 	for _, entry := range entries {
-		for _, sight := range entry.FirstSeen {
+		sightings := entry.FirstSeen
+		if latest {
+			sightings = entry.LastSeen
+		}
+		for _, sight := range sightings {
 			if name != "" && !strings.Contains(" "+strings.ToLower(sight.Target.Name)+" ", " "+name+" ") {
 				continue
 			}
@@ -45,14 +52,14 @@ func writeDiscoveries(dst io.Writer, entries []simulation.JournalEntry, name str
 			if entry.Place.Text != "" && !entry.Place.SameAs(place) {
 				fmt.Fprint(out, rememberedObservation(entry.Place), " ")
 			}
-			fmt.Fprintln(out, rememberedDiscovery(sight))
+			fmt.Fprintln(out, rememberedSighting(sight, phrases))
 			printed, place = true, entry.Place
 		}
 	}
 	if !printed {
-		message := journalPhrases.DiscoveryIndex.Empty
+		message := index.Empty
 		if name != "" {
-			message = journalPhrases.DiscoveryIndex.NoMatch
+			message = index.NoMatch
 		}
 		fmt.Fprintln(out, message)
 	}
@@ -181,7 +188,7 @@ func composeJournal(entries []simulation.JournalEntry) []journalChapter {
 			}
 		}
 		for _, discovery := range entry.FirstSeen {
-			lines = append(lines, rememberedDiscovery(discovery))
+			lines = append(lines, rememberedSighting(discovery, journalPhrases.Discoveries))
 		}
 		if len(lines) != 0 {
 			// Place the next incident, skipping uneventful steps between settings.

@@ -3,7 +3,7 @@ package simulation
 
 import "strings"
 
-// Discovery is the first view of this target in the observer's journal.
+// Discovery describes a target as it appeared in one recorded observation.
 // A container's visible name is all a version-one receipt establishes about it.
 type Discovery struct {
 	Target    ObservedTarget

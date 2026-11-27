@@ -25,13 +25,13 @@ func currentView(t *testing.T, c *Coordinator, actor string) Observation {
 }
 
 func TestJournalReadsPersonalPerceptionsFromVersionOne(t *testing.T) {
-	memory := journalMemory{seen: make(map[string]bool)}
+	memory := journalMemory{latest: make(map[string]recordedSighting)}
 	spoon := ObservedTarget{Ref: spoonID, Name: "wooden spoon"}
 	view := Observation{
 		Text:    "You are in the bakery doorway.\nYou are sitting down.\nA little of that relief lingers.\nYou hear rain.\nYou see the wooden spoon here.",
 		Targets: []ObservedTarget{spoon},
 	}
-	place, changes, seen := memory.observe(view)
+	place, changes, seen := memory.observe(view, 0)
 	want := []JournalObservation{
 		{Kind: SittingDown, Text: "You are sitting down."},
 		{Kind: LingeringRelief, Text: "A little of that relief lingers."},
@@ -41,7 +41,7 @@ func TestJournalReadsPersonalPerceptionsFromVersionOne(t *testing.T) {
 	if place.Kind != InBakeryDoorway || !slices.Equal(changes, want) || !slices.Equal(seen, []Discovery{wantDiscovery}) {
 		t.Fatal(place, changes, seen)
 	}
-	if _, changes, seen = memory.observe(view); len(changes) != 0 || len(seen) != 0 {
+	if _, changes, seen = memory.observe(view, 1); len(changes) != 0 || len(seen) != 0 {
 		t.Fatal(changes, seen)
 	}
 }

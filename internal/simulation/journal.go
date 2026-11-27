@@ -3,6 +3,7 @@ package simulation
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 )
@@ -29,6 +30,7 @@ type JournalEntry struct {
 	Witnessed    []WitnessedAction
 	Observations []JournalObservation
 	FirstSeen    []Discovery // From this character's saved observation.
+	LastSeen     []Discovery // Latest recorded view of each target, on the turn it was seen.
 }
 
 // Journal reads existing history on demand. Both backends visit committed events
@@ -46,7 +48,7 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 		}
 		return &entries[len(entries)-1]
 	}
-	memory := journalMemory{seen: make(map[string]bool)}
+	memory := journalMemory{latest: make(map[string]recordedSighting)}
 	sightings := b.Notebooks[actor]
 	err := visit(func(e Event) error {
 		if e.Scope != scope {
@@ -73,7 +75,7 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 				// has its own event and is included below in the order it was heard.
 				page.WalkEnd = rest[strings.LastIndexByte(rest, '\n')+1:]
 			}
-			page.Place, page.Observations, page.FirstSeen = memory.observe(r.Result.Observation)
+			page.Place, page.Observations, page.FirstSeen = memory.observe(r.Result.Observation, len(entries)-1)
 		}
 
 		if e.Kind == "actors_conversed" && (e.ActorID == actor || e.Payload.Target == actor) {
@@ -122,17 +124,30 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 	if len(sightings) != 0 {
 		return nil, fmt.Errorf("missing history for a journal sighting")
 	}
+	// Targets sharing a final observation keep the same reference order as
+	// the saved view. Each entry supplies the setting and date of that view.
+	for _, ref := range slices.Sorted(maps.Keys(memory.latest)) {
+		last := memory.latest[ref]
+		page := &entries[last.page]
+		page.LastSeen = append(page.LastSeen, discoveryFromReceipt(last.target, last.description))
+	}
 	return entries, nil
 }
 
+type recordedSighting struct {
+	page        int
+	target      ObservedTarget
+	description string
+}
+
 type journalMemory struct {
-	seen map[string]bool
-	self []string
+	latest map[string]recordedSighting
+	self   []string
 }
 
 // A version-one receipt pairs its ordered selectable targets with one visible
 // description each. Preserve the wording and location the observer saw then.
-func (m *journalMemory) observe(v Observation) (place JournalObservation, observations []JournalObservation, firstSeen []Discovery) {
+func (m *journalMemory) observe(v Observation, page int) (place JournalObservation, observations []JournalObservation, firstSeen []Discovery) {
 	location, details, _ := strings.Cut(v.Text, "\n")
 	place = personalObservation(location)
 	var self, descriptions []string
@@ -149,15 +164,14 @@ func (m *journalMemory) observe(v Observation) (place JournalObservation, observ
 	}
 	m.self = self
 	for i, target := range v.Targets {
-		if m.seen[target.Ref] {
-			continue
-		}
-		m.seen[target.Ref] = true
 		var description string
 		if len(descriptions) == len(v.Targets) {
 			description = descriptions[i]
 		}
-		firstSeen = append(firstSeen, discoveryFromReceipt(target, description))
+		if _, seen := m.latest[target.Ref]; !seen {
+			firstSeen = append(firstSeen, discoveryFromReceipt(target, description))
+		}
+		m.latest[target.Ref] = recordedSighting{page: page, target: target, description: description}
 	}
 	return place, observations, firstSeen
 }

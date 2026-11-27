@@ -13,9 +13,9 @@ import (
 var journalEnglish []byte
 
 var journalPhrases struct {
-	Perceptions    map[simulation.PerceptionKind]string
-	Discoveries    map[simulation.DiscoveryLocation]string
-	DiscoveryIndex struct{ Title, Empty, NoMatch string }
+	Perceptions                   map[simulation.PerceptionKind]string
+	Discoveries, LastSeen         map[simulation.DiscoveryLocation]string
+	DiscoveryIndex, LastSeenIndex struct{ Title, Empty, NoMatch string }
 }
 
 func init() {
@@ -31,8 +31,8 @@ func rememberedObservation(sight simulation.JournalObservation) string {
 	return remembered(sight.Text)
 }
 
-func rememberedDiscovery(sight simulation.Discovery) string {
-	phrase := journalPhrases.Discoveries[sight.Location]
+func rememberedSighting(sight simulation.Discovery, phrases map[simulation.DiscoveryLocation]string) string {
+	phrase := phrases[sight.Location]
 	if phrase == "" || (sight.Location == simulation.LocationUnspecified && sight.Text != "") {
 		return remembered(sight.Text)
 	}

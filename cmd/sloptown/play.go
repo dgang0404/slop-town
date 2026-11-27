@@ -13,7 +13,25 @@ import (
 	"github.com/dgang0404/slop-town/internal/simulation"
 )
 
-const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use walk to NAME to approach a visible destination. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. Use introduce yourself to NAME or talk to NAME when someone is nearby. Short names work. Use it for the last object you acted on. Type actions for choices here, look for the current scene, calendar for today's date, journal to read your memories or quit to leave. Use journal accounts to recall who told you about a sighting. Use journal discoveries to recall first sightings, or journal discoveries NAME to find one by name. Use export journal for a text copy or export illustrated journal for a book you can open in a browser. Choose narration brief or narration story to change how turns read."
+const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use walk to NAME to approach a visible destination. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. Use introduce yourself to NAME or talk to NAME when someone is nearby. Short names work. Use it for the last object you acted on. Type actions for choices here, look for the current scene, calendar for today's date, journal to read your memories or quit to leave. Use journal accounts to recall who told you about a sighting. Use journal discoveries for first sightings or journal last seen for the latest. Add a name to search either list. Use export journal for a text copy or export illustrated journal for a book you can open in a browser. Choose narration brief or narration story to change how turns read."
+
+const firstSightingsCommand = "journal discoveries"
+const lastSightingsCommand = "journal last seen"
+
+func sightingQuery(line string) (command, name string) {
+	for _, cmd := range []string{firstSightingsCommand, lastSightingsCommand} {
+		if line == cmd {
+			return cmd, ""
+		}
+		if query, ok := strings.CutPrefix(line, cmd+" "); ok {
+			if words := strings.Fields(query); len(words) > 1 {
+				query = noun(words)
+			}
+			return cmd, query
+		}
+	}
+	return "", ""
+}
 
 type bakerySession struct {
 	narrator  *turnNarrator
@@ -68,17 +86,12 @@ func (s bakerySession) play(in io.Reader, out io.Writer) error {
 			}
 			continue
 		}
-		const find = "journal discoveries"
-		if line == find || strings.HasPrefix(line, find+" ") {
+		if command, name := sightingQuery(line); command != "" {
 			entries, err := s.journal()
 			if err != nil {
 				return err
 			}
-			name := strings.TrimSpace(strings.TrimPrefix(line, find))
-			if words := strings.Fields(name); len(words) > 1 {
-				name = noun(words)
-			}
-			if err := writeDiscoveries(out, entries, name); err != nil {
+			if err := writeSightingIndex(out, entries, name, command == lastSightingsCommand); err != nil {
 				return err
 			}
 			continue

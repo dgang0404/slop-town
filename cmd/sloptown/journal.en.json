@@ -13,6 +13,18 @@
     "empty": "I haven’t recorded any first sightings yet.",
     "noMatch": "I haven’t recorded a first sighting by that name."
   },
+  "lastSeenIndex": {
+    "title": "My last recorded sightings",
+    "empty": "I haven’t recorded any sightings yet.",
+    "noMatch": "I haven’t recorded a sighting by that name."
+  },
+  "lastSeen": {
+    "unspecified": "I last saw the {object}.",
+    "here": "I last saw the {object} right beside me.",
+    "bearing": "I last saw the {object} to the {bearing}.",
+    "container": "I last saw the {object} in the {container}.",
+    "inventory": "I was carrying the {object}."
+  },
   "discoveries": {
     "unspecified": "I saw the {object}.",
     "here": "I saw the {object} here.",
