@@ -68,6 +68,8 @@ func (b *Bakery) memoryLine(e NotebookEntry, speaker, listener string) (SpeechLi
 		}
 	} else if sight, ok := b.reportedObservation(e); ok {
 		return e.speechLine("relay", "plain"), b.relayWords(e, sight, speaker, listener, false)
+	} else if fact, ok := b.overheardReport(e); ok {
+		return e.speechLine("relay", "plain"), b.overheardRelay(e, fact, speaker, listener, false)
 	}
 	return SpeechLine{}, ""
 }
@@ -98,6 +100,41 @@ func (b *Bakery) relayWords(report, fact NotebookEntry, teller, hearer string, c
 	return "The " + witness + " told me they " + act + "."
 }
 
+func (b *Bakery) overheardReport(report NotebookEntry) (NotebookEntry, bool) {
+	if b.ContentVersion < groupConversationVersion || report.Action != ActionSpeak || report.Reported == 0 {
+		return NotebookEntry{}, false
+	}
+	fact, found := b.firsthandAt(report.Subject, report.Reported)
+	return fact, found && fact.Overheard
+}
+
+func (b *Bakery) overheardRelay(report, fact NotebookEntry, teller, hearer string, confirm bool) string {
+	witness := b.Entities[report.Subject].Name
+	whoAsked, whoAnswered := b.namedParty(fact.Subject, teller, hearer), b.namedParty(fact.Target, teller, hearer)
+	if confirm {
+		if report.Subject == hearer {
+			return "Did I tell you I heard " + whoAsked + " check in on " + whoAnswered + "?"
+		}
+		return "Did the " + witness + " tell you they heard " + whoAsked + " check in on " + whoAnswered + "?"
+	}
+	lead := "The " + witness + " told me they heard "
+	if report.Subject == hearer {
+		lead = "You told me you heard "
+	}
+	return lead + whoAsked + " check in on " + whoAnswered + ". They said they " + checkInAnswers[fact.Condition].remembered + "."
+}
+
+func (b *Bakery) namedParty(id, teller, hearer string) string {
+	switch id {
+	case teller:
+		return "me"
+	case hearer:
+		return "you"
+	default:
+		return "the " + b.Entities[id].Name
+	}
+}
+
 // Both a chosen line and an autonomous exchange must cite a memory belonging
 // to the speaker. Background events retain the reference without a transcript.
 func (b *Bakery) transferReport(view Observation, listener string, line SpeechLine) (spatialEffect, *actionFailure) {
@@ -109,6 +146,9 @@ func (b *Bakery) transferReport(view Observation, listener string, line SpeechLi
 	if e.Reported != 0 {
 		intent = "relay"
 		_, found = b.reportedObservation(e)
+		if !found {
+			_, found = b.overheardReport(e)
+		}
 	}
 	if !found || line != e.speechLine(intent, "plain") {
 		return spatialEffect{}, &actionFailure{"line_unavailable", "That line is no longer available."}
