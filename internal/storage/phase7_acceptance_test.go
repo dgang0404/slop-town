@@ -84,7 +84,7 @@ func TestPhase7Acceptance(t *testing.T) {
 			if strings.Contains(page, "Ink sketch of the wooden spoon.") != visit.followed {
 				t.Fatal("spoon illustration did not match discovery")
 			}
-			wantNotes := "No one has told me about a sighting yet.\n"
+			wantNotes := "I haven't heard any accounts yet.\n"
 			if visit.followed {
 				wantNotes = "\nDay 1 of spring, year 1 — The baker said the porter saw me sit down.\n" +
 					"Day 1 of spring, year 1 — The porter told me they saw me sit down.\n"

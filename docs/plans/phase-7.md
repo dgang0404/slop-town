@@ -316,7 +316,7 @@ The offline suite, both seed-42 smoke runs and three race-detector runs passed. 
 
 In a new practice bakery, a player or resident can spend one turn listening. A step makes a footfall at the square where the walker lands. A moving door creaks at its hinge. The simulation checks how far each sound can travel at the moment it occurs. Nearby footsteps can carry around an open doorway. A closed door blocks footsteps passing through it, and its own creak can reach either side. [Playable walkthrough](../../README.md#listen-from-the-street)
 
-For this fixture, footsteps carry three floor squares and a creak carries four. Characters in the upper third of the existing perception aptitude range hear one square farther. Each sound takes the shortest connected route through adjacent floor squares. The listener remembers the distinct sounds in the order they heard them. Hearing alone supplies no name or selectable target. The journal keeps sounds and any other discoveries made during that turn. Conversation about overheard sounds and noises from handling objects are open for later checkpoints.
+For this fixture, footsteps carry three floor squares and a creak carries four. Characters in the upper third of the existing perception aptitude range hear one square farther. Each sound takes the shortest connected route through adjacent floor squares. The listener remembers the distinct sounds in the order they heard them. Hearing alone supplies no name or selectable target. The journal keeps sounds and any other discoveries made during that turn. Checkpoint 22 brings these sounds into conversation. Noises from handling objects remain future work.
 
 ### Checkpoint 21 results
 
@@ -325,3 +325,19 @@ At the seed-42 shopfront, Down and Enter selected `listen`. The player heard a d
 A failed SQLite receipt write rolled back the listening turn and the workers’ movements. Reopening and retrying reproduced the uninterrupted journal. Replay from sequences 0 and 19 reached tick 7, sequence 25, with SHA-256 `c332aa4106c6c91e41e1a675c316d9b03f75c4068ae33e010462955ff93b3342`. New practice timelines use content version 13. A version 12 save from `4e2a404` replayed its discreet pickup and eyewitness account to the same hash in both builds. [Rollback and replay check](../../internal/storage/listen_test.go)
 
 The full offline suite and both seed-42 smoke runs passed. The terminal, simulation and storage packages passed three race-detector runs. The CLI cross-built for Windows amd64 and macOS arm64.
+
+## Checkpoint 22 — talk about what you heard
+
+In a new practice bakery, a character who heard both footsteps and a door creak can tell someone about either one. The conversation draws from recent memories and offers each line once. The original account records the sound and who heard it. Hearing footsteps supplies no identity for the walker. [Playable conversation](../../README.md#tell-someone-what-you-heard)
+
+“What sounds have you heard lately?” draws on the respondent’s latest firsthand sound. “What have you heard from other people?” can name the person who supplied an account. The dialogue menu still offers up to eleven lines. A listener can confirm a retelling with its original source, and the journal keeps the date and attribution of each telling. Players and residents use the same listening and speech actions. The workers’ daily schedule still focuses on moving between stations, resting and talking.
+
+### Checkpoint 22 results
+
+On seed 42 the player heard a door creak and footsteps on the first turn. Using Down and Enter, the player told the porter only about footsteps. When asked for secondhand news, the porter replied, “You told me you heard footsteps.” The journal showed the porter repeating the player’s own account. Separate checks rejected a character borrowing someone else’s sound and a speaker swapping the creak’s source for the footsteps. [Source and dialogue checks](../../internal/simulation/sound_account_test.go)
+
+In a SQLite visit the porter took the listening turn. The baker asked the porter what they heard and later told the player about the creak. The player’s lead read “Did the porter hear a door creak, as the baker said?” The porter confirmed that specific sound and the lead closed. Interrupting the save while the baker was telling the player left the town and both characters’ memories at the previous turn. After retry, replay from sequences 0 and 15 reached tick 6, sequence 23, with SHA-256 `9c7953fbc92ac477e0905b04e62b7244a55aa7d02133af6edfce730518610663`. [Restart and replay check](../../internal/storage/sound_account_test.go)
+
+New practice timelines use content version 14. A version 13 save from `87f610e` kept its original listening and dialogue behavior. Both builds replayed it from sequences 0 and 4 to tick 3, sequence 12, with SHA-256 `01142b74d8fce6611514cb86d66be56db78ec75d790349ac0701c90d4f34676b`.
+
+The offline suite, both seed-42 smoke runs and three race-detector runs passed. The CLI cross-built for Windows amd64 and macOS arm64.

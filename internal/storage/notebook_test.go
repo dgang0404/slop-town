@@ -41,7 +41,7 @@ func TestNotebookWitnessesAcrossRestart(t *testing.T) {
 	if got := read("porter"); got != street {
 		t.Fatal(got)
 	}
-	if got := read("baker"); !strings.HasSuffix(got, "No firsthand sightings.\n") {
+	if got := read("baker"); !strings.HasSuffix(got, "No notebook entries.\n") {
 		t.Fatal(got)
 	}
 	out := run("notebook\nlook\nactions\nquit\n", "bakery", "-play")
@@ -73,7 +73,7 @@ func TestNotebookWitnessesAcrossRestart(t *testing.T) {
 		t.Fatal(got)
 	}
 	run("", "bakery", "-resident", "-timeline", "other")
-	if other := run("", "notebook", "-timeline", "other", "-actor", "bakery/porter"); !strings.HasSuffix(other, "No firsthand sightings.\n") {
+	if other := run("", "notebook", "-timeline", "other", "-actor", "bakery/porter"); !strings.HasSuffix(other, "No notebook entries.\n") {
 		t.Fatal(other)
 	}
 	for _, from := range []string{"0", "3"} {

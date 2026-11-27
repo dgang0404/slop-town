@@ -122,7 +122,7 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 		if len(sightings) > 0 && sightings[0].SourceSequence == e.Sequence {
 			s := sightings[0]
 			sightings = sightings[1:]
-			if s.Action != ActionIntroduce && s.Action != ActionSpeak {
+			if s.Action != ActionIntroduce && s.Action != ActionSpeak && s.Action != ActionListen {
 				page := entryAt(e.Tick)
 				page.Witnessed = append(page.Witnessed, b.witnessedAction(s))
 			}

@@ -7,13 +7,16 @@ const reportThanks = "Thanks for telling me."
 
 func (e NotebookEntry) isObservation() bool {
 	switch e.Action {
-	case ActionRest, ActionOpen, ActionClose, ActionTake, ActionPut, ActionDrop, SightHandMovement:
+	case ActionRest, ActionOpen, ActionClose, ActionTake, ActionPut, ActionDrop, SightHandMovement, ActionListen:
 		return true
 	}
 	return false
 }
 
 func (b *Bakery) observedAct(fact NotebookEntry, me, you string) string {
+	if fact.Action == ActionListen {
+		return fact.Sound.SoundPhrase()
+	}
 	sight := b.witnessedAction(fact)
 	if fact.Action == SightHandMovement {
 		return sight.HandMovementPhrase()
@@ -31,16 +34,26 @@ func (b *Bakery) observedAct(fact NotebookEntry, me, you string) string {
 	return who + " " + string(fact.Action) + " " + sight.ObjectPhrase()
 }
 
+func (b *Bakery) perceivedAct(fact NotebookEntry, me, you string) string {
+	if fact.Action == ActionListen {
+		return "heard " + fact.Sound.SoundPhrase()
+	}
+	return "saw " + b.observedAct(fact, me, you)
+}
+
 func (e NotebookEntry) speechLine(intent, tone string) SpeechLine {
 	topic := e.Subject
 	if e.Action == SightHandMovement {
 		topic = string(SightHandMovement)
 	}
+	if e.Action == ActionListen {
+		topic = string(e.Sound)
+	}
 	return SpeechLine{Topic: topic, Intent: intent, Tone: tone, Source: e.SourceSequence}
 }
 
 // A memory offers either the owner's account or a follow-up to the person
-// who told it. A relay keeps its eyewitness even when the teller changes.
+// who told it. A relay keeps its original observer even when the teller changes.
 func (b *Bakery) memoryLine(e NotebookEntry, speaker, listener string) (SpeechLine, string) {
 	if e.Reported == 0 {
 		return e.speechLine("share", "plain"), b.sightingWords(e, listener, false)
@@ -59,8 +72,8 @@ func (b *Bakery) memoryLine(e NotebookEntry, speaker, listener string) (SpeechLi
 	return SpeechLine{}, ""
 }
 
-// Only a report heard directly from an eyewitness can be passed on. The
-// reference goes through that specific witness even when others saw the act.
+// Only a report heard directly from the person who perceived it can be passed
+// on. Other people's memories of the same incident have their own sources.
 func (b *Bakery) reportedObservation(report NotebookEntry) (NotebookEntry, bool) {
 	if b.ContentVersion < reportContentVersion || report.Action != ActionSpeak || report.Reported == 0 {
 		return NotebookEntry{}, false
@@ -72,17 +85,17 @@ func (b *Bakery) reportedObservation(report NotebookEntry) (NotebookEntry, bool)
 func (b *Bakery) relayWords(report, fact NotebookEntry, teller, hearer string, confirm bool) string {
 	witness := b.Entities[report.Subject].Name
 	if confirm {
-		act := b.observedAct(fact, hearer, teller)
+		act := b.perceivedAct(fact, hearer, teller)
 		if report.Subject == hearer {
-			return "Did I tell you I saw " + act + "?"
+			return "Did I tell you I " + act + "?"
 		}
-		return "Did the " + witness + " tell you they saw " + act + "?"
+		return "Did the " + witness + " tell you they " + act + "?"
 	}
-	act := b.observedAct(fact, teller, hearer)
+	act := b.perceivedAct(fact, teller, hearer)
 	if report.Subject == hearer {
-		return "You told me you saw " + act + "."
+		return "You told me you " + act + "."
 	}
-	return "The " + witness + " told me they saw " + act + "."
+	return "The " + witness + " told me they " + act + "."
 }
 
 // Both a chosen line and an autonomous exchange must cite a memory belonging
@@ -113,7 +126,7 @@ func (b *Bakery) exchangeLines(e Event) (string, string, error) {
 	if x.Statement.Intent == "share" && x.Words == "" {
 		fact, ok := b.firsthandAt(e.ActorID, x.SpeakerSource)
 		if !ok || !fact.isObservation() || x.Statement != fact.speechLine("share", "plain") {
-			return "", "", fmt.Errorf("missing eyewitness account at sequence %d", e.Sequence)
+			return "", "", fmt.Errorf("missing firsthand account at sequence %d", e.Sequence)
 		}
 		return b.sightingWords(fact, e.Payload.Target, false), reportThanks, nil
 	}
@@ -121,8 +134,8 @@ func (b *Bakery) exchangeLines(e Event) (string, string, error) {
 	return words, reply, nil
 }
 
-// The worker offers the latest physical act they saw and have not already
-// described to this coworker. Only earlier exchanges between this pair count.
+// The worker offers their latest firsthand sight or sound they have not
+// already described to this coworker.
 func (b *Bakery) residentReport(scope Scope, speaker, listener string) spatialEffect {
 	told := make(map[uint64]bool)
 	for _, e := range b.Notebooks[listener] {
@@ -180,7 +193,7 @@ func (b *Bakery) witnessQuestions(speaker, listener string, limit int) []Dialogu
 		if direct := lastDirect[fact.SourceSequence]; direct != 0 && (b.ContentVersion >= itemWitnessContentVersion || direct > e.SourceSequence) {
 			continue
 		}
-		words := "The " + b.Entities[e.Subject].Name + " said you saw " + b.observedAct(fact, speaker, listener) + ". Is that right?"
+		words := "The " + b.Entities[e.Subject].Name + " said you " + b.perceivedAct(fact, speaker, listener) + ". Is that right?"
 		if !seen[words] {
 			choices = append(choices, DialogueChoice{Line: e.speechLine("ask_witness", "careful"), Words: words})
 			seen[words] = true

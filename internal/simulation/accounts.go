@@ -6,11 +6,12 @@ import (
 	"slices"
 )
 
-// HeardAccount groups what one character has heard about one witness's sighting.
+// HeardAccount groups tellings of one firsthand sight or sound.
 // Act is phrased from the reader's perspective, such as "me sit down".
 type HeardAccount struct {
 	Witness     string
 	Act         string
+	Sound       PerceptionKind // The original listener's sound when this is an auditory account.
 	OwnSighting bool
 	Tellings    []AccountTelling
 }
@@ -82,7 +83,7 @@ func (b *Bakery) Accounts(actor string) ([]HeardAccount, error) {
 			i = len(accounts)
 			index[key] = i
 			accounts = append(accounts, HeardAccount{Witness: b.Entities[witness].Name,
-				Act: b.observedAct(fact, actor, ""), OwnSighting: witness == actor})
+				Act: b.observedAct(fact, actor, ""), Sound: fact.Sound, OwnSighting: witness == actor})
 		}
 		accounts[i].Tellings = append(accounts[i].Tellings, AccountTelling{
 			Teller: b.Entities[memory.Subject].Name, FromWitness: memory.Subject == witness, Date: bakeryDateAt(memory.Tick),

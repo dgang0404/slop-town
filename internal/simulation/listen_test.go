@@ -26,7 +26,8 @@ func TestListeningUsesTheDoorAtTheMomentOfTheSound(t *testing.T) {
 		t.Fatal(r)
 	}
 	events := c.History()
-	if len(events) != 4 || events[2].Kind != "actor_moved" || events[2].ActorID != baker || events[3].Kind != "door_opened" {
+	if len(events) != 5 || events[2].Kind != "actor_moved" || events[2].ActorID != baker || events[3].Kind != "door_opened" ||
+		events[4].Kind != "sound_heard" || events[4].Payload.Sound != DoorCreak || events[4].ActorID != player {
 		t.Fatal(events)
 	}
 	// Editing the client's view must not change the saved perception.
@@ -36,7 +37,8 @@ func TestListeningUsesTheDoorAtTheMomentOfTheSound(t *testing.T) {
 	}
 	next := c.Submit(player, spatialProposal(c, "listen-again", ActionListen, ActionArgs{}))
 	events = c.History()[len(events):]
-	if len(events) != 4 || events[2].Kind != "actor_moved" || events[3].Kind != "actor_moved" ||
+	if len(events) != 5 || events[2].Kind != "actor_moved" || events[3].Kind != "actor_moved" ||
+		events[4].Kind != "sound_heard" || events[4].Payload.Sound != Footsteps ||
 		!slices.Equal(next.Observation.Heard, []PerceptionKind{Footsteps}) {
 		t.Fatalf("two workers stepped on one turn: %v, heard %v", events, next.Observation.Heard)
 	}

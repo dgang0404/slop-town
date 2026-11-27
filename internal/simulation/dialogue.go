@@ -69,6 +69,9 @@ func (b *Bakery) dialogueChoices(view Observation, listener string, includeWitne
 	memoryLimit := limit
 	if b.ContentVersion >= reportContentVersion {
 		memoryLimit -= 2 // Keep the questions about conversations and secondhand news available.
+		if b.ContentVersion >= soundAccountContentVersion {
+			memoryLimit-- // Leave room to ask about firsthand sounds.
+		}
 		if includeWitnessQuestions {
 			for _, choice := range b.witnessQuestions(view.ObserverID, listener, memoryLimit-len(choices)) {
 				add(choice.Line, choice.Words)
@@ -83,6 +86,9 @@ func (b *Bakery) dialogueChoices(view Observation, listener string, includeWitne
 	}
 	if b.ContentVersion >= reportContentVersion {
 		add(SpeechLine{Topic: "hearsay", Intent: "ask", Tone: "curious"}, "What have you heard from other people?")
+	}
+	if b.ContentVersion >= soundAccountContentVersion {
+		add(SpeechLine{Topic: "sounds", Intent: "ask", Tone: "curious"}, "What sounds have you heard lately?")
 	}
 	for _, obj := range view.Targets {
 		if obj.Ref == listener {
@@ -116,9 +122,9 @@ func (b *Bakery) sightingWords(fact NotebookEntry, hearer string, confirm bool) 
 		return "The " + name + " introduced themselves to me."
 	}
 	if confirm {
-		return "You saw " + b.observedAct(fact, hearer, "") + "?"
+		return "You " + b.perceivedAct(fact, hearer, "") + "?"
 	}
-	return "I saw " + b.observedAct(fact, "", hearer) + "."
+	return "I " + b.perceivedAct(fact, "", hearer) + "."
 }
 
 func (b *Bakery) speak(view Observation, listener string, line SpeechLine) (spatialEffect, *actionFailure) {
@@ -194,7 +200,10 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 		switch line.Topic {
 		case "hearsay":
 			x.Reply = "No one's told me what they saw."
-		case "news":
+			if b.ContentVersion >= soundAccountContentVersion {
+				x.Reply = "I haven't heard a firsthand account I can pass on."
+			}
+		case "news", "sounds":
 			x.Reply = "Nothing comes to mind."
 		case "conversation":
 			x.Reply = "I don't remember anyone checking in lately."
@@ -212,7 +221,8 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 				}
 				continue
 			}
-			if (line.Topic == "news" && fact.Reported == 0) || (line.Topic == "conversation" && fact.Condition != "") ||
+			if (line.Topic == "sounds" && fact.Action == ActionListen) ||
+				(line.Topic == "news" && fact.Reported == 0 && fact.Action != ActionListen) || (line.Topic == "conversation" && fact.Condition != "") ||
 				(fact.Action == ActionIntroduce && fact.Subject == line.Topic) {
 				x.Reply = b.sightingWords(fact, speaker, false)
 				x.ReplySource = fact.SourceSequence

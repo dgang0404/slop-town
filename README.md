@@ -178,13 +178,19 @@ Start a fresh practice visit with `go run ./cmd/sloptown bakery -practice -play 
 
 To hear someone around a corner, start a fresh visit with seed `4`. Go south twice, wait three times, then choose `listen`. Both workers are out of sight. You hear footsteps, and your journal records “I heard footsteps.” Listening spends one turn while the town carries on. [Listening checkpoint](docs/plans/phase-7.md#checkpoint-21--listen-from-the-street)
 
+### Tell someone what you heard
+
+In a fresh seed-42 practice bakery, choose `listen`, then `talk to the porter`. You heard both a creak and footsteps. Select **“I heard footsteps.”** The creak stays in your journal and you can mention it separately.
+
+While you’re still talking, ask **“What sounds have you heard lately?”** The porter has no firsthand sound to recall on this visit. Ask **“What have you heard from other people?”** and the porter replies, “You told me you heard footsteps.” Cancel the conversation and choose `journal accounts` to read who told you the story. [Sound accounts checkpoint](docs/plans/phase-7.md#checkpoint-22--talk-about-what-you-heard)
+
 ### Recall who told you
 
-Type `journal accounts` or select it with the arrows and Enter. This part of your journal collects accounts you personally heard about someone sitting down, opening or closing something, or moving an item. Each line is dated when you heard it. You can read it during a conversation or after reopening a save, and it costs no turn.
+Type `journal accounts` or select it with the arrows and Enter. This part of your journal collects accounts you personally heard about someone sitting down, opening or closing something, moving an item, or hearing a sound. Each line is dated when you heard it. You can read it during a conversation or after reopening a save, and it costs no turn.
 
 In the visit above, read the accounts after speaking to the baker. You’ll see “The baker said the porter saw me sit down” and “I haven't heard it from the porter yet.” After you ask the porter, their own account appears beneath the baker’s. Returning to the same teller leaves one entry for that sighting.
 
-Type `journal leads` to see which eyewitnesses you could still ask. After the baker tells you about your rest, it reads “Did the porter see me sit down, as the baker said?” The question is dated when you first heard the story. You can also choose `journal leads` with the arrows and Enter while deciding what to say. Reading spends no turn. Once the porter gives you their account, the question drops off the list. [Phase 7 journal leads](docs/plans/phase-7.md#checkpoint-18--open-questions-for-eyewitnesses)
+Type `journal leads` to see who you can still ask for a firsthand account. After the baker tells you about your rest, it reads “Did the porter see me sit down, as the baker said?” The question is dated when you first heard the story. You can also choose `journal leads` with the arrows and Enter while deciding what to say. Reading spends no turn. Once the porter gives you their account, the question drops off the list. [Phase 7 journal leads](docs/plans/phase-7.md#checkpoint-18--open-questions-for-eyewitnesses)
 
 ### Read your journal
 

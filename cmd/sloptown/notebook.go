@@ -46,7 +46,7 @@ func runActorInspection(command string, args []string, stdout, stderr io.Writer)
 	}
 	fmt.Fprintf(stdout, "Notebook of %s (timeline %s)\n", *actor, *timeline)
 	if len(entries) == 0 {
-		fmt.Fprintln(stdout, "No firsthand sightings.")
+		fmt.Fprintln(stdout, "No notebook entries.")
 	}
 	for _, e := range entries {
 		if e.Condition != "" {
@@ -59,6 +59,10 @@ func runActorInspection(command string, args []string, stdout, stderr io.Writer)
 		}
 		if e.Action == simulation.ActionSpeak {
 			fmt.Fprintf(stdout, "Tick %d, event %d — %s told you about event %d.\n", e.Tick, e.SourceSequence, e.Subject, e.Reported)
+			continue
+		}
+		if e.Action == simulation.ActionListen {
+			fmt.Fprintf(stdout, "Tick %d, event %d — heard %s.\n", e.Tick, e.SourceSequence, e.Sound.SoundPhrase())
 			continue
 		}
 		saw := "sit down"

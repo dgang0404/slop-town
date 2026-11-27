@@ -7,18 +7,19 @@ import (
 	"slices"
 )
 
-// NotebookEntry records an act the owner witnessed or a report they heard.
-// SourceSequence identifies that sighting or exchange on the owner's timeline.
+// NotebookEntry records firsthand observations and reports received in conversation.
+// SourceSequence identifies the observation or exchange on the owner's timeline.
 type NotebookEntry struct {
-	Tick           int64         `json:"tick"`
-	SourceSequence uint64        `json:"source_sequence"`
-	Subject        string        `json:"subject"`
-	Action         ActionKind    `json:"action"`
-	Target         string        `json:"target,omitempty"`
-	Reported       uint64        `json:"reported,omitempty"`  // Entry in the immediate teller's notebook.
-	Condition      workCondition `json:"condition,omitempty"` // Listener's answer during this owner's own exchange.
-	Asked          bool          `json:"asked,omitempty"`
-	Container      string        `json:"container,omitempty"` // Visible destination of a put or landmark for a hand movement.
+	Tick           int64          `json:"tick"`
+	SourceSequence uint64         `json:"source_sequence"`
+	Subject        string         `json:"subject"`
+	Action         ActionKind     `json:"action"`
+	Target         string         `json:"target,omitempty"`
+	Reported       uint64         `json:"reported,omitempty"`  // Entry in the immediate teller's notebook.
+	Condition      workCondition  `json:"condition,omitempty"` // Listener's answer during this owner's own exchange.
+	Asked          bool           `json:"asked,omitempty"`
+	Container      string         `json:"container,omitempty"` // Visible destination of a put or landmark for a hand movement.
+	Sound          PerceptionKind `json:"sound,omitempty"`     // The listener recalls the sound alone.
 }
 
 // Observe a take before the item enters a private inventory. A drop or put
@@ -159,10 +160,15 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 			if e.Tick <= 0 || e.Tick < prev.Tick || e.Tick > tick || e.SourceSequence <= prev.SourceSequence ||
 				(e.Action != ActionSpeak && (e.Reported != 0 || e.Condition != "")) || (e.Asked && e.Condition == "") ||
 				(e.Container != "" && e.Action != ActionPut && e.Action != SightHandMovement) || e.Subject == owner ||
-				(e.Action != SightHandMovement && b.Entities[e.Subject].Kind != Actor) {
+				(e.Action != ActionListen && e.Sound != "") ||
+				(e.Action != ActionListen && e.Action != SightHandMovement && b.Entities[e.Subject].Kind != Actor) {
 				return fmt.Errorf("invalid notebook sighting for %q at sequence %d", owner, e.SourceSequence)
 			}
 			switch e.Action {
+			case ActionListen:
+				if b.ContentVersion < soundAccountContentVersion || e.Subject != "" || e.Target != "" || e.Sound.SoundPhrase() == "" {
+					return fmt.Errorf("invalid sound memory for %q at sequence %d", owner, e.SourceSequence)
+				}
 			case SightHandMovement:
 				if b.ContentVersion < discreetTakeContentVersion || e.Subject != "" || e.Target != "" ||
 					(e.Container != "" && b.Entities[e.Container].Kind != Container) {

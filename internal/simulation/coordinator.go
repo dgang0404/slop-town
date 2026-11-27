@@ -125,12 +125,13 @@ type EventPayload struct {
 	Delta             int64
 	Stream            string
 	Value             uint64
-	Destination       CellPosition `json:",omitzero"`
-	Target            string       `json:",omitempty"`
-	HolderID          string       `json:",omitempty"`
-	EndurancePractice bool         `json:",omitempty"`
-	ReliefStarted     bool         `json:",omitempty"`
-	Dialogue          Exchange     `json:",omitzero"`
+	Destination       CellPosition   `json:",omitzero"`
+	Target            string         `json:",omitempty"`
+	HolderID          string         `json:",omitempty"`
+	EndurancePractice bool           `json:",omitempty"`
+	ReliefStarted     bool           `json:",omitempty"`
+	Dialogue          Exchange       `json:",omitzero"`
+	Sound             PerceptionKind `json:",omitempty"`
 }
 
 type requestKey struct{ actorID, requestID string }
@@ -331,6 +332,13 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 			var lines []string
 			for _, sound := range heard {
 				lines = append(lines, sound.Description())
+				if nextBakery.ContentVersion >= soundAccountContentVersion {
+					// A listener can later choose which sound to mention. Its source
+					// identifies this perception, even if they also saw someone move.
+					memory := action.child(events[len(events)-1].Sequence+1, actorID, "perception", "sound_heard", EventPayload{Sound: sound})
+					events = append(events, memory)
+					nextBakery.appendSighting(actorID, NotebookEntry{Tick: memory.Tick, SourceSequence: memory.Sequence, Action: ActionListen, Sound: sound})
+				}
 			}
 			message = strings.Join(lines, "\n")
 		}
@@ -339,7 +347,7 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 		// The notebook records visibility at the instant of each effect, even
 		// if a later effect moves its subject out of the final scene.
 		for _, entry := range nextBakery.Notebooks[actorID][len(bakery.Notebooks[actorID]):] {
-			if entry.Action != ActionSpeak {
+			if entry.Action != ActionSpeak && entry.Action != ActionListen {
 				scene.Witnessed = append(scene.Witnessed, nextBakery.witnessedAction(entry))
 			}
 		}

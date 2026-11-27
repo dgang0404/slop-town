@@ -37,6 +37,18 @@ var receiptDescriptions = map[PerceptionKind]string{
 
 func (k PerceptionKind) Description() string { return receiptDescriptions[k] }
 
+// SoundPhrase describes what can be reported from the listener's position.
+func (k PerceptionKind) SoundPhrase() string {
+	switch k {
+	case Footsteps:
+		return "footsteps"
+	case DoorCreak:
+		return "a door creak"
+	default:
+		return ""
+	}
+}
+
 // JournalObservation preserves the observer's location or personal sensations,
 // including any wording with no recognized perception kind.
 type JournalObservation struct {

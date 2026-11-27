@@ -82,7 +82,11 @@ func writeLeads(dst io.Writer, accounts []simulation.HeardAccount) error {
 			fmt.Fprintln(out, formatBakeryDate(first.Date))
 			date = first.Date
 		}
-		question := strings.NewReplacer("{witness}", account.Witness, "{act}", account.Act, "{teller}", first.Teller).Replace(phrases.Question)
+		sense := "see"
+		if account.Sound != "" {
+			sense = "hear"
+		}
+		question := strings.NewReplacer("{witness}", account.Witness, "{sense}", sense, "{act}", account.Act, "{teller}", first.Teller).Replace(phrases.Question)
 		fmt.Fprintln(out, question)
 		printed = true
 	}
@@ -96,19 +100,23 @@ func writeAccounts(dst io.Writer, accounts []simulation.HeardAccount) error {
 	out := bufio.NewWriter(dst)
 	fmt.Fprintln(out, "Accounts I've heard")
 	if len(accounts) == 0 {
-		fmt.Fprintln(out, "No one has told me about a sighting yet.")
+		fmt.Fprintln(out, "I haven't heard any accounts yet.")
 	}
 	for _, account := range accounts {
 		fmt.Fprintln(out)
+		verb := "saw"
+		if account.Sound != "" {
+			verb = "heard"
+		}
 		for _, note := range account.Tellings {
 			fmt.Fprintf(out, "%s — The %s ", formatBakeryDate(note.Date), note.Teller)
 			switch {
 			case note.FromWitness:
-				fmt.Fprintf(out, "told me they saw %s.\n", account.Act)
+				fmt.Fprintf(out, "told me they %s %s.\n", verb, account.Act)
 			case account.OwnSighting:
-				fmt.Fprintf(out, "said I'd told them I saw %s.\n", account.Act)
+				fmt.Fprintf(out, "said I'd told them I %s %s.\n", verb, account.Act)
 			default:
-				fmt.Fprintf(out, "said the %s saw %s.\n", account.Witness, account.Act)
+				fmt.Fprintf(out, "said the %s %s %s.\n", account.Witness, verb, account.Act)
 			}
 		}
 		if account.AwaitingWitness() {

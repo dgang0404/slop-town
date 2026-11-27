@@ -26,11 +26,11 @@ func TestEyewitnessReportAcrossRestart(t *testing.T) {
 	const ask = after + "north\ntalk to baker\n5\n"
 	const route = ask + "4\ncancel\njournal\n"
 	const account = "The porter told me they saw you sit down."
-	const empty = "No one has told me about a sighting yet.\n"
+	const empty = "I haven't heard any accounts yet.\n"
 	const indirect = "\nDay 1 of spring, year 1 — The baker said the porter saw me sit down.\n"
 	const pending = indirect + "I haven't heard it from the porter yet.\n"
 	const both = indirect + "Day 1 of spring, year 1 — The porter told me they saw me sit down.\n"
-	const noLeads = "I have no eyewitness accounts to follow up.\n"
+	const noLeads = "I have no accounts to follow up.\n"
 	const openLead = "\nDay 1 of spring, year 1\nDid the porter see me sit down, as the baker said?\n"
 	checkAccounts := func(want, wantLeads string) {
 		t.Helper()
@@ -159,7 +159,7 @@ func TestWorkersPassOnAWitnessedItemTransfer(t *testing.T) {
 	const direct = "The baker told me they saw me put the wooden spoon in the crate."
 	out := play(path, visit, "")
 	if !strings.Contains(out, "The porter said the baker saw me put the wooden spoon in the crate.") ||
-		strings.Count(out, direct) != 1 || !strings.HasSuffix(out, "I have no eyewitness accounts to follow up.\n") {
+		strings.Count(out, direct) != 1 || !strings.HasSuffix(out, "I have no accounts to follow up.\n") {
 		t.Fatal(out)
 	}
 	head := checkpointAtHead(t, path, scope)

@@ -71,7 +71,7 @@ func TestDiscreetTakeSurvivesRollbackAndRetelling(t *testing.T) {
 	if !strings.Contains(out, "Did the baker see a hand move near the crate, as the porter said?") ||
 		!strings.Contains(accounts, "The porter said the baker saw a hand move near the crate.") ||
 		!strings.Contains(accounts, "The baker told me they saw a hand move near the crate.") ||
-		strings.Contains(accounts, "spoon") || !strings.HasSuffix(accounts, "I have no eyewitness accounts to follow up.\n") {
+		strings.Contains(accounts, "spoon") || !strings.HasSuffix(accounts, "I have no accounts to follow up.\n") {
 		t.Fatal(out)
 	}
 	head := checkpointAtHead(t, path, scope)
