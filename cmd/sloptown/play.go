@@ -13,7 +13,7 @@ import (
 	"github.com/dgang0404/slop-town/internal/simulation"
 )
 
-const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use walk to NAME to approach a visible destination. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. In a new practice bakery, try discreetly take NAME for a careful pickup or listen to spend a turn listening. Use introduce yourself to NAME or talk to NAME when someone is nearby. Short names work. Use it for the last object you acted on. Type actions for choices here, look for the current scene, calendar for today's date, journal to read your memories or quit to leave. Use journal accounts to recall who told you about a sight or sound, or journal leads to see which witnesses you could ask. Use journal discoveries for first sightings or journal last seen for the latest. Add a name to search either list. Use export journal for a text copy or export illustrated journal for a book you can open in a browser. Choose narration brief or narration story to change how turns read."
+const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use walk to NAME to approach a visible destination. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. In a new practice bakery, try discreetly take NAME for a careful pickup or listen to spend a turn listening. Use hide behind NAME beside cover and come out to stand up again. Use introduce yourself to NAME or talk to NAME when someone is nearby. Short names work. Use it for the last object you acted on. Type actions for choices here, look for the current scene, calendar for today's date, journal to read your memories or quit to leave. Use journal accounts to recall who told you about a sight or sound, or journal leads to see which witnesses you could ask. Use journal discoveries for first sightings or journal last seen for the latest. Add a name to search either list. Use export journal for a text copy or export illustrated journal for a book you can open in a browser. Choose narration brief or narration story to change how turns read."
 
 const leadsCommand = "journal leads"
 const firstSightingsCommand = "journal discoveries"
@@ -269,6 +269,10 @@ func (s bakerySession) showScene(out io.Writer, scene simulation.Scene) {
 
 func actionCommand(option simulation.ActionOption) string {
 	switch option.Action {
+	case simulation.ActionHide:
+		return "hide behind the " + option.Args.Target
+	case simulation.ActionEmerge:
+		return "come out"
 	case simulation.ActionWait, simulation.ActionRest, simulation.ActionListen:
 		return string(option.Action)
 	case simulation.ActionMove:
@@ -322,6 +326,16 @@ func parseBakeryAction(words []string) (simulation.ActionKind, simulation.Action
 		}
 	}
 	switch verb {
+	case "hide":
+		if len(rest) < 2 || rest[0] != "behind" || noun(rest[1:]) == "" {
+			return "", args, errors.New("Use hide behind NAME.")
+		}
+		return simulation.ActionHide, simulation.ActionArgs{Target: noun(rest[1:])}, nil
+	case "come":
+		if len(rest) != 1 || rest[0] != "out" {
+			return "", args, errors.New("Use come out to leave cover.")
+		}
+		return simulation.ActionEmerge, args, nil
 	case "wait", "rest", "listen":
 		if len(rest) != 0 {
 			return "", args, fmt.Errorf("Type %s to spend one turn here.", verb)

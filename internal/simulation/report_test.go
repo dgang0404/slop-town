@@ -208,7 +208,7 @@ func TestReportSourcesAcrossSave(t *testing.T) {
 		}
 	}
 	b.Notebooks[player] = original
-	b.ContentVersion = conversationContentVersion
+	usePracticeVersion(b, conversationContentVersion)
 	if restore() == nil {
 		t.Fatal("restored a two-link report under historical conversation rules")
 	}

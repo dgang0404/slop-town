@@ -111,7 +111,7 @@ func TestRestoreInvalidIntroduction(t *testing.T) {
 		{porter, emotionContentVersion, []NotebookEntry{first}},
 		{porter, relationshipContentVersion, []NotebookEntry{first, second}},
 	} {
-		c.bakery.ContentVersion = tc.version
+		usePracticeVersion(c.bakery, tc.version)
 		c.bakery.Notebooks = map[string][]NotebookEntry{tc.owner: tc.notes}
 		raw, err := c.bakery.Snapshot()
 		if err != nil {

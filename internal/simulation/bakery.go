@@ -58,6 +58,8 @@ type SpatialEntity struct {
 	ReliefTurns        int             `json:",omitempty"`
 	DropSound          PerceptionKind  `json:",omitempty"` // Sound made when this item hits the floor.
 	StealthPractice    stealthPractice `json:",omitzero"`
+	ProvidesCover      bool            `json:",omitempty"`
+	HiddenBehind       string          `json:",omitempty"` // Reference to the cover beside a crouching actor.
 }
 
 // Bakery is authoritative fixture state. Cells are in row-major order and
@@ -99,6 +101,7 @@ const (
 	dropSoundContentVersion       = 15
 	daylightContentVersion        = 16
 	stealthPracticeContentVersion = 17
+	coverContentVersion           = 18
 	fatigueLimit                  = 5 // Steps since the last rest, capped during a break.
 )
 
@@ -125,11 +128,14 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 	}
 	b.ContentVersion = personalityContentVersion
 	if setup.Practice {
-		b.ContentVersion = stealthPracticeContentVersion
-		id := url.PathEscape(worldID) + "/spoon"
-		spoon := b.Entities[id]
+		b.ContentVersion = coverContentVersion
+		prefix := url.PathEscape(worldID) + "/"
+		spoon := b.Entities[prefix+"spoon"]
 		spoon.DropSound = Clatter
-		b.Entities[id] = spoon
+		b.Entities[prefix+"spoon"] = spoon
+		crate := b.Entities[prefix+"crate"]
+		crate.ProvidesCover = true
+		b.Entities[prefix+"crate"] = crate
 	}
 	*clock = staged
 	return b, nil
@@ -247,6 +253,12 @@ func (b *Bakery) Validate() error {
 		}
 		if _, err := b.PositionOf(id); err != nil {
 			return err
+		}
+		if e.ProvidesCover && (b.ContentVersion < coverContentVersion || e.Kind != Container || e.Portable || e.Placement.HolderID != "") {
+			return fmt.Errorf("invalid cover for %q", id)
+		}
+		if e.HiddenBehind != "" && (e.Kind != Actor || e.Seated || !b.canHideBehind(e, e.HiddenBehind)) {
+			return fmt.Errorf("invalid hiding place for %q", id)
 		}
 		if e.DropSound != "" && (b.ContentVersion < dropSoundContentVersion || e.Kind != Item || !e.Portable || e.DropSound != Clatter) {
 			return fmt.Errorf("invalid drop sound for %q", id)

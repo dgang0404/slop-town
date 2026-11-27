@@ -99,6 +99,9 @@ func (n *turnNarrator) write(out io.Writer, cmd bakeryCommand, turn simulation.T
 		case simulation.ActionRest:
 			lines = append(lines, actor+" "+n.mark("sits down")+".")
 			explained[event.Actor.Ref] = event
+		case simulation.ActionHide:
+			lines = append(lines, actor+" "+n.mark("hides "+event.ObjectPhrase())+".")
+			explained[event.Actor.Ref] = event
 		case simulation.ActionOpen, simulation.ActionClose, simulation.ActionTake, simulation.ActionDrop, simulation.ActionPut:
 			lines = append(lines, actor+" "+n.mark(string(event.Action)+"s "+event.ObjectPhrase())+".")
 			explained[event.Target.Ref] = event
@@ -110,6 +113,9 @@ func (n *turnNarrator) write(out io.Writer, cmd bakeryCommand, turn simulation.T
 		} else if current.Self.Place == simulation.InBakery {
 			lines = append(lines, n.mark("Daylight spills through the doorway again."))
 		}
+	}
+	if prior.Self.Cover != "" && current.Self.Cover == "" && cmd.Action != simulation.ActionEmerge {
+		lines = append(lines, n.mark("You leave your cover."))
 	}
 	opened := ""
 	if cmd.Action == simulation.ActionOpen {
@@ -166,7 +172,7 @@ func (n *turnNarrator) write(out io.Writer, cmd bakeryCommand, turn simulation.T
 
 func (n *turnNarrator) describeSelf(was, now simulation.ObserverDetail) []string {
 	var lines []string
-	if was.Condition == simulation.SittingDown && now.Condition != simulation.SittingDown {
+	if was.Condition == simulation.SittingDown && now.Condition != simulation.SittingDown && now.Cover == "" {
 		lines = append(lines, n.mark("You get back on your feet."))
 	}
 	if now.Condition == simulation.SittingDown && was.Condition != simulation.SittingDown {
@@ -229,6 +235,7 @@ func (n *turnNarrator) lostFromView(scene simulation.Scene, explained map[string
 	var lines []string
 	var names []string
 	var lastPlace string
+	takingCover := scene.Self.Cover != "" && n.previous.Self.Cover != scene.Self.Cover
 	flush := func() {
 		if len(names) > 0 {
 			lines = append(lines, "You lose sight of "+proseList(names)+", last seen "+lastPlace+".")
@@ -236,12 +243,19 @@ func (n *turnNarrator) lostFromView(scene simulation.Scene, explained map[string
 		}
 	}
 	for _, obj := range n.previous.Targets {
-		if _, visible := scene.Details[obj.Ref]; visible || explained[obj.Ref].Action == simulation.ActionTake {
+		if _, visible := scene.Details[obj.Ref]; visible || explained[obj.Ref].Action == simulation.ActionTake || explained[obj.Ref].Action == simulation.ActionHide {
 			continue
 		}
 		name := "the " + obj.Name
 		where := n.previous.Details[obj.Ref].Location
 		ambiguous := len(n.previous.MatchingTargets(obj.Name)) > 1 || len(scene.MatchingTargets(obj.Name)) > 0
+		if takingCover {
+			if ambiguous {
+				name += " " + where
+			}
+			names = append(names, n.mark(name))
+			continue
+		}
 		if n.style == "story" && scene.Self.Cell != n.previous.Self.Cell {
 			switch {
 			case where == "here":
@@ -263,6 +277,9 @@ func (n *turnNarrator) lostFromView(scene simulation.Scene, explained map[string
 			name += " " + where
 		}
 		lines = append(lines, "You lose sight of "+n.mark(name)+".")
+	}
+	if takingCover && len(names) > 0 {
+		return []string{"From here you can no longer see " + proseList(names) + "."}
 	}
 	flush()
 	return lines

@@ -291,7 +291,7 @@ In new practice bakeries, a character can discreetly pick up a visible item with
 
 Just before a discreet pickup, each observer who can see the acting character makes one hidden check. The simulation weighs the actor’s stealth, the observer’s perception and their distance in tiles. Each character’s initial aptitudes come from the town seed, and each observer has their own saved sequence of draws. Players and residents use the same rules.
 
-A witness who identifies both the person and the item remembers an ordinary pickup. A partial sighting records an anonymous hand movement and names the container only when it was visible. A missed movement leaves no account to pass along. Checkpoint 21 adds deliberate listening for footsteps and doors. Checkpoint 23 adds the sound of a dropped spoon. Checkpoint 24 adds daylight to discreet pickups. Checkpoint 25 adds stealth practice. Hiding remains future work. [Master design, sections 7.6, 12.2, 12.5 and 46–47](../design/Slop_Town_Master_Design_Revised_v7.docx)
+A witness who identifies both the person and the item remembers an ordinary pickup. A partial sighting records an anonymous hand movement and names the container only when it was visible. A missed movement leaves no account to pass along. Checkpoint 21 adds deliberate listening for footsteps and doors. Checkpoint 23 adds the sound of a dropped spoon. Checkpoint 24 adds daylight to discreet pickups. Checkpoint 25 adds stealth practice. Checkpoint 26 lets a character hide behind the crate. [Master design, sections 7.6, 12.2, 12.5 and 46–47](../design/Slop_Town_Master_Design_Revised_v7.docx)
 
 ### Acceptance walkthrough
 
@@ -389,3 +389,21 @@ Interrupting the second qualifying pickup left the spoon on the floor and the ea
 New practice bakeries use content version 17. On a version 16 save from `e9cd104`, both executables produced the same transcript and journal. The porter identified the player on the final reach into the crate even after the earlier floor pickup. Both replayed from sequences 0 and 28 to tick 11, sequence 44, with SHA-256 `27fa296ea10c4d887d044be1184c412d4fa1fb9f1584acb16c1d9472ed1856f9`.
 
 Down and Enter completed the seed-51 floor-and-crate visit in a Linux terminal, including the conversation and journal lookup. The offline suite, both seed-42 smoke runs and three race-detector runs passed. The CLI cross-built for Windows amd64 and macOS arm64.
+
+## Checkpoint 26 — hide behind the crate
+
+A character beside the bakery crate can spend one turn crouching behind it. The crate blocks sightlines that cross its square at crouching height, in both directions. Someone looking from the side can still see the crouching character. The player’s text, grid, available actions and choice of conversation partners use that view. Sound still travels around the crate. Waiting, listening and handling an item can all be done while crouching. Moving, resting or choosing `come out` ends the posture. [Playable walkthrough](../../README.md#hide-behind-the-crate)
+
+A witness who could see the actor and the crate as the actor ducked can recall the hiding place in conversation. That memory records what happened on that turn. It gives the witness no view of what the actor does behind the crate afterward.
+
+### Checkpoint 26 results
+
+On seed 2 the player crouched on the east side of the crate on tick 9. The doorway and both workers dropped out of the player’s view. After reopening the save, `look` showed the crate and `come out` was available in the action menu. The player heard footsteps on tick 10, stood up on tick 11 and heard the baker recall the hiding place on tick 12. Down and Enter selected the full walkthrough and the question in a Linux terminal. [Restart and journal test](../../internal/storage/cover_test.go)
+
+In a separate scene the baker crouched and dropped the wooden spoon. The player at the doorway heard a clatter. A customer on the baker’s side of the crate saw the drop as well. Both had seen the baker duck. After the baker stood up, the player could see the baker again. [Sightline and hearing tests](../../internal/simulation/cover_test.go)
+
+Interrupting the SQLite receipt write rolled back the hiding turn and the witnesses’ memories. After retry, replay from sequences 0, 26 and 30 reached tick 12, sequence 45, with SHA-256 `655b64ef3ad3786d7cf81ce00225a615bd7710af06b558b7fd4f370b9b45977d`.
+
+New practice timelines use content version 18. A version 17 save from `d104063` kept its previous action menu and stealth practice. Both executables produced the same transcript and journal and replayed the seed-51 visit from sequences 0 and 28 to tick 11, sequence 44, with SHA-256 `454a018d6ada3d3069deeff3159a7f398c12882a35ea84abceb50a85e8affa6c`.
+
+The offline suite and both seed-42 smoke runs passed. The terminal, simulation and storage packages each passed three race-detector runs. The CLI cross-built for Windows amd64 and macOS arm64.

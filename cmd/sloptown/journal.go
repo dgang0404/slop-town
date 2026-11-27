@@ -211,7 +211,7 @@ func composeJournal(entries []simulation.JournalEntry) []journalChapter {
 				lines = append(lines, "The "+sight.Actor.Name+" introduced themselves to me.")
 			case simulation.ActionRest:
 				lines = append(lines, "I saw "+who+" sit down.")
-			case simulation.ActionOpen, simulation.ActionClose, simulation.ActionTake, simulation.ActionDrop, simulation.ActionPut:
+			case simulation.ActionOpen, simulation.ActionClose, simulation.ActionTake, simulation.ActionDrop, simulation.ActionPut, simulation.ActionHide:
 				lines = append(lines, "I saw "+who+" "+string(sight.Action)+" "+sight.ObjectPhrase()+".")
 			}
 		}
@@ -219,9 +219,11 @@ func composeJournal(entries []simulation.JournalEntry) []journalChapter {
 			lines = append(lines, remembered(entry.WalkEnd))
 		}
 		for _, sight := range entry.Observations {
-			if entry.Action != simulation.ActionRest || sight.Kind != simulation.SittingDown {
-				lines = append(lines, rememberedObservation(sight))
+			if (entry.Action == simulation.ActionRest && sight.Kind == simulation.SittingDown) ||
+				(entry.Action == simulation.ActionHide && sight.Kind == simulation.Crouching) {
+				continue
 			}
+			lines = append(lines, rememberedObservation(sight))
 		}
 		for _, discovery := range entry.FirstSeen {
 			lines = append(lines, rememberedSighting(discovery, journalPhrases.Discoveries))
@@ -313,6 +315,7 @@ func remembered(sentence string) string {
 	for _, verb := range []struct{ present, past string }{
 		{"introduce yourself", "introduced myself"}, {"discreetly take", "discreetly took"}, {"walk", "walked"}, {"move", "moved"},
 		{"open", "opened"}, {"close", "closed"}, {"take", "took"}, {"put", "put"}, {"drop", "dropped"},
+		{"crouch", "crouched"}, {"stand", "stood"},
 		{"feel", "felt"}, {"wait", "waited"}, {"are", "was"}, {"see", "saw"}, {"carry", "carried"},
 	} {
 		if tail, ok := strings.CutPrefix(sentence, "You "+verb.present); ok && (tail == "." || strings.HasPrefix(tail, " ")) {

@@ -43,11 +43,12 @@ func (b *Bakery) approach(actorID, target string) (spatialEffect, *actionFailure
 	seen := cellMask{}
 	seen[start.Y][start.X] = true
 	opaque := b.opaqueCells()
+	sight := b.withCover(opaque, actor.HiddenBehind)
 	for i := 0; i < len(queue); i++ {
 		curr := queue[i]
 		for _, dir := range []Direction{North, East, South, West} {
 			next, _ := curr.at.neighbor(dir)
-			if !b.isFloorCell(next) || seen[next.Y][next.X] || opaque[next.Y][next.X] || !opaque.canSee(start.X, start.Y, next.X, next.Y) {
+			if !b.isFloorCell(next) || seen[next.Y][next.X] || opaque[next.Y][next.X] || !sight.canSee(start.X, start.Y, next.X, next.Y) {
 				continue
 			}
 			seen[next.Y][next.X] = true

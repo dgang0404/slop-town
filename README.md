@@ -210,6 +210,28 @@ talk to porter
 
 Ask **“What have you seen around here?”** About the last pickup, the porter says, “I saw a hand move near the crate.” Run the same visit again and replace `drop spoon` with `put spoon in crate`. This time all three reaches are into the crate, and the porter says, “I saw you take the wooden spoon.” Choose `journal accounts` to read their words again. [Stealth practice checkpoint](docs/plans/phase-7.md#checkpoint-25--learning-from-discreet-pickups)
 
+### Hide behind the crate
+
+Start a fresh visit with `go run ./cmd/sloptown bakery -practice -play -seed 2`. Walk to the far side of the crate and wait for the workers to reach the prep area. Enter these commands one per line, or choose them with the arrows and Enter.
+
+```text
+wait
+east
+east
+east
+north
+wait
+wait
+wait
+hide behind crate
+look
+listen
+come out
+talk to baker
+```
+
+From down low, the crate cuts off your view of the bakery door. You can still hear footsteps, and the baker comes into sight again as they pass to one side. Ask **“What have you seen around here?”** The baker says, “I saw you hide behind the crate.” Read `journal accounts` to see what they told you. [Hiding checkpoint](docs/plans/phase-7.md#checkpoint-26--hide-behind-the-crate)
+
 ### Listen from the street
 
 Start a fresh practice visit with `go run ./cmd/sloptown bakery -practice -play -seed 42`. At the first prompt, type `listen` or select it with the arrows and Enter. A door creaks, then you hear footsteps. Read `journal` to see how your character remembers the sounds.

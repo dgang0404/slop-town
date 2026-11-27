@@ -75,6 +75,8 @@ func (b *Bakery) recordWitnesses(event Event) {
 			return // Only sitting down is observable.
 		}
 		entry.Action = ActionRest
+	case "actor_hid":
+		entry.Action = ActionHide // The witness sees the actor duck before cover blocks the view.
 	case "door_opened", "container_opened":
 		entry.Action = ActionOpen
 	case "door_closed", "container_closed":
@@ -201,6 +203,10 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 			case ActionRest:
 				if e.Target != "" {
 					return fmt.Errorf("unexpected target in a rest sighting")
+				}
+			case ActionHide:
+				if b.ContentVersion < coverContentVersion || !b.Entities[e.Target].ProvidesCover {
+					return fmt.Errorf("invalid hiding place in a notebook sighting")
 				}
 			case ActionOpen, ActionClose:
 				if kind := b.Entities[e.Target].Kind; kind != Door && kind != Container {

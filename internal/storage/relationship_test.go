@@ -17,10 +17,10 @@ import (
 // Replay historical practice histories from the original tick-zero rules.
 func usePracticeVersion(t *testing.T, path string, scope simulation.Scope, version int) {
 	t.Helper()
-	// These earlier fixtures predate the spoon's floor-impact sound.
-	soundPath := `$.bakery.Entities."` + url.PathEscape(scope.WorldID) + `/spoon".DropSound`
-	execSQL(t, path, `UPDATE timeline_state SET bakery=CAST(json_remove(json_set(bakery, '$.bakery.ContentVersion', ?), ?) AS BLOB)
-		WHERE world=? AND timeline=? AND last_sequence=0`, version, soundPath, scope.WorldID, scope.TimelineID)
+	// These early fixtures predate the spoon's clatter and the crate's cover.
+	entity := `$.bakery.Entities."` + url.PathEscape(scope.WorldID)
+	execSQL(t, path, `UPDATE timeline_state SET bakery=CAST(json_remove(json_set(bakery, '$.bakery.ContentVersion', ?), ?, ?) AS BLOB)
+		WHERE world=? AND timeline=? AND last_sequence=0`, version, entity+`/spoon".DropSound`, entity+`/crate".ProvidesCover`, scope.WorldID, scope.TimelineID)
 }
 
 func TestIntroductionAcrossRestart(t *testing.T) {

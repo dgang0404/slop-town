@@ -59,6 +59,16 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 	actor := b.Entities[view.ObserverID]
 	action, args := p.Action, p.Args
 	switch action {
+	case ActionEmerge:
+		if p.ByName || args != (ActionArgs{}) {
+			return spatialEffect{}, &actionFailure{"invalid_request", "Come out takes no arguments."}
+		}
+		if actor.HiddenBehind == "" {
+			return spatialEffect{}, &actionFailure{"action_unavailable", "You are already out in the open."}
+		}
+		cover := b.Entities[actor.HiddenBehind]
+		actor.HiddenBehind = ""
+		return spatialEffect{kind: "actor_emerged", message: "You stand up beside the " + cover.Name + ".", entityID: view.ObserverID, entity: actor}, nil
 	case ActionListen:
 		if p.ByName || args != (ActionArgs{}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Listen takes no arguments."}
@@ -84,6 +94,7 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 			EndurancePractice: actor.recoverEndurance(),
 		}
 		actor.Fatigue, actor.Seated, actor.SeekingRestSpot = 0, true, false
+		actor.HiddenBehind = ""
 		return spatialEffect{kind: "actor_rested", payload: recovery, message: "You rest for a turn.", entityID: view.ObserverID, entity: actor}, nil
 	case ActionMove:
 		if p.ByName || args != (ActionArgs{Direction: args.Direction}) {
@@ -98,7 +109,7 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 		if !validID(args.Target) || !validID(args.Container) || args != (ActionArgs{Target: args.Target, Container: args.Container}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Choose an item and a destination container."}
 		}
-	case ActionOpen, ActionClose, ActionTake, ActionDiscreetTake, ActionDrop, ActionIntroduce, ActionApproach:
+	case ActionOpen, ActionClose, ActionTake, ActionDiscreetTake, ActionDrop, ActionIntroduce, ActionApproach, ActionHide:
 		if !validID(args.Target) || args != (ActionArgs{Target: args.Target}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Choose one target."}
 		}
@@ -124,6 +135,17 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 	}
 	if action == ActionApproach {
 		return b.approach(view.ObserverID, args.Target)
+	}
+	if action == ActionHide {
+		if !b.canHideBehind(actor, args.Target) {
+			return spatialEffect{}, &actionFailure{"action_unavailable", "You need to be beside something large enough to hide behind."}
+		}
+		if actor.HiddenBehind == args.Target {
+			return spatialEffect{}, &actionFailure{"already_in_state", "You are already crouching there."}
+		}
+		actor.HiddenBehind, actor.Seated = args.Target, false
+		return spatialEffect{kind: "actor_hid", payload: EventPayload{Target: args.Target}, entityID: view.ObserverID, entity: actor,
+			message: "You crouch behind the " + b.Entities[args.Target].Name + "."}, nil
 	}
 	if action == ActionIntroduce {
 		if b.ContentVersion < relationshipContentVersion {
@@ -173,6 +195,7 @@ func (b *Bakery) move(actorID string, actor SpatialEntity, dir Direction) (spati
 		}
 	}
 	actor.Placement.Cell = dest
+	actor.HiddenBehind = ""
 	if b.ContentVersion >= restContentVersion {
 		actor.walkStep(b.ContentVersion, dest)
 		actor.Seated = false
@@ -183,6 +206,12 @@ func (b *Bakery) move(actorID string, actor SpatialEntity, dir Direction) (spati
 
 func inReach(a, b CellPosition) bool {
 	return a.FloorID == b.FloorID && manhattanDistance(a, b) <= 1
+}
+
+func (b *Bakery) canHideBehind(actor SpatialEntity, id string) bool {
+	cover := b.Entities[id]
+	return b.ContentVersion >= coverContentVersion && cover.ProvidesCover &&
+		inReach(actor.Placement.Cell, cover.Placement.Cell) && actor.Placement.Cell != cover.Placement.Cell
 }
 
 func manhattanDistance(a, b CellPosition) int {

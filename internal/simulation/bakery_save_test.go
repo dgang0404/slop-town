@@ -7,6 +7,21 @@ import (
 	"testing"
 )
 
+// Use the item properties that shipped with the selected practice rules so a
+// restore test can exercise the particular invalid field it installs.
+func usePracticeVersion(b *Bakery, version int) {
+	b.ContentVersion = version
+	for id, e := range b.Entities {
+		if version < coverContentVersion {
+			e.ProvidesCover = false
+		}
+		if version < dropSoundContentVersion {
+			e.DropSound = ""
+		}
+		b.Entities[id] = e
+	}
+}
+
 func TestBakerySnapshotRoundTrip(t *testing.T) {
 	for _, seed := range []int64{42, 43} {
 		clock := NewTimeline(seed)

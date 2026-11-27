@@ -69,7 +69,7 @@ func TestRestoreRejectsStealthPracticeOnItemsAndOldActors(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		c.bakery.ContentVersion = tc.version
+		usePracticeVersion(c.bakery, tc.version)
 		entity := c.bakery.Entities[tc.id]
 		entity.StealthPractice.Floor = true
 		c.bakery.Entities[tc.id] = entity

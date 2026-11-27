@@ -92,10 +92,11 @@ func TestRestoreInvalidRelief(t *testing.T) {
 		{"bakery/porter", practiceContentVersion, 1}, {"bakery/crate", emotionContentVersion, 1}, {"bakery/player", emotionContentVersion, -1}, {"bakery/baker", emotionContentVersion, reliefDuration + 1},
 	} {
 		b := c.bakery
+		usePracticeVersion(b, tc.version)
 		e := b.Entities[tc.id]
 		original := e
 		e.ReliefTurns = tc.turns
-		b.ContentVersion, b.Entities[tc.id] = tc.version, e
+		b.Entities[tc.id] = e
 		raw, err := b.Snapshot()
 		if err != nil {
 			t.Fatal(err)

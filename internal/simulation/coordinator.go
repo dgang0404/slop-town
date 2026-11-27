@@ -25,6 +25,8 @@ const (
 	ActionWait         ActionKind = "wait"
 	ActionListen       ActionKind = "listen"
 	ActionRest         ActionKind = "rest"
+	ActionHide         ActionKind = "hide"
+	ActionEmerge       ActionKind = "emerge"
 	ActionMove         ActionKind = "move"
 	ActionOpen         ActionKind = "open"
 	ActionClose        ActionKind = "close"

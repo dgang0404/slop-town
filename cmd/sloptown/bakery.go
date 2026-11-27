@@ -35,7 +35,7 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	practice := flags.Bool("practice", false, "create a resident bakery with use-based endurance")
 	flags.Usage = func() {
 		fmt.Fprintln(stderr, "Usage: sloptown bakery [-seed N] [-resident] [-practice] [-db PATH] [-timeline NAME] [-batch ID] [-play [-narration brief|story] | [-full] ACTION ...]")
-		fmt.Fprintln(stderr, "Actions: wait | rest | listen | move DIRECTION | open NAME | close NAME | take NAME | discreet_take NAME | drop NAME | put ITEM CONTAINER | introduce PERSON | approach NAME")
+		fmt.Fprintln(stderr, "Actions: wait | rest | listen | move DIRECTION | open NAME | close NAME | take NAME | discreet_take NAME | drop NAME | put ITEM CONTAINER | introduce PERSON | approach NAME | hide NAME | emerge")
 	}
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -141,11 +141,11 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		action := simulation.ActionKind(words[0])
 		count := 2
 		switch action {
-		case simulation.ActionWait, simulation.ActionRest, simulation.ActionListen:
+		case simulation.ActionWait, simulation.ActionRest, simulation.ActionListen, simulation.ActionEmerge:
 			count = 1
 		case simulation.ActionPut:
 			count = 3
-		case simulation.ActionMove, simulation.ActionOpen, simulation.ActionClose, simulation.ActionTake, simulation.ActionDiscreetTake, simulation.ActionDrop, simulation.ActionIntroduce, simulation.ActionApproach:
+		case simulation.ActionMove, simulation.ActionOpen, simulation.ActionClose, simulation.ActionTake, simulation.ActionDiscreetTake, simulation.ActionDrop, simulation.ActionIntroduce, simulation.ActionApproach, simulation.ActionHide:
 		default:
 			flags.Usage()
 			return 2

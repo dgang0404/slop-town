@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package simulation
 
-import "net/url"
+import (
+	"net/url"
+	"strings"
+)
 
 // PerceptionKind identifies a place or sensation the character can perceive.
 type PerceptionKind string
@@ -23,7 +26,10 @@ const (
 	DoorCreak       PerceptionKind = "door_creak"
 	Clatter         PerceptionKind = "clatter"
 	DimLight        PerceptionKind = "dim_light"
+	Crouching       PerceptionKind = "crouching"
 )
+
+const crouchingBehind = "You are crouching behind the "
 
 // Version 1 receipts save these exact sentences. Live scenes use the kinds
 // directly, and old journals recover them from the observer's own receipt.
@@ -82,6 +88,9 @@ func (o JournalObservation) SameAs(other JournalObservation) bool {
 }
 
 func personalObservation(text string) JournalObservation {
+	if strings.HasPrefix(text, crouchingBehind) {
+		return JournalObservation{Kind: Crouching, Text: text}
+	}
 	for kind, description := range receiptDescriptions {
 		if text == description {
 			return JournalObservation{Kind: kind, Text: text}

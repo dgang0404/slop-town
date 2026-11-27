@@ -29,6 +29,7 @@ type Scene struct {
 type ObserverDetail struct {
 	Cell                             CellPosition
 	Place, Condition, Feeling, Light PerceptionKind
+	Cover                            string // Reference to the cover the observer is using.
 }
 
 // VisibleDetail describes a target in the observer's field of view.
@@ -47,6 +48,9 @@ type WitnessedAction struct {
 // ObjectPhrase names the visible object and, for a put, its observed destination.
 func (s WitnessedAction) ObjectPhrase() string {
 	objects := "the " + s.Target.Name
+	if s.Action == ActionHide {
+		return "behind " + objects
+	}
 	if s.Action == ActionPut {
 		objects += " in the " + s.Container.Name
 	}
@@ -123,6 +127,16 @@ func (b *Bakery) opaqueCells() cellMask {
 	return opaque
 }
 
+// A standing character can see over the crate. Trace sight at crouching
+// height only when it is the observer or the person observed who uses cover.
+func (b *Bakery) withCover(opaque cellMask, coverID string) cellMask {
+	if coverID != "" {
+		cell := b.Entities[coverID].Placement.Cell
+		opaque[cell.Y][cell.X] = true
+	}
+	return opaque
+}
+
 func (b *Bakery) Observe(scope Scope, actorID string) (Observation, error) {
 	return b.observe(scope, actorID, nil)
 }
@@ -136,7 +150,7 @@ func (b *Bakery) observe(scope Scope, actorID string, scene *Scene) (Observation
 	if actor.Kind != Actor || actor.Placement.HolderID != "" || !b.isFloorCell(at) {
 		return Observation{}, errors.New("invalid observing character")
 	}
-	opaque := b.opaqueCells()
+	opaque := b.withCover(b.opaqueCells(), actor.HiddenBehind)
 	var visible cellMask
 	var tiles [bakeryHeight][bakeryWidth]string
 	for y, row := range b.Cells {
@@ -170,6 +184,10 @@ func (b *Bakery) observe(scope Scope, actorID string, scene *Scene) (Observation
 		self.Feeling = LingeringRelief
 	}
 	lines := []string{self.Place.Description()}
+	if actor.HiddenBehind != "" {
+		self.Cover = actor.HiddenBehind
+		lines = append(lines, crouchingBehind+b.Entities[self.Cover].Name+".")
+	}
 	if b.dimAt(at) {
 		self.Light = DimLight
 		lines = append(lines, self.Light.Description())
@@ -189,6 +207,12 @@ func (b *Bakery) observe(scope Scope, actorID string, scene *Scene) (Observation
 			continue
 		}
 		e := b.Entities[id]
+		if e.HiddenBehind != "" {
+			sight := b.withCover(opaque, e.HiddenBehind)
+			if !sight.canSee(at.X, at.Y, pos.X, pos.Y) {
+				continue
+			}
+		}
 		if pos == at && e.Kind == Door {
 			self.Place = InBakeryDoorway
 			lines[0] = self.Place.Description()
@@ -258,6 +282,9 @@ func appearance(e SpatialEntity) (label, glyph, state string) {
 		}
 		return "closed " + e.Name, "C", "closed"
 	case Actor:
+		if e.HiddenBehind != "" {
+			return e.Name + " crouching", "a", "crouching"
+		}
 		if e.Seated {
 			return e.Name + " sitting", "a", "sitting"
 		}

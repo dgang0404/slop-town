@@ -55,6 +55,9 @@ func (b *Bakery) AvailableActions(scope Scope, actorID string) ([]ActionOption, 
 		case Door, Container:
 			offer(ActionOpen, args)
 			offer(ActionClose, args)
+			if b.Entities[target.Ref].ProvidesCover {
+				offer(ActionHide, args)
+			}
 		case Item:
 			offer(ActionTake, args)
 			offer(ActionDiscreetTake, args)
@@ -69,5 +72,8 @@ func (b *Bakery) AvailableActions(scope Scope, actorID string) ([]ActionOption, 
 	offer(ActionWait, ActionArgs{})
 	offer(ActionRest, ActionArgs{})
 	offer(ActionListen, ActionArgs{})
+	if b.Entities[actorID].HiddenBehind != "" {
+		offer(ActionEmerge, ActionArgs{})
+	}
 	return options, nil
 }
