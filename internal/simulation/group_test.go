@@ -36,6 +36,14 @@ func TestBystanderRemembersAVisibleCheckIn(t *testing.T) {
 		!strings.Contains(pages[0].Observations[0].Text, "I heard the baker check in on the porter") {
 		t.Fatal(pages, err)
 	}
+	view, err := b.Observe(scope, baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	asked, fail := b.speak(view, player, SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"})
+	if fail != nil || !strings.Contains(asked.message, "I heard you check in on the porter. They said they felt fine.") {
+		t.Fatal(asked, fail)
+	}
 
 	away := b.Entities[player]
 	away.Placement = b.Entities["bakery/door"].Placement

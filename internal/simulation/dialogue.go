@@ -130,6 +130,9 @@ func (b *Bakery) dialogueChoices(view Observation, listener string, includeWitne
 // A confirmation gives the same event back to its source in the hearer's voice.
 func (b *Bakery) sightingWords(fact NotebookEntry, hearer string, confirm bool) string {
 	name := b.Entities[fact.Subject].Name
+	if fact.Overheard {
+		return fact.overheardAccount(name, b.Entities[fact.Target].Name, fact.Subject == hearer, fact.Target == hearer, confirm)
+	}
 	if fact.Condition != "" {
 		return fact.checkInAccount(name, fact.Subject == hearer, confirm)
 	}
@@ -286,7 +289,7 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 				continue
 			}
 			if (line.Topic == "sounds" && fact.Action == ActionListen) ||
-				(line.Topic == "news" && fact.Reported == 0 && fact.Action != ActionListen) || (line.Topic == "conversation" && fact.Condition != "" && !fact.Overheard) ||
+				(line.Topic == "news" && fact.Reported == 0 && fact.Action != ActionListen) || (line.Topic == "conversation" && fact.Condition != "") ||
 				(fact.Action == ActionIntroduce && fact.Subject == line.Topic) {
 				x.Reply = b.sightingWords(fact, speaker, false)
 				x.ReplySource = fact.SourceSequence
