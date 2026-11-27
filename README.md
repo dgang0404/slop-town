@@ -22,7 +22,7 @@ In Phase 4 the baker and porter follow work routines, choose where to rest and k
 
 In Phase 5, the player and residents build endurance, feel relief after a tiring walk, and recognize people who have introduced themselves. [Phase 5 plan](docs/plans/phase-5.md) · [Acceptance results](docs/plans/phase-5-results.md)
 
-Phase 6 begins with a living mint plant outside the practice bakery. Its leaves can unfold while the player is elsewhere. Once they open, a character can harvest a sprig and carry it back into the shop. [Phase 6 plan](docs/plans/phase-6.md)
+Phase 6 begins with a living mint plant outside the practice bakery. Its leaves can unfold while the player is elsewhere. A character can harvest a sprig, wait for clipped mint to regrow, and take a second cutting. [Phase 6 plan](docs/plans/phase-6.md)
 
 The Phase 7 bakery narrator offers brief and story settings. Both describe what your character notices, with new details in bold on supported terminals. In the practice bakery, workers can talk while you are elsewhere. Ask what someone has heard and they can tell you who witnessed it. The player journal recalls the visit and its conversations in chapters. Export it as plain text or as an illustrated book you can read offline. [Phase 7 presentation plan](docs/plans/phase-7.md)
 
@@ -299,6 +299,14 @@ look
 
 The cutting takes one turn and leaves short stems. After harvesting, `it` refers to the sprig in your hand. The open crate can hold the mint alongside the wooden spoon. [Harvest and restart checks](docs/plans/phase-6.md#checkpoint-2--harvest-a-sprig)
 
+### Knead dough at the prep bench
+
+Start a fresh practice visit with seed 42. Open the door, walk east twice to the prep bench, and type `knead`. Your first loaves feel dense. After two kneading turns, a third feels light and springy. The baker already kneads with a practiced touch on the same bench. Content version 22 and earlier saves do not offer kneading. [Baking skill checks](docs/plans/phase-5.md#baking-at-the-prep-bench--checkpoint-results)
+
+### Harvest a second sprig from the same planter
+
+After the first harvest, wait six turns on seed 42. The mint puts out new leaves again. Harvest a second time while you still hold the first sprig. You carry two mint sprigs. The planter then stays clipped. Older saves that use content version 22 or earlier keep the original single-cutting rule. [Second cutting checks](docs/plans/phase-6.md#checkpoint-3--a-second-cutting)
+
 ### Listen from the street
 
 Start a fresh practice visit with `go run ./cmd/sloptown bakery -practice -play -seed 42`. At the first prompt, type `listen` or select it with the arrows and Enter. A door creaks, then you hear footsteps. Read `journal` to see how your character remembers the sounds.
@@ -439,7 +447,7 @@ Start a fresh save with `go run ./cmd/sloptown bakery -workroom -play -seed 42 -
 
 In a fresh seed-42 workroom, open the bakery door, then type `walk to workroom door`, `open workroom door`, `walk to drawer` and `examine order`. The slip asks for the dough scraper. Open the drawer, step north, walk to the crate, open it and take the scraper. Type `walk to drawer`, `put scraper in drawer` and `examine order` to check the delivery. Other seeds can ask for a grain scoop or flour sieve.
 
-**Stay for the collection.** In a fresh workroom the baker checks the workbench near the end of each 32-turn shift. After delivering the scraper, close the drawer and wait nearby. The baker can open the drawer and pick up the tool on separate turns. You can also leave before the collection. When you return, the drawer tells you what is there now. To learn who took something you missed, you need a witness.
+**Stay for the collection.** In a fresh workroom the baker checks the workbench near the end of each 32-turn shift. After delivering the scraper, close the drawer and wait nearby. The baker can open the drawer and pick up the tool on separate turns, work it along the bench, and put it back before leaving the room. You can also leave before the collection. When you return, the drawer tells you what is there now. To learn who took something you missed, you need a witness.
 
 **Say hello after the pickup.** If the baker saw you put the requested tool in the drawer, introduce yourself to the baker, then choose “Hello.” after they collect it. The baker offers their number if you haven’t exchanged it in that direction yet. Type `journal people baker` to look it up. On seed 42, it’s extension 201 at the bakery phone.
 

@@ -16,7 +16,11 @@ Players and residents can learn baking, reading, writing, music and woodworking 
 
 Anyone with ingredients and access to an oven can try baking. The librarian can bake bread badly at first, learn from a dense loaf and eventually surpass the baker. The baker can learn a tune and the farmer can take up woodworking without either having to change jobs. The same opportunities apply to the player. Practice develops the skill the action actually exercises. Reading a letter and composing a reply exercise different skills, even when both happen at the same desk.
 
-Show proficiency through the work itself. A practiced baker can judge the rise by touch, and a musician learning a tune may lose the rhythm at a difficult passage. For a future check, give the baker, the librarian and the player the same recipe and equipment. Verify that all three can attempt it, prior experience affects the outcome, and meaningful practice carries into later attempts after a save and reload.
+Show proficiency through the work itself. A practiced baker can judge the rise by touch, and a musician learning a tune may lose the rhythm at a difficult passage. For a future check, give the baker, the librarian and the player the same recipe and equipment. Verify that all three can attempt it, prior experience affects the outcome, and meaningful practice carries into a later attempt after a save and reload.
+
+### Baking at the prep bench — checkpoint results
+
+Fresh practice towns use content version 30. The baker starts with baking experience. The player can knead at the prep bench after walking inside. The first two kneads feel dense; a third feels light and springy. The second knead can award the one lasting improvement the prototype supports. Older practice saves keep their prior rules. A failed SQLite write on the first knead rolled back cleanly; after retry the three kneads and replay from tick zero reached tick 6, sequence 22, SHA-256 `a4e8ddfba280f92e1ff90017cafd07db6cd730d04fae3b2ddda61131ed571561`. On 27 November 2026 the focused knead checks and full offline suite passed with Go 1.27.4. [Knead and restart checks](../../internal/simulation/baking_test.go) · [SQLite walkthrough](../../internal/storage/baking_test.go)
 
 ## Checkpoint 1 results
 

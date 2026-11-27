@@ -239,7 +239,7 @@ func (b *Bakery) observe(scope Scope, actorID string, scene *Scene) (Observation
 			if view.Plants == nil {
 				view.Plants = make(map[string]PlantCondition)
 			}
-			view.Plants[id] = e.Growth.condition()
+			view.Plants[id] = e.Growth.condition(b.ContentVersion >= regrowthContentVersion)
 		}
 		if e.Placement.HolderID == actorID {
 			if scene != nil {
@@ -248,7 +248,7 @@ func (b *Bakery) observe(scope Scope, actorID string, scene *Scene) (Observation
 			lines = append(lines, "You carry the "+e.Name+".")
 			continue
 		}
-		label, glyph, state := appearance(e)
+		label, glyph, state := appearance(e, b.ContentVersion >= regrowthContentVersion)
 		location := relativeLocation(at, pos)
 		if holder := e.Placement.HolderID; holder != "" {
 			location = "in the " + b.Entities[holder].Name
@@ -313,7 +313,7 @@ func (b *Bakery) contentsVisible(id, actorID string) bool {
 	return true
 }
 
-func appearance(e SpatialEntity) (label, glyph, state string) {
+func appearance(e SpatialEntity, regrowth bool) (label, glyph, state string) {
 	switch e.Kind {
 	case Telephone:
 		if e.Disconnected {
@@ -321,7 +321,7 @@ func appearance(e SpatialEntity) (label, glyph, state string) {
 		}
 		return e.Name, "T", "in working order"
 	case Planter:
-		return e.Growth.condition().appearance(e.Name)
+		return e.Growth.condition(regrowth).appearance(e.Name)
 	case Door:
 		if e.Open {
 			return "open " + e.Name, "/", "open"

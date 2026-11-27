@@ -36,6 +36,7 @@ const (
 	ActionExamine      ActionKind = "examine"
 	ActionWater        ActionKind = "water"
 	ActionHarvest      ActionKind = "harvest"
+	ActionKnead        ActionKind = "knead"
 	ActionClose        ActionKind = "close"
 	ActionTake         ActionKind = "take"
 	ActionDiscreetTake ActionKind = "discreet_take"
@@ -151,6 +152,7 @@ type EventPayload struct {
 	Dialogue          Exchange       `json:",omitzero"`
 	Sound             PerceptionKind `json:",omitempty"`
 	StealthPractice   string         `json:",omitempty"` // First qualifying reach from the floor or a container.
+	BakingPractice    bool           `json:",omitempty"`
 }
 
 type requestKey struct{ actorID, requestID string }

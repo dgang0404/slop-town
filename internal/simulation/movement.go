@@ -109,6 +109,11 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 		actor.Fatigue, actor.Seated, actor.SeekingRestSpot = 0, true, false
 		actor.HiddenBehind = ""
 		return spatialEffect{kind: "actor_rested", payload: recovery, message: "You rest for a turn.", entityID: view.ObserverID, entity: actor}, nil
+	case ActionKnead:
+		if p.ByName || args != (ActionArgs{}) {
+			return spatialEffect{}, &actionFailure{"invalid_request", "Kneading takes no arguments."}
+		}
+		return b.knead(actor, view.ObserverID)
 	case ActionMove:
 		if p.ByName || args != (ActionArgs{Direction: args.Direction}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Movement takes one direction."}

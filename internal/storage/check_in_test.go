@@ -57,9 +57,10 @@ func TestMissedCheckInAcrossRestart(t *testing.T) {
 		t.Fatal(retried)
 	}
 	head := checkpoint()
+	const want = "d095d85c12cfdbea83832f8cf4af89ba23d02f27e0b4f649ccc9f0b4e883f0a5"
 	for _, from := range []uint64{genesis.Sequence, before.Sequence, after.Sequence} {
 		replayed, err := storage.Replay(path, scope, from)
-		if err != nil || replayed != head || head.Tick != 7 || head.Hash != "650517bfbf9fe414a7d2f57a937b520d75ef56fc99d0f7e3d0bf8eda05606a08" {
+		if err != nil || replayed != head || head.Tick != 7 || head.Hash != want {
 			t.Fatal(from, replayed, err)
 		}
 	}

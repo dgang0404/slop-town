@@ -60,6 +60,12 @@ func (b *Bakery) applySpatial(event *Event, effect spatialEffect, clock *Timelin
 			return fmt.Errorf("harvested item %q already exists", id)
 		}
 		b.Entities[id] = SpatialEntity{Kind: Item, Name: "mint sprig", Portable: true, Placement: Placement{HolderID: event.Payload.HolderID}}
+		if b.ContentVersion >= regrowthContentVersion {
+			plant := effect.entity
+			plant.Growth.HarvestTick = event.Tick
+			plant.Growth.HarvestSequence = event.Sequence
+			effect.entity = plant
+		}
 	case "plant_watered":
 		effect.entity.Growth = plantGrowth{WateredTick: event.Tick, WateredSequence: event.Sequence}
 	}

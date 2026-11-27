@@ -83,7 +83,7 @@ func TestBakerRollbackAndReplay(t *testing.T) {
 	}
 	for _, from := range []uint64{0, 3} {
 		head, err := storage.Replay(path, s, from)
-		const want = "07d0038bf8e137f1431b101ed11ff48519186a2b315b23aabd8de22ad64d591c"
+		const want = "6f0ad92c7686b96a36bbfde2a9dce5eaeaa421650504a962f468c8c00e5a81fe"
 		if err != nil || head.Tick != 10 || head.Sequence != 27 || head.Hash != want {
 			t.Fatalf("replay from %d: %+v, %v", from, head, err)
 		}
@@ -152,7 +152,7 @@ func TestBakerRestAcrossRestart(t *testing.T) {
 	if !reflect.DeepEqual(inspectScope(t, path, s).events, history) {
 		t.Fatal("reopened history differs from uninterrupted work, break and return")
 	}
-	const want = "8e2b1876a8e108382a11b3319e77e24f01d54220ba15932e9ab74f3f497ce535"
+	const want = "7a42f8c56ffd1fa728a48017793a18bfb65fab66c12ca5b19a6fc5ed3398ea03"
 	for _, from := range []uint64{0, mid.Sequence} {
 		head, err := storage.Replay(path, s, from)
 		if err != nil || head.Tick != 13 || head.Sequence != 36 || head.Hash != want {

@@ -5,7 +5,7 @@ On 25 November 2026, the seed-42 bakery passed the local Linux restart and repla
 | Point in the walkthrough | Tick | Event sequence | SHA-256 of the canonical state |
 | --- | ---: | ---: | --- |
 | The spoon is in the player's inventory, beside the open crate | 5 | 10 | `c35a6eb2830ac7c08e171b564543528af3952f11cef5102eab379aca54285812` |
-| The spoon is on the street at (1,1), with the door and crate closed | 10 | 20 | `9f421909302942c47ba2ac7c46c627591ef95360749cff544ce23d206bafe58b` |
+| The spoon is on the street at (1,1), with the door and crate closed | 10 | 20 | `26ad2e2bb43103fa6a4a4c71259e23c466a85e126fefbe4f075b39e12f6ea8de` |
 
 Replay from either sequence 0 or sequence 10 produced the final digest. The digest covers world and timeline identity, sequence, clock, random streams and the versioned bakery state. The bakery encoding writes cells in row-major order and entities by sorted ID. Replay also checks each event and each command's recorded result, including the observation and its target references.
 

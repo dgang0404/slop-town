@@ -25,7 +25,7 @@ func (b *Bakery) examination(view Observation, ref string) (finding, detail stri
 	target := b.Entities[ref]
 	observer := b.Entities[view.ObserverID].Placement.Cell
 	at, _ := b.PositionOf(ref) // Observe already resolved the visible target's position.
-	_, _, state := appearance(target)
+	_, _, state := appearance(target, b.ContentVersion >= regrowthContentVersion)
 	switch target.Kind {
 	case Container:
 		if target.Open {

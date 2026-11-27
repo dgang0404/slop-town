@@ -74,8 +74,8 @@ func TestPhase2Acceptance(t *testing.T) {
 			t.Fatalf("reopened state at tick %d differs from uninterrupted execution", live.Clock.Tick())
 		}
 	}
-	const mid = "c35a6eb2830ac7c08e171b564543528af3952f11cef5102eab379aca54285812"
-	const final = "9f421909302942c47ba2ac7c46c627591ef95360749cff544ce23d206bafe58b"
+	const mid = "9d268b42d462e2802a48e2941978c41b6ecaae3d28e2a408f494503b39755d8b"
+	const final = "26ad2e2bb43103fa6a4a4c71259e23c466a85e126fefbe4f075b39e12f6ea8de"
 	report := func(tick int64, hash string, args ...string) {
 		t.Helper()
 		out := run(0, args...)

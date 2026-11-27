@@ -11,6 +11,9 @@ import (
 // restore test can exercise the particular invalid field it installs.
 func usePracticeVersion(b *Bakery, version int) {
 	b.ContentVersion = version
+	if version < bakingContentVersion {
+		b.PrepCell = CellPosition{}
+	}
 	for id, e := range b.Entities {
 		if (version < plantContentVersion && e.Kind == Planter) || (version < phoneContentVersion && e.Kind == Telephone) {
 			delete(b.Entities, id)
@@ -24,6 +27,9 @@ func usePracticeVersion(b *Bakery, version int) {
 		}
 		if version < dropSoundContentVersion {
 			e.DropSound = ""
+		}
+		if version < bakingContentVersion {
+			e.BakingBouts, e.BakingKneads = 0, 0
 		}
 		b.Entities[id] = e
 	}
@@ -92,5 +98,20 @@ func TestRestoreInvalidRestState(t *testing.T) {
 		if _, err := RestoreBakery(data, "town", clock); err == nil {
 			t.Fatalf("accepted invalid saved state: %+v", tc)
 		}
+	}
+}
+
+func TestFreshPracticeSnapshotRestores(t *testing.T) {
+	clock := NewTimeline(42)
+	b, err := BakerySetup{Practice: true}.Generate("bakery", clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := b.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = RestoreBakery(data, "bakery", clock); err != nil {
+		t.Fatalf("restore: %v; version=%d gen=%d", err, b.ContentVersion, b.GeneratorVersion)
 	}
 }

@@ -130,7 +130,7 @@ func TestPhase3Acceptance(t *testing.T) {
 	compare(9)
 	for _, from := range []string{"0", "8"} {
 		a, b := report(parsed, "replay", "-from", from), report(explicit, "replay", "-from", from)
-		const closedHash = "4900c5f07b7ee6629c7a8bec660bd6564be9c01ac0a2fb496c9f3a2d62e55d3a"
+		const closedHash = "0a8676c594c1182642dc6dd91a731f48e57aab67b37a7913826f5bd009a6e645"
 		if a != b || a.Scope != s || a.Tick != 9 || a.Sequence != 18 || a.Hash != closedHash {
 			t.Fatalf("replay from %s diverged: %+v, %+v", from, a, b)
 		}
@@ -145,7 +145,7 @@ func TestPhase3Acceptance(t *testing.T) {
 	run(explicit, "", "bakery", append(explicitHandling, "open", "wooden crate")...)
 	compare(10)
 	a, b := report(parsed, "replay", "-from", "0"), report(explicit, "replay", "-from", "0")
-	const reopenedHash = "f9d6411fd624963830cff8f08907e3eabac55eaf2ec4477967021698485c6fc9"
+	const reopenedHash = "ff2bd8ca717ff3579b5dd0c0ae6fbc8a555d24cae30fd6bcb95d8d30733573d8"
 	if a != b || a.Tick != 10 || a.Sequence != 20 || a.Hash != reopenedHash {
 		t.Fatalf("resumed replays diverged: %+v, %+v", a, b)
 	}

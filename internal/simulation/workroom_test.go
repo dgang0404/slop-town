@@ -74,8 +74,43 @@ func TestWorkroomRoundLeavesOtherItemsInPlace(t *testing.T) {
 	spoon := b.Entities["bakery/spoon"]
 	spoon.Placement = Placement{HolderID: "bakery/workbench"}
 	b.Entities["bakery/spoon"] = spoon
-	if action := b.workroomRound(scope, "bakery/baker", "bakery/door"); action.kind != "" {
+	if action := b.workroomRound(scope, "bakery/baker", "bakery/door", c.clock); action.kind != "" {
 		t.Fatal(action)
+	}
+}
+
+func TestBakerUsesSupplyToolAfterCollection(t *testing.T) {
+	scope := Scope{"bakery", "main"}
+	c, err := (BakerySetup{Workroom: true}).NewCoordinator(scope, 42)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.clock.Advance(25); err != nil {
+		t.Fatal(err)
+	}
+	b := c.bakery
+	const baker, drawer = "bakery/baker", "bakery/workbench"
+	toolID := b.Entities["bakery/order"].RequestedItem
+	tool := b.Entities[toolID]
+	tool.Placement = Placement{HolderID: baker}
+	b.Entities[toolID] = tool
+	bakerEnt := b.Entities[baker]
+	bakerEnt.Placement = Placement{Cell: b.workbenchStation("bakery/")}
+	b.Entities[baker] = bakerEnt
+	b.Entities[drawer] = func() SpatialEntity {
+		d := b.Entities[drawer]
+		d.Open = true
+		return d
+	}()
+	effect := b.workroomRound(scope, baker, "bakery/door", c.clock)
+	if effect.kind != "workroom_tool_used" {
+		t.Fatal(effect)
+	}
+	bakerEnt.WorkroomToolUseTick = c.clock.Tick()
+	b.Entities[baker] = bakerEnt
+	effect = b.workroomRound(scope, baker, "bakery/door", c.clock)
+	if effect.kind != "item_put" || effect.entity.Placement.HolderID != drawer {
+		t.Fatal(effect)
 	}
 }
 

@@ -63,7 +63,7 @@ func TestPersonalityChoicesAcrossRestart(t *testing.T) {
 	}
 	for _, from := range []uint64{0, 29, 35} {
 		head, err := storage.Replay(path, s, from)
-		if err != nil || head.Tick != 13 || head.Sequence != 46 || head.Hash != "42fc440f92d381c50c0b96b11c6e72456cef5116399ec811914e5ec38b9fb24d" {
+		if err != nil || head.Tick != 13 || head.Sequence != 46 || head.Hash != "2b082bf8382a5596334b829fb3f7eded21338139322d520041cf80e0a9ec7bdf" {
 			t.Fatalf("replay from %d: %+v, %v", from, head, err)
 		}
 	}

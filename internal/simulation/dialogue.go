@@ -68,7 +68,7 @@ func (b *Bakery) dialogueChoices(view Observation, listener string, includeWitne
 	add(checkInQuestion, checkInWords)
 	add(SpeechLine{Topic: "news", Intent: "ask", Tone: "curious"}, "What have you seen around here?")
 
-	if b.ContentVersion >= supplyQuestionVersion && listener == url.PathEscape(b.WorldID)+"/baker" {
+	if b.GeneratorVersion >= 4 && b.ContentVersion >= supplyQuestionVersion && listener == url.PathEscape(b.WorldID)+"/baker" {
 		add(SpeechLine{Topic: "workroom", Intent: "ask_supplies", Tone: "curious"}, "Do you need anything for the workroom?")
 	}
 
@@ -251,7 +251,7 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 		x.Reply = "Hello."
 		if b.recognizes(listener, speaker) {
 			x.Reply = "Good to see you again."
-			if b.ContentVersion >= helperGreetingVersion {
+			if b.GeneratorVersion >= 4 && b.ContentVersion >= helperGreetingVersion {
 				b.offerHelperNumber(&x, listener, speaker)
 			}
 		}
@@ -314,7 +314,10 @@ func (b *Bakery) offerHelperNumber(x *Exchange, baker, helper string) {
 		return
 	}
 	tool := b.Entities[prefix+"order"].RequestedItem
-	if b.Entities[tool].Placement.HolderID != baker || !b.sawSupplyDelivery(baker, helper, tool, prefix+"workbench") {
+	if !b.sawSupplyDelivery(baker, helper, tool, prefix+"workbench") {
+		return
+	}
+	if b.Entities[tool].Placement.HolderID != baker && b.Entities[baker].WorkroomToolUseTick == 0 {
 		return
 	}
 	x.ContactGiver = baker

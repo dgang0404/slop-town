@@ -80,7 +80,7 @@ func TestNotebookWitnessesAcrossRestart(t *testing.T) {
 		var head storage.ReplayReport
 		out := run("", "replay", "-world", "bakery", "-from", from)
 		if err := json.Unmarshal([]byte(out), &head); err != nil || head.Tick != 6 || head.Sequence != 17 ||
-			head.Hash != "b6ba766b3ae5505f6bc231b035a5a53873aefd2843c05791095b9b446d495a56" {
+			head.Hash != "87f5157cf7cce0c418bbcf36f3b9574d491ea8febe152bbf3feaede7871106fa" {
 			t.Fatalf("replay from %s: %s", from, out)
 		}
 	}

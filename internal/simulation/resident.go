@@ -72,8 +72,8 @@ func (b *Bakery) residentTurn(scope Scope, role string, clock *Timeline) (spatia
 	if b.ContentVersion < restContentVersion || actor.Fatigue < fatigueLimit {
 		// The baker checks the workbench during the last eight turns of each
 		// 32-turn shift. The visit happens even if nobody filled the order.
-		if role == "baker" && b.ContentVersion >= workroomRoundsVersion && (clock.Tick()-1)%32 >= 24 {
-			return b.workroomRound(scope, id, doorID), nil, nil
+		if role == "baker" && b.GeneratorVersion >= 4 && b.ContentVersion >= workroomRoundsVersion && (clock.Tick()-1)%32 >= 24 {
+			return b.workroomRound(scope, id, doorID, clock), nil, nil
 		}
 		if b.ContentVersion >= relationshipContentVersion && actor.Placement.Cell == goal && goal.X == door.X-1 && !actor.Seated {
 			return b.shopfrontIntroduction(scope, id), nil, nil
@@ -85,9 +85,39 @@ func (b *Bakery) residentTurn(scope Scope, role string, clock *Timeline) (spatia
 }
 
 // Approach along the main aisle before turning toward the inner door.
-func (b *Bakery) workroomRound(scope Scope, baker, frontDoor string) spatialEffect {
+func (b *Bakery) workroomRound(scope Scope, baker, frontDoor string, clock *Timeline) spatialEffect {
 	prefix := url.PathEscape(scope.WorldID) + "/"
 	inner := prefix + "workroom-door"
+	drawer := prefix + "workbench"
+	tool := b.Entities[prefix+"order"].RequestedItem
+	tick := clock.Tick()
+
+	if b.ContentVersion >= workroomToolUseVersion {
+		if b.Entities[tool].Placement.HolderID == baker {
+			return b.workroomWithTool(scope, baker, frontDoor, inner, drawer, tool, tick)
+		}
+		if b.bakerUsedToolThisShift(baker, tick) && b.Entities[tool].Placement.HolderID == drawer {
+			if b.actorInWorkroom(baker, prefix) {
+				entry := b.Entities[inner].Placement.Cell
+				at := b.Entities[baker].Placement.Cell
+				if at != entry {
+					return b.stepToward(scope, baker, entry, inner)
+				}
+				p := Proposal{Scope: scope, Action: ActionOpen, Args: ActionArgs{Target: inner}}
+				if !b.Entities[inner].Open {
+					effect, _ := b.resolveSpatial(baker, p)
+					return effect
+				}
+				aisle := b.Entities[frontDoor].Placement.Cell
+				aisle.X = entry.X
+				if at != aisle {
+					return b.stepToward(scope, baker, aisle, frontDoor)
+				}
+			}
+			return spatialEffect{}
+		}
+	}
+
 	entry := b.Entities[inner].Placement.Cell
 	at := b.Entities[baker].Placement.Cell
 	if at.X != entry.X {
@@ -98,8 +128,6 @@ func (b *Bakery) workroomRound(scope Scope, baker, frontDoor string) spatialEffe
 	if at != entry {
 		return b.stepToward(scope, baker, entry, inner)
 	}
-	drawer := prefix + "workbench"
-	tool := b.Entities[prefix+"order"].RequestedItem
 	p := Proposal{Scope: scope, Action: ActionOpen, Args: ActionArgs{Target: drawer}}
 	if b.Entities[drawer].Open {
 		if b.Entities[tool].Placement.HolderID != drawer {

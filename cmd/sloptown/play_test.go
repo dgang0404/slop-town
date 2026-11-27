@@ -77,7 +77,7 @@ func TestBakeryPlaySession(t *testing.T) {
 		t.Fatalf("unexpected final scene: %s", out)
 	}
 	head, err := storage.Replay(path, scope, cp.Sequence)
-	const want = "9f421909302942c47ba2ac7c46c627591ef95360749cff544ce23d206bafe58b"
+	const want = "26ad2e2bb43103fa6a4a4c71259e23c466a85e126fefbe4f075b39e12f6ea8de"
 	if err != nil || head.Hash != want || head.Tick != 10 || head.Sequence != 20 {
 		t.Fatalf("parsed walkthrough diverged from Phase 2: %+v, %v", head, err)
 	}

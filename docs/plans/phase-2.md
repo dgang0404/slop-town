@@ -24,6 +24,10 @@ Fresh workrooms use content version 26. On turns 25 through 32 of each 32-turn s
 
 In the seed-42 SQLite walkthrough, the player closed the stocked drawer on turn 14. The baker opened it on turn 26. The test reopened that save, verified the scraper was still in the drawer, advanced one turn and found the same scraper in the baker’s inventory. Retrying the turn and replaying from the initial and turn-26 checkpoints reached turn 27. [Saved collection test](../../cmd/sloptown/workroom_test.go)
 
+### Baker maintains the bench
+
+Fresh workrooms use content version 31. After collecting the requested tool, the baker works it along the bench, returns it to the drawer, and leaves the workroom. The helper greeting still requires a witnessed delivery and a finished collection turn; the baker may return the tool before sharing a number. Someone in the workroom can see the maintenance turn. [Simulation checks](../../internal/simulation/workroom_test.go)
+
 ## First checkpoint — generate a place
 
 Use one floor with five columns and four rows. Coordinates start at the northwest corner. East increases `x`; south increases `y`. Columns 0–1 are the street, column 2 is the bakery wall, and columns 3–4 are the bakery interior. One wall cell contains a closed door. Opening it makes that cell passable and transparent.

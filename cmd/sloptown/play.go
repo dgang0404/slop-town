@@ -384,7 +384,7 @@ func parseBakeryAction(words []string) (simulation.ActionKind, simulation.Action
 			return "", args, errors.New("Use come out to leave cover.")
 		}
 		return simulation.ActionEmerge, args, nil
-	case "wait", "rest", "listen":
+	case "wait", "rest", "listen", "knead":
 		if len(rest) != 0 {
 			return "", args, fmt.Errorf("Type %s to spend one turn here.", verb)
 		}

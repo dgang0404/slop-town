@@ -58,7 +58,10 @@ type SpatialEntity struct {
 	SeekingRestSpot    bool            `json:",omitempty"`
 	WalkedCells        uint32          `json:",omitempty"`
 	EnduranceBouts     int             `json:",omitempty"`
-	ReliefTurns        int             `json:",omitempty"`
+	BakingBouts        int             `json:",omitempty"`
+	BakingKneads       int             `json:",omitempty"`
+	ReliefTurns          int   `json:",omitempty"`
+	WorkroomToolUseTick  int64 `json:",omitempty"` // Last workroom bench use on this actor's timeline.
 	DropSound          PerceptionKind  `json:",omitempty"` // Sound made when this item hits the floor.
 	StealthPractice    stealthPractice `json:",omitzero"`
 	ProvidesCover      bool            `json:",omitempty"`
@@ -79,6 +82,7 @@ type Bakery struct {
 	GeneratorVersion int
 	ContentVersion   int
 	Cells            [bakeryHeight][bakeryWidth]BakeryCell
+	PrepCell         CellPosition    `json:",omitempty"`
 	Entities         map[string]SpatialEntity
 	Contacts         []sharedContact            `json:"Addresses,omitempty"` // Original save field for contact disclosures.
 	Letters          []letter                   `json:",omitempty"`
@@ -122,6 +126,9 @@ const (
 	workroomRoundsVersion         = 26
 	supplyQuestionVersion         = 27
 	helperGreetingVersion         = 28
+	regrowthContentVersion        = 29
+	bakingContentVersion          = 30 // Learnable kneading at the prep bench.
+	workroomToolUseVersion        = 31 // Baker maintains the bench after collecting the order.
 	fatigueLimit                  = 5 // Steps since the last rest, capped during a break.
 )
 
@@ -149,7 +156,9 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 	}
 	b.ContentVersion = personalityContentVersion
 	if setup.Practice || setup.Generated {
-		b.ContentVersion = phoneContentVersion
+		// One version number for a new town. Phone, mail, harvest, and the
+		// other practice rules stay active because each check is >= its own version.
+		b.ContentVersion = bakingContentVersion
 		prefix := url.PathEscape(worldID) + "/"
 		for localID, detail := range bakeryCloseDetails {
 			id := prefix + localID
@@ -173,6 +182,10 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 		at.Cell.X--
 		b.Entities[prefix+"mint"] = SpatialEntity{Name: "mint planter", Kind: Planter, Placement: at,
 			CloseDetail: "a brass watering spout over the soil"}
+		b.PrepCell = b.Entities[prefix+"baker"].Placement.Cell
+		baker := b.Entities[prefix+"baker"]
+		baker.BakingBouts = 1
+		b.Entities[prefix+"baker"] = baker
 		if setup.Generated {
 			if setup.Workroom {
 				if err := b.addWorkroom(prefix); err != nil {
@@ -290,6 +303,11 @@ func (b *Bakery) Validate() error {
 			}
 		}
 	}
+	if b.ContentVersion >= bakingContentVersion {
+		if !b.isFloorCell(b.PrepCell) || b.Cells[b.PrepCell.Y][b.PrepCell.X].SpaceID != b.InteriorID {
+			return fmt.Errorf("invalid prep bench cell")
+		}
+	}
 	for id, e := range b.Entities {
 		if e.RequestedItem != "" && (b.GeneratorVersion != 4 || id != prefix+"order") {
 			return fmt.Errorf("unexpected supply order on %q", id)
@@ -316,9 +334,19 @@ func (b *Bakery) Validate() error {
 				return fmt.Errorf("invalid outdoor planter %q", id)
 			}
 			if b.ContentVersion >= harvestContentVersion {
-				item, exists := b.Entities[sprigID(id)]
-				if exists != e.Growth.Harvested || (exists && (item.Kind != Item || !item.Portable || item.Name != "mint sprig")) {
-					return fmt.Errorf("invalid harvested sprig for %q", id)
+				for harvest := 1; harvest <= e.Growth.HarvestCount; harvest++ {
+					item, exists := b.Entities[sprigID(id, harvest)]
+					if !exists || item.Kind != Item || !item.Portable || item.Name != "mint sprig" {
+						return fmt.Errorf("invalid harvested sprig %d for %q", harvest, id)
+					}
+				}
+				if b.ContentVersion < regrowthContentVersion {
+					item, exists := b.Entities[sprigID(id, 1)]
+					if exists != e.Growth.Harvested || (exists && (item.Kind != Item || !item.Portable || item.Name != "mint sprig")) {
+						return fmt.Errorf("invalid harvested sprig for %q", id)
+					}
+				} else if e.Growth.Harvested && e.Growth.HarvestCount == 0 {
+					return fmt.Errorf("missing harvest count for %q", id)
 				}
 			} else if e.Growth.Harvested {
 				return fmt.Errorf("unexpected harvest for %q", id)
@@ -347,6 +375,9 @@ func (b *Bakery) Validate() error {
 		if err := b.validatePractice(id, e); err != nil {
 			return err
 		}
+		if err := b.validateBaking(id, e); err != nil {
+			return err
+		}
 		hasProfile := b.ContentVersion >= personalityContentVersion && (id == prefix+"baker" || id == prefix+"porter")
 		if hasProfile {
 			if e.Kind != Actor || e.RestInPlacePercent < 1 || e.RestInPlacePercent > 99 {
@@ -354,6 +385,9 @@ func (b *Bakery) Validate() error {
 			}
 		} else if e.RestInPlacePercent != 0 || e.SeekingRestSpot {
 			return fmt.Errorf("unexpected rest preference for %q", id)
+		}
+		if e.WorkroomToolUseTick != 0 && (e.Kind != Actor || b.ContentVersion < workroomToolUseVersion) {
+			return fmt.Errorf("unexpected workroom tool use for %q", id)
 		}
 		if e.SeekingRestSpot && e.Fatigue != fatigueLimit {
 			return fmt.Errorf("invalid break in progress for %q", id)

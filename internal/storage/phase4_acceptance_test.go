@@ -138,7 +138,7 @@ func TestPhase4Acceptance(t *testing.T) {
 			}
 		}
 	}
-	const digest = "785f8746f60c3184a71ba325dc40b9ee5c787aa43af0cb19701ea8a16a31dcf2"
+	const digest = "17bce67289ee67188f7dde0f35e9a5b3151ce228e917b74666ebc39d219ee831"
 	for _, from := range []uint64{0, mid.Sequence} {
 		head, err := storage.Replay(restarted, scope, from)
 		if err != nil || head.Tick != 14 || head.Sequence != 49 || head.Hash != digest {

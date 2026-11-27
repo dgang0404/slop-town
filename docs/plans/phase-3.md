@@ -19,7 +19,7 @@ The bakery supplies movement, door and container actions for this phase. Residen
 
 ## Checkpoint 1 results
 
-On 26 November 2026, the terminal played the seed-42 walkthrough one line at a time. `look`, `help`, an unknown verb, a blocked move and two unavailable targets left the initial checkpoint at tick 0 and sequence 0. Across sessions using the same SQLite save, five equivalent pickup commands under the same batch ID returned their original receipts. After the player dropped the spoon on the street, replay from sequence 0 reached tick 10 and sequence 20 with the Phase 2 digest `9f421909302942c47ba2ac7c46c627591ef95360749cff544ce23d206bafe58b`.
+On 26 November 2026, the terminal played the seed-42 walkthrough one line at a time. `look`, `help`, an unknown verb, a blocked move and two unavailable targets left the initial checkpoint at tick 0 and sequence 0. Across sessions using the same SQLite save, five equivalent pickup commands under the same batch ID returned their original receipts. After the player dropped the spoon on the street, replay from sequence 0 reached tick 10 and sequence 20 with the Phase 2 digest `26ad2e2bb43103fa6a4a4c71259e23c466a85e126fefbe4f075b39e12f6ea8de`.
 
 The full offline Linux verification script and three race-detector runs of the terminal package passed locally. Use `go test -v -count=1 -run '^(TestParseBakeryAction|TestBakeryPlaySession)$' ./cmd/sloptown` to repeat the focused checks. [Play the bakery](../../README.md#look-inside-the-bakery)
 

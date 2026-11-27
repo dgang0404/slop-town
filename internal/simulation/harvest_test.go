@@ -70,7 +70,7 @@ func TestHarvestAtThePlanter(t *testing.T) {
 	checkMenu(baker, true)
 	start := len(c.History())
 	r := c.Submit(baker, harvest)
-	yield := sprigID(planter)
+	yield := sprigID(planter, 1)
 	if r.Status != "accepted" || r.SelectedTarget != yield || !r.Observation.hasTarget(yield) || r.Observation.Plants[planter] != clippedStems {
 		t.Fatal(r)
 	}

@@ -102,6 +102,9 @@ func (b *Bakery) AvailableActions(scope Scope, actorID string) ([]ActionOption, 
 	offer(ActionWait, ActionArgs{})
 	offer(ActionRest, ActionArgs{})
 	offer(ActionListen, ActionArgs{})
+	if b.ContentVersion >= bakingContentVersion {
+		offer(ActionKnead, ActionArgs{})
+	}
 	if b.Entities[actorID].HiddenBehind != "" {
 		offer(ActionEmerge, ActionArgs{})
 	}

@@ -159,7 +159,7 @@ func TestPhase5Acceptance(t *testing.T) {
 	}
 	for _, from := range []uint64{0, mid.Sequence, afterRest.Sequence} {
 		head, err := storage.Replay(interrupted, scope, from)
-		if err != nil || head.Tick != 23 || head.Sequence != 80 || head.Hash != "8f7f7fbee48b621d5d33d54cf4cbb4353a8ee88c89f2ef1c131e89c62302f1a4" {
+		if err != nil || head.Tick != 23 || head.Sequence != 80 || head.Hash != "d67316bab6c1483be1c791318e5aed3d2e1002a401c171193d473af835375792" {
 			t.Fatalf("from %d: %+v, %v", from, head, err)
 		}
 		t.Logf("from %d: tick %d, sequence %d, sha256 %s", from, head.Tick, head.Sequence, head.Hash)

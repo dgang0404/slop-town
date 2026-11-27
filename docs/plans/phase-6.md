@@ -65,6 +65,14 @@ Interrupting the SQLite receipt write left the leafy plant intact. Retrying afte
 
 The offline suite and both seed-42 smoke runs passed. Down and Enter completed the harvest, examination, drop and journal visit in a Linux terminal. The CLI cross-built for Windows amd64 and macOS arm64.
 
-## Next gardening checkpoint — a second cutting
+## Checkpoint 3 — a second cutting
 
-Let clipped mint grow another set of leaves over town time. A second harvest should produce a distinct sprig even if someone still holds the first. Verify both items and the time between cuttings across a save and restart.
+Fresh practice towns use content version 29. After the first harvest, clipped mint grows another set of leaves over town time without watering again. The regrowth takes four to six turns, seeded separately from the first growth. A second harvest creates `bakery/mint/sprig-2` even while someone still holds the first sprig. Only clipped stems remain afterward.
+
+### Checkpoint 3 results
+
+On seed 42 the player harvested on turn eight, waited through the regrowth interval, and harvested again while still carrying the first sprig. A third attempt reported clipped stems only. Version 22 saves keep the original one-cutting rule.
+
+Interrupting the SQLite receipt write on the second harvest rolled back the clipping and the new sprig together. Retrying awarded one second cutting. [Simulation checks](../../internal/simulation/regrowth_test.go) · [Restart and replay](../../internal/storage/regrowth_test.go)
+
+The offline suite and both seed-42 smoke runs passed. Down and Enter completed the visit in a Linux terminal. The CLI cross-built for Windows amd64 and macOS arm64.

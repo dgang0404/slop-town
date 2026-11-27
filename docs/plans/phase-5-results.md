@@ -16,7 +16,7 @@ At the end, the porter recognized the player and the baker recognized the porter
 
 The test interrupted the SQLite receipt write on tick 17. A fresh process reopened at tick 16, sequence 54, with the player beside the crate. The reopened actor state and history matched their values before the attempted rest. Retrying acknowledged the sixteen completed turns and committed the rest once. Repeating the full visit after the final step acknowledged all twenty-three turns.
 
-The restarted save matched the uninterrupted one on the clock and random streams, bakery state, ordered events and command receipts. The test also reopened the town from the perspective of each of the three characters and compared what they could see. Replay from the beginning, immediately before the failed rest and immediately after its successful retry (sequences 0, 54 and 58) produced the same final SHA-256, `8f7f7fbee48b621d5d33d54cf4cbb4353a8ee88c89f2ef1c131e89c62302f1a4`.
+The restarted save matched the uninterrupted one on the clock and random streams, bakery state, ordered events and command receipts. The test also reopened the town from the perspective of each of the three characters and compared what they could see. Replay from the beginning, immediately before the failed rest and immediately after its successful retry (sequences 0, 54 and 58) produced the same final SHA-256, `d67316bab6c1483be1c791318e5aed3d2e1002a401c171193d473af835375792`.
 
 ## Repeat the walkthrough
 

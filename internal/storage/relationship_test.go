@@ -24,12 +24,19 @@ func usePracticeVersion(t *testing.T, path string, scope simulation.Scope, versi
 	}
 	b := &saved.Bakery
 	b.ContentVersion = version
+	const bakingVersion = 30
+	if version < bakingVersion {
+		b.PrepCell = simulation.CellPosition{}
+	}
 	for id, e := range b.Entities {
 		if e.Kind == simulation.Planter || e.Kind == simulation.Telephone {
 			delete(b.Entities, id)
 			continue
 		}
 		e.DropSound, e.ProvidesCover, e.CloseDetail = "", false, ""
+		if version < bakingVersion {
+			e.BakingBouts, e.BakingKneads = 0, 0
+		}
 		b.Entities[id] = e
 	}
 	data, err := b.Snapshot()
@@ -99,7 +106,7 @@ func TestIntroductionAcrossRestart(t *testing.T) {
 	}
 	for _, from := range []uint64{0, mid.Sequence} {
 		head, err := storage.Replay(path, scope, from)
-		if err != nil || head.Tick != 15 || head.Sequence != 52 || head.Hash != "3af00083bdcb72e16a28e3dc3273bd488f203e39188b39e8066c6031875b546a" {
+		if err != nil || head.Tick != 15 || head.Sequence != 52 || head.Hash != "ca0f61278842266f68f329432a64afc0c922dc084a465e44de91cc129a99df56" {
 			t.Fatalf("from %d: %+v, %v", from, head, err)
 		}
 		t.Logf("from %d: tick %d, sequence %d, sha256 %s", from, head.Tick, head.Sequence, head.Hash)

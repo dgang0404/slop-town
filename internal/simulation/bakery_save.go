@@ -25,7 +25,8 @@ func RestoreBakery(data []byte, world string, clock *Timeline) (*Bakery, error) 
 		return nil, err
 	}
 	b := saved.Bakery
-	if saved.Version != 1 || b == nil || b.GeneratorVersion < 1 || b.GeneratorVersion > 4 || b.ContentVersion < 1 || b.ContentVersion > helperGreetingVersion || (b.ContentVersion >= workroomRoundsVersion && b.GeneratorVersion != 4) {
+	if saved.Version != 1 || b == nil || b.GeneratorVersion < 1 || b.GeneratorVersion > 4 || b.ContentVersion < 1 || b.ContentVersion > workroomToolUseVersion ||
+		(b.GeneratorVersion >= 3 && b.ContentVersion >= workroomRoundsVersion && b.GeneratorVersion != 4) {
 		return nil, fmt.Errorf("unsupported bakery snapshot or content version")
 	}
 	if clock == nil || b.WorldID != world || b.Seed != clock.seed || clock.draws["geography"] != 1 {
@@ -56,7 +57,7 @@ func RestoreBakery(data []byte, world string, clock *Timeline) (*Bakery, error) 
 			return nil, fmt.Errorf("missing mint planter")
 		}
 		for id, e := range b.Entities {
-			if e.Kind == Planter && !e.Growth.valid(clock.Tick(), b.leafDelay(id)) {
+			if e.Kind == Planter && !e.Growth.valid(clock.Tick(), b.leafDelay(id), b.regrowthDelay(id), b.ContentVersion >= regrowthContentVersion) {
 				return nil, fmt.Errorf("invalid saved growth for %q", id)
 			}
 		}

@@ -37,7 +37,7 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	generated := flags.Bool("generated", false, "create a practice bakery with seeded furnishings and supplies")
 	flags.Usage = func() {
 		fmt.Fprintln(stderr, "Usage: sloptown bakery [-seed N] [-resident] [-practice] [-generated] [-workroom] [-db PATH] [-timeline NAME] [-batch ID] [-play [-narration brief|story] | [-full] ACTION ...]")
-		fmt.Fprintln(stderr, "Actions: wait | rest | listen | move DIRECTION | open NAME | close NAME | knock NAME | examine NAME | water NAME | harvest NAME | take NAME | discreet_take NAME | drop NAME | put ITEM CONTAINER | introduce PERSON | approach NAME | hide NAME | emerge | post PERSON MESSAGE | read_letter | call NAME_OR_NUMBER")
+		fmt.Fprintln(stderr, "Actions: wait | rest | listen | knead | move DIRECTION | open NAME | close NAME | knock NAME | examine NAME | water NAME | harvest NAME | take NAME | discreet_take NAME | drop NAME | put ITEM CONTAINER | introduce PERSON | approach NAME | hide NAME | emerge | post PERSON MESSAGE | read_letter | call NAME_OR_NUMBER")
 	}
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -143,7 +143,7 @@ func runBakery(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		action := simulation.ActionKind(words[0])
 		count := 2
 		switch action {
-		case simulation.ActionWait, simulation.ActionRest, simulation.ActionListen, simulation.ActionEmerge, simulation.ActionReadLetter:
+		case simulation.ActionWait, simulation.ActionRest, simulation.ActionListen, simulation.ActionKnead, simulation.ActionEmerge, simulation.ActionReadLetter:
 			count = 1
 		case simulation.ActionPut, simulation.ActionPost:
 			count = 3
