@@ -35,6 +35,25 @@ func (b *Bakery) applySpatial(event *Event, effect spatialEffect, clock *Timelin
 		b.recordWitnesses(*event)
 	}
 	switch event.Kind {
+	case "actors_conversed":
+		x := event.Payload.Dialogue
+		if x.AddressGiver != "" {
+			owner := event.ActorID
+			if owner == x.AddressGiver {
+				owner = event.Payload.Target
+			}
+			b.Addresses = append(slices.Clip(b.Addresses), sharedAddress{Owner: owner, Person: x.AddressGiver, Address: x.Address, Tick: event.Tick, Sequence: event.Sequence})
+		}
+	case "letter_posted":
+		p := event.Payload
+		b.Letters = append(b.Letters, letter{Post: event.Sequence, From: event.ActorID, To: p.Target, Address: p.Address, Body: p.Body, Tick: event.Tick, ReplyTo: p.LetterSequence})
+	case "letter_read":
+		for i := range b.Letters {
+			if b.Letters[i].Post == event.Payload.LetterSequence {
+				b.Letters[i].ReadTick = event.Tick
+				break
+			}
+		}
 	case "plant_harvested":
 		id := event.Payload.ItemID
 		if _, exists := b.Entities[id]; exists {

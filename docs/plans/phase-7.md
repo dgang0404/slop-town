@@ -452,8 +452,24 @@ On seed 42 the player looked out from inside the bakery and saw the porter outsi
 
 Fresh practice towns use content version 23 to record visible landmarks. A version 22 save retained its original harvest transcript, journal and turn-15 replay hash from Phase 6. The book can also read an introduction and a close examination that were already saved under the previous rules. [Previous harvest replay](phase-6.md#checkpoint-2--harvest-a-sprig)
 
-### Planned follow-up — shared contact details, letters and calls
+## Checkpoint 30 — send and read a letter
 
-Let a character offer a mailing address in conversation. Record who shared it and when in that person’s book entry. The first playable correspondence checkpoint will let the player or a resident write a letter to a learned address. The letter should take town time to arrive, and its contents should become known to the recipient on reading. Verify a save and restart while a letter is in transit delivers it once.
+After an introduction, either character can ask for the other’s address or offer their own in conversation. Each decision passes one address to one listener. The people journal records who shared it and the town date. The practice town has three numbered postal boxes. [Play the letter walkthrough](../../README.md#write-to-the-porter)
 
-A later checkpoint can add calls in a town with telephones. A character who learns a number and reaches a phone can place a call. The recipient’s circumstances determine whether they answer. Mailing addresses and phone numbers enter the book when someone shares them.
+A character can post from anywhere to an address they have learned, including when the recipient is out of sight. Writing and posting a one-line note together cost one turn. Delivery takes three more town turns. The recipient sees an unopened envelope and spends a turn to read it. The sender keeps the outgoing note in their journal, and the recipient keeps the text after opening. The arrow menu offers a ready-written note. Typed notes preserve spelling and punctuation and can contain up to 500 printable characters.
+
+During a free turn, a resident can open an envelope. On a later free turn, a resident with the sender’s address can post one acknowledgment. Work, movement, rest and introductions keep their existing priority. Replying to the acknowledgment is a fresh player decision. [Address and privacy tests](../../internal/simulation/mail_test.go)
+
+### Checkpoint 30 results
+
+On seed 42 the player and porter shared their addresses separately. The player walked out of sight and posted on turn 8. The letter reached the porter on turn 11. They opened it on turn 12 and posted a reply on turn 15. The player received the sealed reply on turn 18 and read it on turn 19. In a separate visit the porter learned no return address and sent no reply.
+
+Interrupting SQLite while sharing an address or while posting, delivering or opening an envelope preserved the previous town and its history. Retrying the complete batch produced one original and one reply. Replays from sequences 0, 28, 38 and 69 reached turn 19, sequence 73, with SHA-256 `50b446b575ece142d24c304c9c048ac12b789ff549805914f402cd5d82998364`. [SQLite restart test](../../internal/storage/mail_test.go)
+
+Fresh practice towns use content version 24. A version 23 visit from `77771ec` retained its original conversation choices, people journal and turn-4 replay hash `dcb474a8391d8aea98a84385f0a481261585bbf2d5a6cfc03b2abf59839bba59` in both executables.
+
+Down and Enter completed the full correspondence visit in a Linux terminal. The offline test suite and both seed-42 smoke runs passed. The CLI cross-built for Windows amd64 and macOS arm64.
+
+### Next correspondence checkpoint — place a phone call
+
+Let one character share a telephone number and record it in the listener’s people journal. At a working phone, a character can call a learned number. Whether the other person can answer depends on their location and current activity. Verify an answered call and a missed call through the ordinary player controls, including a save and restart.

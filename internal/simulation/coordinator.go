@@ -22,6 +22,8 @@ type Scope struct {
 type ActionKind string
 
 const (
+	ActionPost         ActionKind = "post"
+	ActionReadLetter   ActionKind = "read_letter"
 	ActionWait         ActionKind = "wait"
 	ActionListen       ActionKind = "listen"
 	ActionRest         ActionKind = "rest"
@@ -48,6 +50,7 @@ type ActionArgs struct {
 	Direction Direction  `json:"direction,omitempty"`
 	Target    string     `json:"target,omitempty"`
 	Container string     `json:"container,omitempty"` // Destination of a put.
+	Body      string     `json:"body,omitempty"`
 	Speech    SpeechLine `json:"speech,omitzero"`
 }
 
@@ -137,6 +140,9 @@ type EventPayload struct {
 	Target            string         `json:",omitempty"`
 	HolderID          string         `json:",omitempty"`
 	ItemID            string         `json:",omitempty"` // The cutting produced when Target is harvested.
+	Address           string         `json:",omitempty"`
+	Body              string         `json:",omitempty"`
+	LetterSequence    uint64         `json:",omitempty"` // Original posting for a read, delivery, or reply.
 	PersonDetail      string         `json:",omitempty"` // Distinguishing detail actually seen during an examination.
 	EndurancePractice bool           `json:",omitempty"`
 	ReliefStarted     bool           `json:",omitempty"`
@@ -312,6 +318,7 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 		staged := *bakery
 		staged.Entities = maps.Clone(bakery.Entities)
 		staged.Notebooks = maps.Clone(bakery.Notebooks)
+		staged.Letters = slices.Clone(bakery.Letters)
 		nextBakery = &staged
 		engine, kind, payload, message = "spatial", primary.kind, primary.payload, primary.message
 	}
@@ -333,6 +340,9 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 			return reject("resolution_failed", "The resident could not finish the turn."), nil
 		}
 		events = append(events, residents...)
+		if len(nextBakery.Letters) > 0 {
+			events = nextBakery.deliverMail(events)
+		}
 		if nextBakery.ContentVersion >= plantContentVersion {
 			events = nextBakery.advancePlants(events)
 		}
@@ -371,6 +381,11 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 			}
 		}
 		result.Message = message
+		for _, e := range events {
+			if e.Kind == "letter_delivered" && e.ActorID == actorID {
+				result.Message += "\nA letter arrives for you."
+			}
+		}
 		interrupted := false
 		for _, e := range residents {
 			if e.Kind == "actor_introduced" && e.Payload.Target == actorID {

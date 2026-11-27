@@ -13,7 +13,7 @@ import (
 	"github.com/dgang0404/slop-town/internal/simulation"
 )
 
-const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use walk to NAME to approach a visible destination. Use examine NAME in a new practice bakery to spend a turn looking closely. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. In a new practice bakery, try discreetly take NAME for a careful pickup or listen to spend a turn listening. Use water NAME at a planter and harvest NAME once it grows new leaves. Use knock on NAME at a door. Use hide behind NAME beside cover and come out to stand up again. Use introduce yourself to NAME or talk to NAME when someone is nearby. Short names work. Use it for the last object you acted on. Type actions for choices here, look for the current scene, calendar for today's date, journal to read your memories or quit to leave. Use journal people to recall the people you have met. Add a name to read one entry. Use journal accounts to recall who told you about a sight or sound, or journal leads to see which witnesses you could ask. Use journal discoveries for first sightings or journal last seen for the latest. Add a name to search either list. Use export journal for a text copy or export illustrated journal for a book you can open in a browser. Choose narration brief or narration story to change how turns read."
+const bakeryHelp = "Type a direction to walk, wait to spend a turn here, or rest to sit down when available. Use walk to NAME to approach a visible destination. Use examine NAME in a new practice bakery to spend a turn looking closely. Use open NAME, close NAME, take NAME, drop NAME, or put ITEM in CONTAINER. In a new practice bakery, try discreetly take NAME for a careful pickup or listen to spend a turn listening. Use water NAME at a planter and harvest NAME once it grows new leaves. Use knock on NAME at a door. Use hide behind NAME beside cover and come out to stand up again. Use introduce yourself to NAME or talk to NAME when someone is nearby. Short names work. Use it for the last object you acted on. Type actions for choices here, look for the current scene, calendar for today's date, journal to read your memories or quit to leave. Use write to NAME: MESSAGE to post a letter to a shared address, or choose a ready-written note with the arrows. Use read letter to open your oldest unread envelope. Use journal people to recall the people you have met. Add a name to read one entry. Use journal accounts to recall who told you about a sight or sound, or journal leads to see which witnesses you could ask. Use journal discoveries for first sightings or journal last seen for the latest. Add a name to search either list. Use export journal for a text copy or export illustrated journal for a book you can open in a browser. Choose narration brief or narration story to change how turns read."
 
 const peopleCommand = "journal people"
 const leadsCommand = "journal leads"
@@ -199,7 +199,7 @@ func (s bakerySession) play(in io.Reader, out io.Writer) error {
 			}
 			n.number = i
 		} else {
-			action, args, err := parseBakeryAction(strings.Fields(line))
+			action, args, err := parsePlayAction(input, line)
 			if err != nil {
 				fmt.Fprintln(out, err)
 				continue
@@ -271,6 +271,11 @@ func (s bakerySession) play(in io.Reader, out io.Writer) error {
 
 func (s bakerySession) showScene(out io.Writer, scene simulation.Scene) {
 	fmt.Fprintln(out, scene.Text+"\n"+scene.Grid)
+	if scene.UnreadLetters == 1 {
+		fmt.Fprintln(out, "You have an unread letter.")
+	} else if scene.UnreadLetters > 1 {
+		fmt.Fprintf(out, "You have %d unread letters.\n", scene.UnreadLetters)
+	}
 	if s.narrator != nil {
 		s.narrator.previous = scene
 	}
@@ -278,6 +283,10 @@ func (s bakerySession) showScene(out io.Writer, scene simulation.Scene) {
 
 func actionCommand(option simulation.ActionOption) string {
 	switch option.Action {
+	case simulation.ActionPost:
+		return "write to the " + option.Args.Target + ": " + option.Args.Body
+	case simulation.ActionReadLetter:
+		return "read letter"
 	case simulation.ActionKnock:
 		return "knock on the " + option.Args.Target
 	case simulation.ActionHide:
@@ -322,6 +331,23 @@ func noun(words []string) string {
 		words = words[1:]
 	}
 	return strings.Join(words, " ")
+}
+
+// Preserve a letter's original spelling and punctuation while normalizing the command.
+func parsePlayAction(input, line string) (simulation.ActionKind, simulation.ActionArgs, error) {
+	if line == "read letter" {
+		return simulation.ActionReadLetter, simulation.ActionArgs{}, nil
+	}
+	if line == "write" || strings.HasPrefix(line, "write ") {
+		head, body, ok := strings.Cut(input, ":")
+		words := strings.Fields(strings.ToLower(head))
+		body = strings.TrimSpace(body)
+		if !ok || len(words) < 3 || words[1] != "to" || noun(words[2:]) == "" || body == "" {
+			return "", simulation.ActionArgs{}, errors.New("Use write to NAME: MESSAGE.")
+		}
+		return simulation.ActionPost, simulation.ActionArgs{Target: noun(words[2:]), Body: body}, nil
+	}
+	return parseBakeryAction(strings.Fields(line))
 }
 
 // Parse syntax before resolving noun phrases against the actor's view.

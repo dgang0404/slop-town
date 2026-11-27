@@ -59,6 +59,17 @@ func (b *Bakery) planSpatial(view Observation, p Proposal) (spatialEffect, *acti
 	actor := b.Entities[view.ObserverID]
 	action, args := p.Action, p.Args
 	switch action {
+	case ActionPost, ActionReadLetter:
+		if b.ContentVersion < mailContentVersion {
+			return spatialEffect{}, &actionFailure{"action_unavailable", "There is no mail service here."}
+		}
+		if action == ActionPost {
+			return b.postLetter(view.ObserverID, p)
+		}
+		if p.ByName || args != (ActionArgs{}) {
+			return spatialEffect{}, &actionFailure{"invalid_request", "Use read letter to open your next envelope."}
+		}
+		return b.readLetter(view.ObserverID)
 	case ActionEmerge:
 		if p.ByName || args != (ActionArgs{}) {
 			return spatialEffect{}, &actionFailure{"invalid_request", "Come out takes no arguments."}

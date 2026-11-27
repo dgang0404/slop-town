@@ -24,6 +24,9 @@ func (b *Bakery) advanceResidents(clock *Timeline, primary Event) ([]Event, []he
 		if err != nil {
 			return nil, nil, err
 		}
+		if effect.kind == "" && len(b.Letters) > 0 {
+			effect = b.residentMail(id)
+		}
 		if effect.kind == "" {
 			continue
 		}

@@ -34,7 +34,7 @@ func (s bakerySession) menu(cmd bakeryCommand) ([]menuChoice, *simulation.Scene,
 	}
 	var directions []menuChoice
 	for _, option := range options {
-		if option.Args.Target != "" && len(scene.MatchingTargets(option.Args.Target)) == 0 ||
+		if option.Action != simulation.ActionPost && option.Args.Target != "" && len(scene.MatchingTargets(option.Args.Target)) == 0 ||
 			option.Args.Container != "" && len(scene.MatchingTargets(option.Args.Container)) == 0 {
 			continue
 		}

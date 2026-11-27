@@ -25,7 +25,7 @@ func RestoreBakery(data []byte, world string, clock *Timeline) (*Bakery, error) 
 		return nil, err
 	}
 	b := saved.Bakery
-	if saved.Version != 1 || b == nil || b.GeneratorVersion != 1 || b.ContentVersion < 1 || b.ContentVersion > landmarkContentVersion {
+	if saved.Version != 1 || b == nil || b.GeneratorVersion != 1 || b.ContentVersion < 1 || b.ContentVersion > mailContentVersion {
 		return nil, fmt.Errorf("unsupported bakery snapshot or content version")
 	}
 	if clock == nil || b.WorldID != world || b.Seed != clock.seed || clock.draws["geography"] != 1 {
@@ -50,6 +50,9 @@ func RestoreBakery(data []byte, world string, clock *Timeline) (*Bakery, error) 
 		if porter.Kind != Actor || !b.isFloorCell(porter.Placement.Cell) {
 			return nil, fmt.Errorf("invalid saved porter")
 		}
+	}
+	if err := b.validateMail(clock.Tick()); err != nil {
+		return nil, err
 	}
 	if err := b.validateNotebooks(clock.Tick()); err != nil {
 		return nil, err

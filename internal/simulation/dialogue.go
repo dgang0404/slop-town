@@ -22,6 +22,8 @@ type Exchange struct {
 	Reply         string        `json:",omitempty"`
 	SpeakerSource uint64        `json:",omitempty"`
 	ReplySource   uint64        `json:",omitempty"`
+	AddressGiver  string        `json:",omitempty"`
+	Address       string        `json:",omitempty"`
 	Question      SpeechLine    `json:",omitzero"`
 	Statement     SpeechLine    `json:",omitzero"`
 	Condition     workCondition `json:",omitempty"`
@@ -66,7 +68,8 @@ func (b *Bakery) dialogueChoices(view Observation, listener string, includeWitne
 	// Most recent memories first. Only a report addressed to this speaker
 	// can unlock a question about what the listener told them.
 	entries := b.Notebooks[view.ObserverID]
-	memoryLimit := limit
+	mail := b.addressChoices(view.ObserverID, listener)
+	memoryLimit := limit - len(mail)
 	if b.ContentVersion >= reportContentVersion {
 		memoryLimit -= 2 // Keep the questions about conversations and secondhand news available.
 		if b.ContentVersion >= soundAccountContentVersion {
@@ -89,6 +92,9 @@ func (b *Bakery) dialogueChoices(view Observation, listener string, includeWitne
 	}
 	if b.ContentVersion >= soundAccountContentVersion {
 		add(SpeechLine{Topic: "sounds", Intent: "ask", Tone: "curious"}, "What sounds have you heard lately?")
+	}
+	for _, choice := range mail {
+		add(choice.Line, choice.Words)
 	}
 	for _, obj := range view.Targets {
 		if obj.Ref == listener {
@@ -173,6 +179,12 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 	line := choice.Line
 	x := Exchange{Words: choice.Words}
 	switch line.Intent {
+	case "ask_address":
+		x.AddressGiver, x.Address = listener, b.addressOf(listener)
+		x.Reply = "You can write to me at " + x.Address + "."
+	case "offer_address":
+		x.AddressGiver, x.Address = speaker, b.addressOf(speaker)
+		x.Reply = "Thank you. I’ll keep your address."
 	case "ask_witness":
 		account, _ := b.entryAt(speaker, line.Source)
 		fact, ok := b.originalWitness(account, listener)

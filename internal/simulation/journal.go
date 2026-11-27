@@ -12,6 +12,7 @@ import (
 type JournalSpeech struct {
 	With         string
 	WithRef      string
+	Address      string // An address explicitly given to this reader.
 	IStarted     bool
 	Words, Reply string
 }
@@ -114,6 +115,14 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 						}
 					}
 				}
+			case "letter_posted":
+				page := entryAt(e.Tick)
+				page.Action = ActionPost
+				page.Outcome = "You post a letter to the " + b.Entities[e.Payload.Target].Name + " at " + e.Payload.Address + ". “" + e.Payload.Body + "”"
+			case "letter_read":
+				page := entryAt(e.Tick)
+				page.Action = ActionReadLetter
+				page.Outcome = "You read a letter from the " + b.Entities[e.Payload.Target].Name + ". “" + e.Payload.Body + "”"
 			case "plant_watered":
 				entryAt(e.Tick).OutcomeTarget = e.Payload.Target
 			case "plant_harvested":
@@ -134,6 +143,13 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 			}
 			page.Conversation = JournalSpeech{WithRef: other, With: b.Entities[other].Name, IStarted: started,
 				Words: words, Reply: reply}
+			if x := e.Payload.Dialogue; x.AddressGiver == other {
+				page.Conversation.Address = x.Address
+			}
+		}
+		if e.Kind == "letter_delivered" && e.ActorID == actor {
+			page := entryAt(e.Tick)
+			page.Observations = append(page.Observations, JournalObservation{Text: "A letter arrived for me."})
 		}
 
 		// The notebook retains the first introduction for familiarity. Every

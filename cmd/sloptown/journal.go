@@ -318,7 +318,7 @@ func remembered(sentence string) string {
 		{"introduce yourself", "introduced myself"}, {"discreetly take", "discreetly took"}, {"walk", "walked"}, {"move", "moved"},
 		{"open", "opened"}, {"close", "closed"}, {"take", "took"}, {"put", "put"}, {"drop", "dropped"},
 		{"crouch", "crouched"}, {"stand", "stood"}, {"knock", "knocked"}, {"find", "found"}, {"water", "watered"}, {"harvest", "harvested"},
-		{"feel", "felt"}, {"wait", "waited"}, {"are", "was"}, {"see", "saw"}, {"carry", "carried"},
+		{"post", "posted"}, {"read", "read"}, {"feel", "felt"}, {"wait", "waited"}, {"are", "was"}, {"see", "saw"}, {"carry", "carried"},
 	} {
 		if tail, ok := strings.CutPrefix(sentence, "You "+verb.present); ok && (tail == "." || strings.HasPrefix(tail, " ")) {
 			return "I " + verb.past + tail

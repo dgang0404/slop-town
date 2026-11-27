@@ -19,11 +19,14 @@ func (c *Coordinator) Observe(actorID string) (Observation, error) {
 // Scene carries live presentation details separately from the versioned observation in a receipt.
 type Scene struct {
 	Observation
-	ActionTarget string // Resolved object of the observer's action. Empty on a look.
-	Date         BakeryDate
-	Self         ObserverDetail
-	Details      map[string]VisibleDetail
-	Witnessed    []WitnessedAction // During this turn. Empty on a look.
+	MailContacts  []ObservedTarget // People whose mailing addresses this observer learned.
+	MailAddresses map[string]string
+	UnreadLetters int
+	ActionTarget  string // Resolved object of the observer's action. Empty on a look.
+	Date          BakeryDate
+	Self          ObserverDetail
+	Details       map[string]VisibleDetail
+	Witnessed     []WitnessedAction // During this turn. Empty on a look.
 }
 
 // ObserverDetail contains only the surroundings and sensations described to the actor.
@@ -282,6 +285,20 @@ func (b *Bakery) observe(scope Scope, actorID string, scene *Scene) (Observation
 	}
 	if scene != nil {
 		scene.Self = self
+		scene.MailContacts = b.mailingTargets(actorID)
+		for _, c := range b.Addresses {
+			if c.Owner == actorID {
+				if scene.MailAddresses == nil {
+					scene.MailAddresses = make(map[string]string)
+				}
+				scene.MailAddresses[c.Person] = c.Address
+			}
+		}
+		for _, l := range b.Letters {
+			if l.To == actorID && l.Delivered && l.ReadTick == 0 {
+				scene.UnreadLetters++
+			}
+		}
 	}
 	view.Text = strings.Join(lines, "\n")
 	view.Grid = renderTiles(tiles)

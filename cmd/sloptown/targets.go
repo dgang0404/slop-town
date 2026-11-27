@@ -55,7 +55,7 @@ func (s bakerySession) command(action simulation.ActionKind, args simulation.Act
 // A replayed transcript uses the original answer numbers. The prompt never
 // needs names or positions from the historical scene.
 func recordedCommand(r *simulation.Receipt, action simulation.ActionKind, args simulation.ActionArgs, last string) (bakeryCommand, bool) {
-	if r == nil || r.Proposal.Action != action {
+	if r == nil || r.Proposal.Action != action || r.Proposal.Args.Body != args.Body {
 		return bakeryCommand{}, false
 	}
 	p := r.Proposal
@@ -90,8 +90,16 @@ func prepareCommand(action simulation.ActionKind, args simulation.ActionArgs, sc
 		if phrase == "it" {
 			n.ref = last
 		} else {
-			for _, t := range scene.MatchingTargets(phrase) {
-				n.options = append(n.options, promptOption{ref: t.Ref, label: t.Name + " " + scene.ChoiceLocation(t.Ref)})
+			view := scene.Observation
+			if action == simulation.ActionPost {
+				view.Targets = scene.MailContacts
+			}
+			for _, t := range view.MatchingTargets(phrase) {
+				location := scene.ChoiceLocation(t.Ref)
+				if action == simulation.ActionPost {
+					location = "at " + scene.MailAddresses[t.Ref]
+				}
+				n.options = append(n.options, promptOption{ref: t.Ref, label: t.Name + " " + location})
 			}
 			if len(n.options) == 1 {
 				n.ref = n.options[0].ref

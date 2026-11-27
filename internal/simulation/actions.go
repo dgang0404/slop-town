@@ -78,6 +78,12 @@ func (b *Bakery) AvailableActions(scope Scope, actorID string) ([]ActionOption, 
 			}
 		}
 	}
+	for _, person := range b.mailingTargets(actorID) {
+		add(ActionPost, ActionArgs{Target: person.Ref, Body: invitation})
+	}
+	if len(b.Letters) > 0 {
+		offer(ActionReadLetter, ActionArgs{})
+	}
 	offer(ActionWait, ActionArgs{})
 	offer(ActionRest, ActionArgs{})
 	offer(ActionListen, ActionArgs{})

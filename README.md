@@ -383,6 +383,18 @@ contacts
 
 The porter comes close enough for you to see a frayed sleeve on the second examination. After the introduction, their entry remembers it. The baker’s greeting on the next turn earns a separate entry. Choose **journal people** with the arrows, type `contacts` for everyone, or use `journal people NAME` to look someone up. Reading costs no turn. [People, places and plans for correspondence](docs/plans/phase-7.md#checkpoint-29--see-across-a-doorway-and-remember-people)
 
+### Write to the porter
+
+Start a fresh practice town with `go run ./cmd/sloptown bakery -practice -play -seed 42 -db post.sqlite`. Wait twice, introduce yourself to the porter, then type `talk to porter`. Choose **Where can I write to you?** and then **You can write to me at Box 1, Town Post.** In this visit those are choices 7 and 8. Type `cancel` to leave the conversation. You can look up the porter’s box in `journal people porter`.
+
+Walk south twice, then send your own note.
+
+```text
+write to porter: Did your shift go well?
+```
+
+You can also choose a ready-written note with the arrows and Enter. Posting takes one turn. Each envelope takes three more town turns to arrive. The porter opens it during a break in their routine and can send an acknowledgment if you shared your own address. On this route, wait ten turns after posting, then choose `read letter` to open the reply. You can quit and reopen the same save while the post is on its way. [Delivery and replay checks](docs/plans/phase-7.md#checkpoint-30--send-and-read-a-letter)
+
 ### Export an illustrated journal
 
 Type `export illustrated journal` or choose it with the arrows and Enter. Open `slop-town-journal.html` in a browser. The pictures travel with the file, so you can copy it to another device and read it offline. Later exports use the next available filename.

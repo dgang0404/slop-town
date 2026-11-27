@@ -77,6 +77,8 @@ type Bakery struct {
 	ContentVersion   int
 	Cells            [bakeryHeight][bakeryWidth]BakeryCell
 	Entities         map[string]SpatialEntity
+	Addresses        []sharedAddress            `json:",omitempty"`
+	Letters          []letter                   `json:",omitempty"`
 	Notebooks        map[string][]NotebookEntry `json:",omitempty"`
 }
 
@@ -110,6 +112,7 @@ const (
 	plantContentVersion           = 21
 	harvestContentVersion         = 22
 	landmarkContentVersion        = 23
+	mailContentVersion            = 24
 	fatigueLimit                  = 5 // Steps since the last rest, capped during a break.
 )
 
@@ -136,7 +139,7 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 	}
 	b.ContentVersion = personalityContentVersion
 	if setup.Practice {
-		b.ContentVersion = landmarkContentVersion
+		b.ContentVersion = mailContentVersion
 		prefix := url.PathEscape(worldID) + "/"
 		for localID, detail := range bakeryCloseDetails {
 			id := prefix + localID
