@@ -47,11 +47,20 @@ func TestAccountsKeepDistinctWitnessesAndSightings(t *testing.T) {
 	if got[0].AwaitingWitness() || !got[1].AwaitingWitness() || !got[2].AwaitingWitness() {
 		t.Fatal("hearing the porter should settle only that witness's first sighting")
 	}
+	// The most recent retelling is about the settled sighting. Its words
+	// match an open question about a later rest witnessed by the same porter.
+	if choices := b.witnessQuestions(player, porter, 11); len(choices) != 1 || choices[0].Line.Source != 52 {
+		t.Fatalf("offered a settled report instead of the open lead: %+v", choices)
+	}
 
 	// Someone can repeat a witness's own account back to them.
 	b.appendSighting(porter, report(56, 28, baker, 6))
 	got, err = c.Accounts(porter)
 	if err != nil || len(got) != 1 || !got[0].OwnSighting || got[0].AwaitingWitness() || got[0].Act != "the player sit down" {
 		t.Fatalf("witness as reader: %+v, %v", got, err)
+	}
+	b.ContentVersion = reportContentVersion
+	if choices := b.witnessQuestions(player, porter, 11); len(choices) != 1 || choices[0].Line.Source != 54 {
+		t.Fatalf("changed the dialogue selection in a version 10 save: %+v", choices)
 	}
 }

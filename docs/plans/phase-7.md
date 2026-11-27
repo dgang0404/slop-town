@@ -270,3 +270,17 @@ In a save created by `4cf825f`, the player had spoken with the baker on day one.
 An interrupted SQLite write while hearing the baker's story left the leads empty. A failed write during the porter's reply kept the question open until retry. Separate checks covered two witnesses sharing a name, two sightings by the same witness and a witness hearing their own account repeated. [Rollback and restart walkthrough](../../internal/storage/report_test.go) · [Journal tests](../../cmd/sloptown/journal_test.go)
 
 The full offline suite, both seed-42 smoke runs and three race-detector runs passed. The CLI cross-built for Windows amd64 and macOS arm64.
+
+## Checkpoint 19 — witnesses to item transfers
+
+In a new practice bakery, a character can remember seeing someone take an item, drop it, or put it in a particular container. The simulation checks the witness's view just before a take and just after a placement, before the next character acts. The person and the item must both be visible. Putting something away also requires the witness to see the destination. The notebook records the item's reference and the destination of a put, so the account survives another move or a closed lid.
+
+The same memory feeds the witness's journal, a direct answer, a coworker's retelling and the player's follow-up question. After the player hears from the witness, a later retelling leaves that dialogue slot available for another sighting. [Playable spoon walkthrough](../../README.md#follow-the-spoon-through-town-gossip)
+
+### Checkpoint 19 results
+
+On seed 42 the baker saw the player put the wooden spoon in the crate on tick 6 and told the porter during a lull on tick 15. The player heard the porter's account on tick 16. Asking the baker directly closed the lead on tick 17. Down and Enter selected both questions in a Linux terminal. Interrupting the SQLite write for the put rolled back the placement and the witnesses' entries together. After retry, replay from sequences 0 and 19 reached sequence 60 with SHA-256 `d720a538f3a7f1e9a4a543006a407ce4ab1b9794531d17ec1a26095ffe069882`. [Restart and replay test](../../internal/storage/report_test.go)
+
+In a separate scene the player saw the baker take, put back, take and drop the same spoon. A second wooden spoon stayed in the baker's pocket. Two corner views tested partial sightings. In one the player could see only the baker, in the other only the open crate. Neither produced a witness account of the put. [Visibility and identity tests](../../internal/simulation/item_witness_test.go)
+
+New practice timelines use content version 11. A version 10 save from `273bb17` continued under its original rules. Both executables produced identical transcripts and journal exports and replayed it from sequences 0 and 19 to tick 7, sequence 25, with SHA-256 `b0acff82692ad0758d15bf3c870fcabc694b10ed456ebc6d171a0cd616b7cac3`. The full offline suite, both seed-42 smoke runs and three race-detector runs passed. The CLI cross-built for Windows amd64 and macOS arm64.

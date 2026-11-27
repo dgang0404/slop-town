@@ -6,11 +6,16 @@ import "fmt"
 const reportThanks = "Thanks for telling me."
 
 func (e NotebookEntry) isObservation() bool {
-	return e.Action == ActionRest || e.Action == ActionOpen || e.Action == ActionClose
+	switch e.Action {
+	case ActionRest, ActionOpen, ActionClose, ActionTake, ActionPut, ActionDrop:
+		return true
+	}
+	return false
 }
 
 func (b *Bakery) observedAct(fact NotebookEntry, me, you string) string {
-	who := "the " + b.Entities[fact.Subject].Name
+	sight := b.witnessedAction(fact)
+	who := "the " + sight.Actor.Name
 	switch fact.Subject {
 	case me:
 		who = "me"
@@ -20,7 +25,7 @@ func (b *Bakery) observedAct(fact NotebookEntry, me, you string) string {
 	if fact.Action == ActionRest {
 		return who + " sit down"
 	}
-	return who + " " + string(fact.Action) + " the " + b.Entities[fact.Target].Name
+	return who + " " + string(fact.Action) + " " + sight.ObjectPhrase()
 }
 
 func (e NotebookEntry) speechLine(intent, tone string) SpeechLine {
@@ -149,18 +154,23 @@ func (b *Bakery) originalWitness(account NotebookEntry, witness string) (Noteboo
 
 func (b *Bakery) witnessQuestions(speaker, listener string, limit int) []DialogueChoice {
 	var choices []DialogueChoice
-	settled := make(map[uint64]bool)
 	seen := make(map[string]bool)
 	entries := b.Notebooks[speaker]
+	lastDirect := make(map[uint64]uint64)
+	for _, e := range entries {
+		if e.Subject == listener && e.Reported != 0 {
+			lastDirect[e.Reported] = e.SourceSequence
+		}
+	}
 	for i := len(entries) - 1; i >= 0 && len(choices) < limit; i-- {
 		e := entries[i]
-		if e.Subject == listener && e.Reported != 0 {
-			// A later answer from this witness already covers that sighting.
-			settled[e.Reported] = true
+		fact, ok := b.originalWitness(e, listener)
+		if !ok {
 			continue
 		}
-		fact, ok := b.originalWitness(e, listener)
-		if !ok || settled[fact.SourceSequence] {
+		// A later retelling cannot reopen a sighting we heard from its witness.
+		// Version 10 retired only retellings that preceded the direct account.
+		if direct := lastDirect[fact.SourceSequence]; direct != 0 && (b.ContentVersion >= itemWitnessContentVersion || direct > e.SourceSequence) {
 			continue
 		}
 		words := "The " + b.Entities[e.Subject].Name + " said you saw " + b.observedAct(fact, speaker, listener) + ". Is that right?"

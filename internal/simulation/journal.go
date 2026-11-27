@@ -186,6 +186,9 @@ func (b *Bakery) witnessedAction(s NotebookEntry) WitnessedAction {
 	if s.Target != "" {
 		w.Target = ObservedTarget{Ref: s.Target, Name: b.Entities[s.Target].Name}
 	}
+	if s.Container != "" {
+		w.Container = ObservedTarget{Ref: s.Container, Name: b.Entities[s.Container].Name}
+	}
 	return w
 }
 

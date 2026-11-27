@@ -58,6 +58,33 @@ func TestReadableBakeryTranscript(t *testing.T) {
 	}
 }
 
+func TestWitnessedSpoonTransferIsToldOnce(t *testing.T) {
+	spoon := simulation.ObservedTarget{Ref: "bakery/spoon", Name: "wooden spoon"}
+	crate := simulation.ObservedTarget{Ref: "bakery/crate", Name: "crate"}
+	baker := simulation.ObservedTarget{Ref: "bakery/baker", Name: "baker"}
+	inCrate := simulation.Scene{
+		Observation: simulation.Observation{Targets: []simulation.ObservedTarget{spoon}},
+		Details:     map[string]simulation.VisibleDetail{spoon.Ref: {Label: spoon.Name, Holder: crate.Ref, Location: "in the crate"}},
+	}
+	held := simulation.Scene{Witnessed: []simulation.WitnessedAction{{Actor: baker, Action: simulation.ActionTake, Target: spoon}}}
+	n := turnNarrator{previous: inCrate, style: "story"}
+	inCrate.Witnessed = []simulation.WitnessedAction{{Actor: baker, Action: simulation.ActionPut, Target: spoon, Container: crate}}
+	var live, book bytes.Buffer
+	var entries []simulation.JournalEntry
+	for _, scene := range []simulation.Scene{held, inCrate} {
+		cmd := bakeryCommand{Proposal: simulation.Proposal{Action: simulation.ActionWait}}
+		n.write(&live, cmd, simulation.Turn{Result: simulation.Result{Message: "You wait."}, Scene: scene})
+		entries = append(entries, simulation.JournalEntry{Action: simulation.ActionWait, Witnessed: scene.Witnessed})
+	}
+	if got := strings.TrimSpace(live.String()); got != "The baker takes the wooden spoon.\n\nThe baker puts the wooden spoon in the crate." {
+		t.Fatal(got)
+	}
+	if err := writeJournal(&book, entries); err != nil || !strings.HasSuffix(book.String(),
+		"I saw the baker take the wooden spoon.\nI saw the baker put the wooden spoon in the crate.\n") {
+		t.Fatal(&book, err)
+	}
+}
+
 func TestNarrationNamesOnlyWitnessedActions(t *testing.T) {
 	play := func(input string) string {
 		t.Helper()

@@ -69,6 +69,9 @@ func runActorInspection(command string, args []string, stdout, stderr io.Writer)
 		if e.Action != simulation.ActionRest {
 			saw = string(e.Action) + " " + e.Target
 		}
+		if e.Action == simulation.ActionPut {
+			saw += " in " + e.Container
+		}
 		fmt.Fprintf(stdout, "Tick %d, event %d — saw %s %s.\n", e.Tick, e.SourceSequence, e.Subject, saw)
 	}
 	return 0

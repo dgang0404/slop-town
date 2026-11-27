@@ -201,8 +201,8 @@ func composeJournal(entries []simulation.JournalEntry) []journalChapter {
 				lines = append(lines, "The "+sight.Actor.Name+" introduced themselves to me.")
 			case simulation.ActionRest:
 				lines = append(lines, "I saw "+who+" sit down.")
-			case simulation.ActionOpen, simulation.ActionClose:
-				lines = append(lines, "I saw "+who+" "+string(sight.Action)+" the "+sight.Target.Name+".")
+			case simulation.ActionOpen, simulation.ActionClose, simulation.ActionTake, simulation.ActionDrop, simulation.ActionPut:
+				lines = append(lines, "I saw "+who+" "+string(sight.Action)+" "+sight.ObjectPhrase()+".")
 			}
 		}
 		if entry.WalkEnd != "" {

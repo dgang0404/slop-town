@@ -40,8 +40,17 @@ type VisibleDetail struct {
 
 // WitnessedAction identifies a firsthand sighting at the moment it occurred.
 type WitnessedAction struct {
-	Actor, Target ObservedTarget
-	Action        ActionKind
+	Actor, Target, Container ObservedTarget
+	Action                   ActionKind
+}
+
+// ObjectPhrase names the visible object and, for a put, its observed destination.
+func (s WitnessedAction) ObjectPhrase() string {
+	objects := "the " + s.Target.Name
+	if s.Action == ActionPut {
+		objects += " in the " + s.Container.Name
+	}
+	return objects
 }
 
 func (c *Coordinator) Scene(actorID string) (Scene, error) {

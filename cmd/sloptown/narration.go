@@ -82,11 +82,11 @@ func (n *turnNarrator) write(out io.Writer, cmd bakeryCommand, turn simulation.T
 	lines = append(lines, n.describeSelf(prior.Self, current.Self)...)
 
 	// An observed act accounts for the matching change in appearance.
-	explained := make(map[string]bool)
+	explained := make(map[string]simulation.WitnessedAction)
 	introduced := make(map[string]bool)
 	switch cmd.Action {
 	case simulation.ActionOpen, simulation.ActionClose, simulation.ActionPut, simulation.ActionDrop, simulation.ActionTake:
-		explained[target] = true
+		explained[target] = simulation.WitnessedAction{Action: cmd.Action}
 	}
 	for _, event := range current.Witnessed {
 		actor := "The " + event.Actor.Name
@@ -96,10 +96,10 @@ func (n *turnNarrator) write(out io.Writer, cmd bakeryCommand, turn simulation.T
 			introduced[event.Actor.Ref] = true
 		case simulation.ActionRest:
 			lines = append(lines, actor+" "+n.mark("sits down")+".")
-			explained[event.Actor.Ref] = true
-		case simulation.ActionOpen, simulation.ActionClose:
-			lines = append(lines, actor+" "+n.mark(string(event.Action)+"s the "+event.Target.Name)+".")
-			explained[event.Target.Ref] = true
+			explained[event.Actor.Ref] = event
+		case simulation.ActionOpen, simulation.ActionClose, simulation.ActionTake, simulation.ActionDrop, simulation.ActionPut:
+			lines = append(lines, actor+" "+n.mark(string(event.Action)+"s "+event.ObjectPhrase())+".")
+			explained[event.Target.Ref] = event
 		}
 	}
 	opened := ""
@@ -131,7 +131,7 @@ func (n *turnNarrator) write(out io.Writer, cmd bakeryCommand, turn simulation.T
 		// Opening a container is a single action. Keep the discovery beside its cause.
 		lines[0] = strings.TrimSuffix(message, ".") + " and find " + proseList(revealed) + " inside."
 	}
-	lines = append(lines, n.lostFromView(current)...)
+	lines = append(lines, n.lostFromView(current, explained)...)
 	if len(lines) == 0 && !continuing {
 		if cmd.Action == simulation.ActionMove {
 			lines = append(lines, "One step "+n.mark(string(cmd.Args.Direction))+".")
@@ -175,18 +175,20 @@ func (n *turnNarrator) describeSelf(was, now simulation.ObserverDetail) []string
 	return lines
 }
 
-func (n *turnNarrator) describeTarget(obj simulation.ObservedTarget, scene simulation.Scene, explained, reached bool) string {
+func (n *turnNarrator) describeTarget(obj simulation.ObservedTarget, scene simulation.Scene, explained simulation.WitnessedAction, reached bool) string {
 	now := scene.Details[obj.Ref]
 	was, seen := n.previous.Details[obj.Ref]
 	subject := "The " + obj.Name
 	switch {
+	case !seen && explained.Action == simulation.ActionPut && explained.Container.Ref != "" && now.Holder == explained.Container.Ref:
+		return "" // The witnessed placement already names the item and its container.
 	case !seen && now.Holder == scene.ObserverID:
 		return "You carry " + n.mark("the "+obj.Name) + "."
 	case !seen:
 		return "You see " + n.mark("the "+now.Label) + " " + now.Location + "."
-	case !explained && was.Holder != now.Holder:
+	case explained.Action == "" && was.Holder != now.Holder:
 		return subject + " is now " + n.mark(now.Location) + "."
-	case !explained && was.State != now.State && now.State != "":
+	case explained.Action == "" && was.State != now.State && now.State != "":
 		return subject + " is now " + n.mark(now.State) + "."
 	case now.Holder == "" && was.Holder == "" && now.Cell != was.Cell:
 		if now.Location != was.Location {
@@ -214,7 +216,7 @@ func (n *turnNarrator) describeTarget(obj simulation.ObservedTarget, scene simul
 	return ""
 }
 
-func (n *turnNarrator) lostFromView(scene simulation.Scene) []string {
+func (n *turnNarrator) lostFromView(scene simulation.Scene, explained map[string]simulation.WitnessedAction) []string {
 	var lines []string
 	var names []string
 	var lastPlace string
@@ -225,7 +227,7 @@ func (n *turnNarrator) lostFromView(scene simulation.Scene) []string {
 		}
 	}
 	for _, obj := range n.previous.Targets {
-		if _, visible := scene.Details[obj.Ref]; visible {
+		if _, visible := scene.Details[obj.Ref]; visible || explained[obj.Ref].Action == simulation.ActionTake {
 			continue
 		}
 		name := "the " + obj.Name

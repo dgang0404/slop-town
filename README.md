@@ -140,9 +140,26 @@ Enter `talk to baker` and choose **“What have you heard from other people?”*
 
 On another fresh visit, use `wait` in place of `rest` and ask the baker what they heard to see how the answer changes.
 
+### Follow the spoon through town gossip
+
+Start a fresh seed-42 practice visit with `go run ./cmd/sloptown bakery -practice -play -seed 42`. Enter these commands one per line.
+
+```text
+wait
+east
+east
+open crate
+take spoon
+put it in crate
+```
+
+Wait nine more turns. Choose `talk to the porter` and ask **“What have you heard from other people?”** The porter tells you the baker saw you put the spoon in the crate. Read `journal leads`, cancel the conversation, then talk to the baker and choose **“The porter said you saw me put the wooden spoon in the crate. Is that right?”** The baker's reply closes that lead. You can select each question with the arrows and Enter.
+
+New practice timelines use these item sightings. To try one in an existing save file, add `-db bakery.sqlite -timeline spoon-news` and use a fresh timeline name. [Item eyewitness checkpoint](docs/plans/phase-7.md#checkpoint-19--witnesses-to-item-transfers)
+
 ### Recall who told you
 
-Type `journal accounts` or select it with the arrows and Enter. This part of your journal collects accounts you personally heard about someone sitting down, opening something or closing it. Each line is dated when you heard it. You can read it during a conversation or after reopening a save, and it costs no turn.
+Type `journal accounts` or select it with the arrows and Enter. This part of your journal collects accounts you personally heard about someone sitting down, opening or closing something, or moving an item. Each line is dated when you heard it. You can read it during a conversation or after reopening a save, and it costs no turn.
 
 In the visit above, read the accounts after speaking to the baker. You’ll see “The baker said the porter saw me sit down” and “I haven't heard it from the porter yet.” After you ask the porter, their own account appears beneath the baker’s. Returning to the same teller leaves one entry for that sighting.
 

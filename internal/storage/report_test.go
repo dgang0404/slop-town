@@ -130,3 +130,44 @@ func TestEyewitnessReportAcrossRestart(t *testing.T) {
 	t.Logf("witness reply replayed to tick %d, sequence %d, sha256 %s", final.Tick, final.Sequence, final.Hash)
 
 }
+
+func TestWorkersPassOnAWitnessedItemTransfer(t *testing.T) {
+	const player = "bakery/player"
+	path := filepath.Join(t.TempDir(), "spoon.sqlite")
+	scope := simulation.Scope{WorldID: "bakery", TimelineID: "main"}
+	if _, err := storage.OpenBakerySceneWithSetup(path, scope, 42, player, simulation.BakerySetup{Practice: true}); err != nil {
+		t.Fatal(err)
+	}
+	start := checkpointAtHead(t, path, scope)
+	play := newAcceptancePlayer(t, "spoon")
+	const carry = "wait\ne\ne\nopen crate\ntake spoon\n"
+	const put = carry + "put it in crate\n"
+	play(path, carry, "")
+	before := checkpointAtHead(t, path, scope)
+	town := bakeryBytes(t, path, scope)
+	execSQL(t, path, "CREATE TRIGGER fail_put BEFORE INSERT ON request_receipt BEGIN SELECT RAISE(FAIL,'interrupted put'); END")
+	play(path, put, "interrupted put")
+	if replay, err := storage.Replay(path, scope, before.Sequence); err != nil || replay != before || !bytes.Equal(town, bakeryBytes(t, path, scope)) {
+		t.Fatal("failed put changed the item or a witness's notebook", replay, err)
+	}
+	execSQL(t, path, "DROP TRIGGER fail_put")
+	heard := put + strings.Repeat("wait\n", 9) + "talk to porter\n7\ncancel\njournal leads\n"
+	if out := play(path, heard, ""); !strings.Contains(out, "Did the baker see me put the wooden spoon in the crate, as the porter said?") {
+		t.Fatal(out)
+	}
+	visit := heard + "talk to baker\n4\ncancel\njournal accounts\njournal leads\n"
+	const direct = "The baker told me they saw me put the wooden spoon in the crate."
+	out := play(path, visit, "")
+	if !strings.Contains(out, "The porter said the baker saw me put the wooden spoon in the crate.") ||
+		strings.Count(out, direct) != 1 || !strings.HasSuffix(out, "I have no eyewitness accounts to follow up.\n") {
+		t.Fatal(out)
+	}
+	head := checkpointAtHead(t, path, scope)
+	play(path, visit, "")
+	for _, from := range []uint64{start.Sequence, before.Sequence} {
+		if r, err := storage.Replay(path, scope, from); err != nil || r != head || r.Tick != 17 {
+			t.Fatal(r, err)
+		}
+	}
+	t.Logf("replayed the spoon account from %d and %d to tick %d, sequence %d, sha256 %s", start.Sequence, before.Sequence, head.Tick, head.Sequence, head.Hash)
+}

@@ -18,15 +18,20 @@ type NotebookEntry struct {
 	Reported       uint64        `json:"reported,omitempty"`  // Entry in the immediate teller's notebook.
 	Condition      workCondition `json:"condition,omitempty"` // Listener's answer during this owner's own exchange.
 	Asked          bool          `json:"asked,omitempty"`
+	Container      string        `json:"container,omitempty"` // Visible destination of a witnessed put.
 }
 
-// applySpatial records witnesses before applying this individual effect. A
-// later door opening or resident move on the same tick cannot add a witness.
+// Observe a take before the item enters a private inventory. A drop or put
+// becomes visible on placement, before anyone else can act on the same tick.
 func (b *Bakery) applySpatial(event Event, effect spatialEffect) {
-	if b.ContentVersion >= notebookContentVersion {
+	placesItem := event.Kind == "item_put" || event.Kind == "item_dropped"
+	if b.ContentVersion >= notebookContentVersion && !placesItem {
 		b.recordWitnesses(event)
 	}
 	b.Entities[effect.entityID] = effect.entity
+	if placesItem && b.ContentVersion >= itemWitnessContentVersion {
+		b.recordWitnesses(event)
+	}
 }
 
 func (b *Bakery) recordWitnesses(event Event) {
@@ -67,6 +72,15 @@ func (b *Bakery) recordWitnesses(event Event) {
 		entry.Action = ActionOpen
 	case "door_closed", "container_closed":
 		entry.Action = ActionClose
+	case "item_taken":
+		if b.ContentVersion < itemWitnessContentVersion {
+			return
+		}
+		entry.Action = ActionTake
+	case "item_dropped":
+		entry.Action = ActionDrop
+	case "item_put":
+		entry.Action, entry.Container = ActionPut, event.Payload.HolderID
 	default:
 		return
 	}
@@ -75,7 +89,8 @@ func (b *Bakery) recordWitnesses(event Event) {
 			continue
 		}
 		view, err := b.Observe(event.Scope, id)
-		if err != nil || !view.hasTarget(entry.Subject) || (entry.Target != "" && !view.hasTarget(entry.Target)) {
+		if err != nil || !view.hasTarget(entry.Subject) || (entry.Target != "" && !view.hasTarget(entry.Target)) ||
+			(entry.Container != "" && !view.hasTarget(entry.Container)) {
 			continue
 		}
 		b.appendSighting(id, entry)
@@ -137,7 +152,8 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 		var prev NotebookEntry
 		for _, e := range entries {
 			if e.Tick <= 0 || e.Tick < prev.Tick || e.Tick > tick || e.SourceSequence <= prev.SourceSequence ||
-				(e.Action != ActionSpeak && (e.Reported != 0 || e.Condition != "")) || (e.Asked && e.Condition == "") || e.Subject == owner || b.Entities[e.Subject].Kind != Actor {
+				(e.Action != ActionSpeak && (e.Reported != 0 || e.Condition != "")) || (e.Asked && e.Condition == "") ||
+				(e.Container != "" && e.Action != ActionPut) || e.Subject == owner || b.Entities[e.Subject].Kind != Actor {
 				return fmt.Errorf("invalid notebook sighting for %q at sequence %d", owner, e.SourceSequence)
 			}
 			switch e.Action {
@@ -170,6 +186,12 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 			case ActionOpen, ActionClose:
 				if kind := b.Entities[e.Target].Kind; kind != Door && kind != Container {
 					return fmt.Errorf("invalid target in a notebook sighting")
+				}
+			case ActionTake, ActionDrop, ActionPut:
+				item := b.Entities[e.Target]
+				if b.ContentVersion < itemWitnessContentVersion || item.Kind != Item || !item.Portable ||
+					(e.Action == ActionPut && b.Entities[e.Container].Kind != Container) {
+					return fmt.Errorf("invalid item transfer sighting for %q at sequence %d", owner, e.SourceSequence)
 				}
 			default:
 				return fmt.Errorf("unknown notebook action %q", e.Action)
