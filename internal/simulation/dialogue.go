@@ -250,6 +250,9 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 		x.Reply = "Yes. That's who told me."
 	case "confirm":
 		x.Reply = "Yes. That's what I said."
+		if fact, ok := b.entryAt(listener, line.Source); ok && fact.Overheard {
+			x.Reply = "Yes. " + fact.overheardAccount(b.Entities[fact.Subject].Name, b.Entities[fact.Target].Name, fact.Subject == speaker, fact.Target == speaker, false)
+		}
 	case "greet":
 		x.Reply = "Hello."
 		if b.recognizes(listener, speaker) {

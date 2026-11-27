@@ -63,3 +63,49 @@ func TestBystanderRemembersAVisibleCheckIn(t *testing.T) {
 		t.Fatal("older towns recorded an overheard check-in")
 	}
 }
+
+func TestParticipantConfirmsWhatTheBystanderHeard(t *testing.T) {
+	scope := Scope{"bakery", "main"}
+	c, err := (BakerySetup{Practice: true}).NewCoordinator(scope, 42)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := c.bakery
+	b.ContentVersion = groupConversationVersion
+	const baker, porter, player = "bakery/baker", "bakery/porter", "bakery/player"
+	spot := b.Entities[baker].Placement
+	for _, id := range []string{porter, player} {
+		actor := b.Entities[id]
+		actor.Placement = spot
+		b.Entities[id] = actor
+	}
+	event := Event{Scope: scope, Tick: 1, Sequence: 1, Kind: "actors_conversed", ActorID: baker,
+		Payload: EventPayload{Target: porter, Dialogue: Exchange{Condition: doingFine}}}
+	b.recordWitnesses(event)
+	ask := SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}
+	if r := c.Submit(baker, spatialProposal(c, "ask", ActionSpeak, ActionArgs{Target: player, Speech: ask})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "I heard you check in on the porter. They said they felt fine.") {
+		t.Fatal(r)
+	}
+	b = c.bakery
+	heard := b.Entities[player]
+	heard.Placement = b.Entities[baker].Placement
+	b.Entities[player] = heard
+	choices, err := c.DialogueChoices(baker, player)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var confirm SpeechLine
+	for _, choice := range choices {
+		if choice.Words == "So you heard me check in on the porter?" {
+			confirm = choice.Line
+		}
+	}
+	if confirm.Source == 0 {
+		t.Fatal(choices)
+	}
+	if r := c.Submit(baker, spatialProposal(c, "confirm", ActionSpeak, ActionArgs{Target: player, Speech: confirm})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "Yes. I heard you check in on the porter. They said they felt fine.") {
+		t.Fatal(r)
+	}
+}
