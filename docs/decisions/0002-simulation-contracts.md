@@ -60,6 +60,8 @@ The response gives the player enough information to choose a new action without 
 
 ## Conversation choices
 
+The [group conversation and attention plan](../plans/phase-7.md#planned-mechanic--group-conversation-and-attention) extends the pair exchange below to multiple speakers and simultaneous conversations. The simulation will resolve audibility, attention and understanding separately for each listener before supplying dialogue choices or journal evidence.
+
 Players and residents use the same speech action. The speaker chooses a listener, topic, intent and tone. The simulation validates the attempt and resolves how the listener responds using that listener's knowledge, mood and goals.
 
 For a player turn, build **up to 11 distinct choices** from the latest exchange, current observations and the character's own conversation history. Show the words the character will actually say. Clicking a line or entering its number submits the same proposal. A brief greeting may warrant only two or three choices. Refresh the options after each exchange.
