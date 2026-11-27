@@ -291,7 +291,7 @@ In new practice bakeries, a character can discreetly pick up a visible item with
 
 Just before a discreet pickup, each observer who can see the acting character makes one hidden check. The simulation weighs the actor’s stealth, the observer’s perception and their distance in tiles. Each character’s initial aptitudes come from the town seed, and each observer has their own saved sequence of draws. Players and residents use the same rules.
 
-A witness who identifies both the person and the item remembers an ordinary pickup. A partial sighting records an anonymous hand movement and names the container only when it was visible. A missed movement leaves no account to pass along. Checkpoint 21 adds deliberate listening for footsteps and doors. Checkpoint 23 adds the sound of a dropped spoon. Lighting, skill growth and hiding remain future work. [Master design, sections 7.6, 12.2, 12.5 and 46–47](../design/Slop_Town_Master_Design_Revised_v7.docx)
+A witness who identifies both the person and the item remembers an ordinary pickup. A partial sighting records an anonymous hand movement and names the container only when it was visible. A missed movement leaves no account to pass along. Checkpoint 21 adds deliberate listening for footsteps and doors. Checkpoint 23 adds the sound of a dropped spoon. Checkpoint 24 adds daylight to discreet pickups. Stealth skill growth and hiding remain future work. [Master design, sections 7.6, 12.2, 12.5 and 46–47](../design/Slop_Town_Master_Design_Revised_v7.docx)
 
 ### Acceptance walkthrough
 
@@ -357,3 +357,19 @@ In a separate scene the baker dropped the spoon around the corner. With the door
 New practice timelines use content version 15. On a version 14 save from `50bfef7`, the spoon still fell quietly and the journal kept the earlier creak and footsteps. Both executables produced the same transcript and replayed from sequences 0 and 29 to tick 10, sequence 39, with SHA-256 `bbfa7ceee8201fc89f51c06e43fd94f761cb86e5344b7977ead3e883a00c40cf`.
 
 The offline suite and both seed-42 smoke runs passed. The terminal, simulation and storage packages each passed three race-detector runs. The CLI cross-built for Windows amd64 and macOS arm64.
+
+## Checkpoint 24 — a discreet pickup in dim light
+
+Daylight enters the practice bakery through the street door. Shutting it leaves enough light to see a worker or a spoon in an open crate. A quick hand movement becomes harder to identify. The simulation samples the light where the hand reaches the item, before it moves into the actor’s inventory and before a worker can reopen the door. Players and residents use the same rule. Each eligible witness still uses one draw from their own perception sequence.
+
+Inside the bakery, the terminal describes the change in light once and `look` gives the current scene. The journal remembers the dim room. A character standing outside a closed door gets only the street view. [Playable comparison](../../README.md#try-the-same-pickup-in-different-light)
+
+### Checkpoint 24 results
+
+In two seed-2 visits, the player and porter stood in the same places for the discreet pickup on tick 8. With the door open, the porter identified the player and the spoon. With it shut, the porter saw a hand move near the crate. Both accounts were still in the player’s journal after reopening. A separate scene put the baker in the player’s role. The player missed the baker’s discreet pickup in dim light, even though the porter opened the door later that turn. The same player saw an ordinary pickup in the dim room. [Simulation checks](../../internal/simulation/discreet_take_test.go)
+
+Interrupting the SQLite receipt write preserved the closed door, the spoon in the crate and the witnesses’ perception draws. After retry, replay from sequences 0 and 24 reached tick 9, sequence 30 in both visits. The daylight hash was `3ce6a849ad8f2ac2a982f5076af634a0127bfaaae6ebffe1ebdd0a52d35f23be`. The dim-room hash was `914301916d5beb9b7e6cfd006f4950ff419482f6e544867dfb1ff2fe8ebba660`. [Restart, dialogue and replay checks](../../internal/storage/discreet_take_test.go)
+
+New practice bakeries use content version 16. On a version 15 save from `841b9ae` with the door already shut, both executables produced the same transcript and journal. The porter identified the player and the spoon. Replay from sequences 0 and 24 reached tick 9, sequence 30, with SHA-256 `9188eeaca1283fdbbae5010625bffdb930c097d790dd7edac9ee86579fe9413c`.
+
+In a Linux terminal, Down and Enter closed the door, selected the discreet pickup, asked the porter what they saw and read the account in the journal. The full offline suite, both seed-42 smoke runs and three race-detector runs passed. The CLI cross-built for Windows amd64 and macOS arm64.

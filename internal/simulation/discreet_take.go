@@ -23,6 +23,15 @@ func (b *Bakery) observeDiscreetTake(event Event, clock *Timeline) error {
 	taker := b.Entities[event.ActorID]
 	item := b.Entities[event.Payload.Target]
 	stealth := int(seededSample(b.Seed, "aptitude/stealth/"+event.ActorID, 0) % 21)
+	// Judge the light where the hand reaches the item, before it is moved.
+	at, err := b.PositionOf(event.Payload.Target)
+	if err != nil {
+		return err
+	}
+	lightPenalty := 0
+	if b.dimAt(at) {
+		lightPenalty = 25
+	}
 	for _, id := range slices.Sorted(maps.Keys(b.Entities)) {
 		witness := b.Entities[id]
 		if witness.Kind != Actor || id == event.ActorID {
@@ -41,7 +50,7 @@ func (b *Bakery) observeDiscreetTake(event Event, clock *Timeline) error {
 		}
 		distance := manhattanDistance(witness.Placement.Cell, taker.Placement.Cell)
 		perception := perceptionAptitude(b.Seed, id)
-		score := int(roll%100) + perception - stealth - 8*distance
+		score := int(roll%100) + perception - stealth - 8*distance - lightPenalty
 		entry := NotebookEntry{Tick: event.Tick, SourceSequence: event.Sequence}
 		switch {
 		case score >= 55 && view.hasTarget(event.Payload.Target):

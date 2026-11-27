@@ -27,8 +27,8 @@ type Scene struct {
 
 // ObserverDetail contains only the surroundings and sensations described to the actor.
 type ObserverDetail struct {
-	Cell                      CellPosition
-	Place, Condition, Feeling PerceptionKind
+	Cell                             CellPosition
+	Place, Condition, Feeling, Light PerceptionKind
 }
 
 // VisibleDetail describes a target in the observer's field of view.
@@ -170,6 +170,10 @@ func (b *Bakery) observe(scope Scope, actorID string, scene *Scene) (Observation
 		self.Feeling = LingeringRelief
 	}
 	lines := []string{self.Place.Description()}
+	if b.dimAt(at) {
+		self.Light = DimLight
+		lines = append(lines, self.Light.Description())
+	}
 	if self.Condition != "" {
 		lines = append(lines, self.Condition.Description())
 	}

@@ -104,6 +104,13 @@ func (n *turnNarrator) write(out io.Writer, cmd bakeryCommand, turn simulation.T
 			explained[event.Target.Ref] = event
 		}
 	}
+	if current.Self.Light != prior.Self.Light {
+		if current.Self.Light != "" {
+			lines = append(lines, n.mark(current.Self.Light.Description()))
+		} else if current.Self.Place == simulation.InBakery {
+			lines = append(lines, n.mark("Daylight spills through the doorway again."))
+		}
+	}
 	opened := ""
 	if cmd.Action == simulation.ActionOpen {
 		opened = target

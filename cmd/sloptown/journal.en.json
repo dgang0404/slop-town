@@ -18,7 +18,8 @@
     "lingering_relief": "A little of that relief lingered.",
     "door_creak": "I heard a door creak.",
     "footsteps": "I heard footsteps.",
-    "clatter": "I heard a clatter."
+    "clatter": "I heard a clatter.",
+    "dim_light": "The light was dim."
   },
   "discoveryIndex": {
     "title": "My first sightings",

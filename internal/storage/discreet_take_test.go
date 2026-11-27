@@ -82,3 +82,64 @@ func TestDiscreetTakeSurvivesRollbackAndRetelling(t *testing.T) {
 	}
 	t.Logf("replayed from %d and %d to tick %d, sequence %d, sha256 %s", start.Sequence, before.Sequence, head.Tick, head.Sequence, head.Hash)
 }
+
+func TestDoorLightChangesThePortersAccountAcrossRestart(t *testing.T) {
+	play := newAcceptancePlayer(t, "daylight")
+	scope := simulation.Scope{WorldID: "bakery", TimelineID: "main"}
+	const prelude = "wait\ne\ne\nopen crate\nwait\nwait\n"
+	for _, tc := range []struct {
+		name, seventhTurn, reply, account string
+	}{
+		{"daylight", "wait", "I saw you take the wooden spoon.", "The porter told me they saw me take the wooden spoon."},
+		{"dim", "close door", "I saw a hand move near the crate.", "The porter told me they saw a hand move near the crate."},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "bakery.sqlite")
+			if _, err := storage.OpenBakerySceneWithSetup(path, scope, 2, "bakery/player", simulation.BakerySetup{Practice: true}); err != nil {
+				t.Fatal(err)
+			}
+			start := checkpointAtHead(t, path, scope)
+			beforeTake := prelude + tc.seventhTurn + "\n"
+			opening := play(path, beforeTake, "")
+			dim := tc.name == "dim"
+			if strings.Contains(opening, "The light is dim here.") != dim {
+				t.Fatal(opening)
+			}
+			before := checkpointAtHead(t, path, scope)
+			take := beforeTake + "discreetly take spoon\n"
+			if dim {
+				state, history := bakeryBytes(t, path, scope), inspectScope(t, path, scope)
+				execSQL(t, path, "CREATE TRIGGER fail_pickup BEFORE INSERT ON request_receipt BEGIN SELECT RAISE(FAIL,'interrupted pickup in dim light'); END")
+				play(path, take, "interrupted pickup in dim light")
+				if !bytes.Equal(state, bakeryBytes(t, path, scope)) || !reflect.DeepEqual(history, inspectScope(t, path, scope)) {
+					t.Fatal("interrupted pickup changed the door, inventory, perception draw or history")
+				}
+				execSQL(t, path, "DROP TRIGGER fail_pickup")
+			}
+			play(path, take, "")
+			visit := take + "talk to porter\n3\ncancel\njournal\njournal accounts\n"
+			out := play(path, visit, "")
+			_, accounts, ok := strings.Cut(out, "Accounts I've heard\n")
+			if !ok || !strings.Contains(out, "The porter replies, “"+tc.reply+"”") || !strings.Contains(accounts, tc.account) ||
+				(dim && strings.Contains(accounts, "spoon")) {
+				t.Fatal(out)
+			}
+			if dim && (strings.Count(out, "The light was dim.") != 1 ||
+				!strings.Contains(out, "The baker opens the bakery door. Daylight spills through the doorway again.")) {
+				t.Fatal(out)
+			}
+			head := checkpointAtHead(t, path, scope)
+			retry := play(path, visit, "")
+			_, reopened, _ := strings.Cut(retry, "Accounts I've heard\n")
+			if reopened != accounts || strings.Count(retry, "already completed") != 9 {
+				t.Fatal(retry)
+			}
+			for _, from := range []uint64{start.Sequence, before.Sequence} {
+				if replay, err := storage.Replay(path, scope, from); err != nil || replay != head || replay.Tick != 9 {
+					t.Fatal(replay, err)
+				}
+			}
+			t.Logf("replay from %d and %d reached tick %d, sequence %d, sha256 %s", start.Sequence, before.Sequence, head.Tick, head.Sequence, head.Hash)
+		})
+	}
+}

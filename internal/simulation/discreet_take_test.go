@@ -3,6 +3,7 @@ package simulation
 
 import (
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -16,6 +17,9 @@ func TestDiscreetTakeWitnesses(t *testing.T) {
 				t.Fatal(err)
 			}
 			b := c.bakery
+			door := b.Entities["bakery/door"]
+			door.Open = true
+			b.Entities["bakery/door"] = door
 			box := b.Entities[crate]
 			box.Open = true
 			b.Entities[crate] = box
@@ -117,6 +121,64 @@ func TestDiscreetTakeAtTheDoorway(t *testing.T) {
 		} else if found || c.clock.draws["perception/"+witness] != 0 {
 			t.Fatal("seeing the item disappear identified an unseen actor", e)
 		}
+	}
+}
+
+func TestResidentPickupUsesLightAtTheTimeOfTheReach(t *testing.T) {
+	const baker, player, porter = "bakery/baker", "bakery/player", "bakery/porter"
+	const doorID, spoon = "bakery/door", "bakery/spoon"
+	for _, tc := range []struct {
+		name       string
+		version    int
+		open       bool
+		action     ActionKind
+		wantDim    bool
+		wantMemory ActionKind
+	}{
+		{"daylight", daylightContentVersion, true, ActionDiscreetTake, false, SightHandMovement},
+		{"closed until the porter opens it", daylightContentVersion, false, ActionDiscreetTake, true, ""},
+		{"ordinary pickup in dim light", daylightContentVersion, false, ActionTake, true, ActionTake},
+		{"older bakery with its door closed", dropSoundContentVersion, false, ActionDiscreetTake, false, SightHandMovement},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, err := (BakerySetup{Practice: true}).NewCoordinator(Scope{"bakery", "main"}, 42)
+			if err != nil {
+				t.Fatal(err)
+			}
+			b := c.bakery
+			b.ContentVersion = tc.version
+			door := b.Entities[doorID]
+			door.Open = tc.open
+			b.Entities[doorID] = door
+			// From the street the original player cannot sense indoor light.
+			if outside, err := c.Scene(player); err != nil || outside.Self.Light != "" || (!tc.open && outside.hasTarget(baker)) {
+				t.Fatal(outside, err)
+			}
+			prep := door.Placement
+			prep.Cell.X++
+			for _, id := range []string{baker, player, porter, spoon} {
+				entity := b.Entities[id]
+				entity.Placement = prep
+				b.Entities[id] = entity
+			}
+			view, err := c.Scene(player)
+			if err != nil || (view.Self.Light == DimLight) != tc.wantDim || !view.hasTarget(baker) || !view.hasTarget(spoon) {
+				t.Fatal(view, err)
+			}
+			p := spatialProposal(c, "reach", tc.action, ActionArgs{Target: spoon})
+			r := c.Submit(baker, p)
+			if r.Status != "accepted" || !c.bakery.Entities[doorID].Open || strings.Contains(r.Observation.Text, DimLight.Description()) {
+				t.Fatal(r)
+			}
+			memory, found := c.bakery.firsthandAt(player, 2)
+			if found != (tc.wantMemory != "") || memory.Action != tc.wantMemory {
+				t.Fatalf("player remembered %+v, want %q", memory, tc.wantMemory)
+			}
+			if tc.action == ActionDiscreetTake && c.clock.draws["perception/"+player] != 1 {
+				t.Fatal("the pickup should use one perception draw in either light")
+			}
+			submitUnchanged(t, c, baker, p)
+		})
 	}
 }
 

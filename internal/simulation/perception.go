@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package simulation
 
+import "net/url"
+
 // PerceptionKind identifies a place or sensation the character can perceive.
 type PerceptionKind string
 
@@ -20,6 +22,7 @@ const (
 	Footsteps       PerceptionKind = "footsteps"
 	DoorCreak       PerceptionKind = "door_creak"
 	Clatter         PerceptionKind = "clatter"
+	DimLight        PerceptionKind = "dim_light"
 )
 
 // Version 1 receipts save these exact sentences. Live scenes use the kinds
@@ -35,6 +38,17 @@ var receiptDescriptions = map[PerceptionKind]string{
 	Footsteps:       "You hear footsteps.",
 	DoorCreak:       "You hear a door creak.",
 	Clatter:         "You hear a clatter.",
+	DimLight:        "The light is dim here.",
+}
+
+// Daylight enters this bakery through its street door. There is enough
+// ambient light to see ordinary objects even with the door shut.
+func (b *Bakery) dimAt(cell CellPosition) bool {
+	if b.ContentVersion < daylightContentVersion || b.Cells[cell.Y][cell.X].SpaceID != b.InteriorID {
+		return false
+	}
+	door := b.Entities[url.PathEscape(b.WorldID)+"/door"]
+	return !door.Open && cell != door.Placement.Cell
 }
 
 func (k PerceptionKind) Description() string { return receiptDescriptions[k] }
