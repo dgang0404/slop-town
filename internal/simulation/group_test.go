@@ -677,6 +677,78 @@ func TestNoonMakesTheBakerMiss(t *testing.T) {
 	}
 }
 
+func TestRoutineAnswerLiftsTheDeliveryWeight(t *testing.T) {
+	c := residentBetween(t, false, false, true)
+	const baker, porter, player, guest, spare = "bakery/baker", "bakery/porter", "bakery/player", "bakery/guest", "bakery/spare"
+	if !c.bakery.Entities[baker].Occupied {
+		t.Fatal("expected the delivery time to linger")
+	}
+	heard := c.bakery.Entities[porter].Placement
+	station := c.bakery.Entities[player].Placement
+	for _, id := range []string{baker, player} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		who.Seated = false
+		c.bakery.Entities[id] = who
+	}
+	if r := c.Submit(player, spatialProposal(c, "routine", ActionSpeak, ActionArgs{Target: baker, Speech: checkInQuestion})); r.Status != "accepted" || !strings.Contains(r.Message, "Doing all right, thank you.") || c.bakery.Entities[baker].Occupied {
+		t.Fatal(r, c.bakery.Entities[baker].Occupied)
+	}
+	for _, id := range []string{player, guest, spare} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		who.Seated = id == spare
+		c.bakery.Entities[id] = who
+	}
+	if r := c.Submit(player, spatialProposal(c, "ask-spare", ActionSpeak, ActionArgs{Target: spare, Speech: checkInQuestion})); r.Status != "accepted" || strings.Contains(r.Message, "replies") {
+		t.Fatal(r)
+	}
+	bakerAt := c.bakery.Entities[baker]
+	bakerAt.Placement = heard
+	c.bakery.Entities[baker] = bakerAt
+	porterAt := c.bakery.Entities[porter]
+	porterAt.Placement = heard
+	c.bakery.Entities[porter] = porterAt
+	for _, id := range []string{player, guest} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		who.Seated = false
+		c.bakery.Entities[id] = who
+	}
+	var open NotebookEntry
+	for _, note := range c.bakery.Notebooks[guest] {
+		if note.Overheard && note.Open && note.Target == spare {
+			open = note
+		}
+	}
+	choices, err := c.DialogueChoices(guest, player)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var answer SpeechLine
+	for _, choice := range choices {
+		if choice.Words == "The spare is taking a breather." {
+			answer = choice.Line
+		}
+	}
+	if answer.Source == 0 || answer.Source != open.SourceSequence {
+		t.Fatal(choices)
+	}
+	if r := c.Submit(guest, spatialProposal(c, "later", ActionSpeak, ActionArgs{Target: player, Speech: answer})); r.Status != "accepted" {
+		t.Fatal(r)
+	}
+	pages, err := c.Journal(baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.bakery.Entities[baker].Occupied || !strings.Contains(journalSpeech(pages), "I heard the customer speak from the other table.") || strings.Contains(journalSpeech(pages), "I missed what they said.") {
+		t.Fatal(c.bakery.Entities[baker].Occupied, journalSpeech(pages))
+	}
+	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestResidentAnswersBothCircles(t *testing.T) {
 	c := residentBetween(t, false, false, false)
 	const baker, porter, customer = "bakery/baker", "bakery/porter", "bakery/customer"
