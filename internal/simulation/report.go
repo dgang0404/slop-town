@@ -111,6 +111,34 @@ func (b *Bakery) overheardReport(report NotebookEntry) (NotebookEntry, bool) {
 	return fact, found && fact.Overheard
 }
 
+func (b *Bakery) passedOverheard(report NotebookEntry) (source, fact NotebookEntry, ok bool) {
+	if b.ContentVersion < groupConversationVersion || report.Action != ActionSpeak || report.Reported == 0 {
+		return NotebookEntry{}, NotebookEntry{}, false
+	}
+	source, found := b.entryAt(report.Subject, report.Reported)
+	if !found {
+		return NotebookEntry{}, NotebookEntry{}, false
+	}
+	fact, ok = b.overheardReport(source)
+	return source, fact, ok
+}
+
+func (b *Bakery) passedOverheardWords(report, source, fact NotebookEntry, teller, hearer string) string {
+	lead := "The " + b.Entities[report.Subject].Name + " told me "
+	if report.Subject == hearer {
+		lead = "You told me "
+	}
+	heard := "the " + b.Entities[source.Subject].Name + " heard "
+	switch source.Subject {
+	case teller:
+		heard = "I heard "
+	case hearer:
+		heard = "you heard "
+	}
+	whoAsked, whoAnswered := b.namedParty(fact.Subject, teller, hearer), b.namedParty(fact.Target, teller, hearer)
+	return lead + heard + whoAsked + " check in on " + whoAnswered + ". They said they " + checkInAnswers[fact.Condition].remembered + "."
+}
+
 func (b *Bakery) overheardRelay(report, fact NotebookEntry, teller, hearer string, confirm bool) string {
 	witness := b.Entities[report.Subject].Name
 	whoAsked, whoAnswered := b.namedParty(fact.Subject, teller, hearer), b.namedParty(fact.Target, teller, hearer)
