@@ -711,6 +711,27 @@ func TestUnrestoredMissSurvivesReopen(t *testing.T) {
 	}
 }
 
+func TestRoutineAskerStillHearsTheCheckIn(t *testing.T) {
+	c := weightLiftedAfterTheMiss(t)
+	const baker, player = "bakery/baker", "bakery/player"
+	who := c.bakery.Entities[baker]
+	who.Placement = c.bakery.Entities[player].Placement
+	who.Seated = false
+	c.bakery.Entities[baker] = who
+	if r := c.Submit(player, spatialProposal(c, "own-check-in", ActionSpeak, ActionArgs{Target: baker, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "You checked in on me. I told you I felt fine.") ||
+		strings.Contains(r.Message, "I missed what you said.") || strings.Contains(r.Message, "other table") {
+		t.Fatal(r)
+	}
+	pages, err := c.Journal(baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(journalSpeech(pages), "I missed what they said.") {
+		t.Fatal(journalSpeech(pages))
+	}
+}
+
 func TestLiftedWeightLeavesTheMiss(t *testing.T) {
 	c := weightLiftedAfterTheMiss(t)
 	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
