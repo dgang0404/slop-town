@@ -1445,6 +1445,35 @@ func TestRepeatedLineAfterTheFurtherMissSurvivesReopen(t *testing.T) {
 	}
 }
 
+func TestRepeatedLineAfterTheAfreshMissSurvivesReopen(t *testing.T) {
+	c := nextCircleAfterTheAfreshMissIsHeard(t)
+	raw, err := c.bakery.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := RestoreBakery(raw, c.scope.WorldID, c.clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := restored.Snapshot()
+	if err != nil || !bytes.Equal(raw, again) {
+		t.Fatal(err)
+	}
+	c.bakery = restored
+	const baker, guest, customer = "bakery/baker", "bakery/guest", "bakery/customer"
+	ask := func(id, name string) Result {
+		who := c.bakery.Entities[id]
+		who.Placement = c.bakery.Entities[customer].Placement
+		c.bakery.Entities[id] = who
+		return c.Submit(customer, spatialProposal(c, name, ActionSpeak, ActionArgs{Target: id, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}}))
+	}
+	for _, id := range []string{baker, guest} {
+		if r := ask(id, "reopened-afresh-"+id); r.Status != "accepted" || !strings.Contains(r.Message, "I heard the customer speak from the other table.") || strings.Contains(r.Message, "I was following another conversation.") || strings.Contains(r.Message, "I missed what you said.") {
+			t.Fatal(id, r)
+		}
+	}
+}
+
 func TestBothRepeatTheLineAfterTheAfreshMiss(t *testing.T) {
 	c := nextCircleAfterTheAfreshMissIsHeard(t)
 	const baker, guest, customer = "bakery/baker", "bakery/guest", "bakery/customer"
