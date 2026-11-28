@@ -31,6 +31,7 @@ type Exchange struct {
 	Statement     SpeechLine    `json:",omitzero"`
 	Condition     workCondition `json:",omitempty"`
 	Open          bool          `json:",omitempty"` // The question was heard. The person asked has not answered.
+	Fragment      bool          `json:",omitempty"` // The reply passes on words without naming a speaker.
 }
 
 func (c *Coordinator) DialogueChoices(actor, listener string) ([]DialogueChoice, error) {
@@ -456,6 +457,7 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 			}
 			if line.Topic == "conversation" && fact.Fragment {
 				x.Reply = b.fragmentWords()
+				x.Fragment = true
 				break
 			}
 			if line.Topic == "conversation" && fact.Aside {

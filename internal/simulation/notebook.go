@@ -243,6 +243,12 @@ func (b *Bakery) recordWitnesses(event Event) {
 			b.recordAside(event)
 			return
 		}
+		if x.Fragment {
+			b.appendSighting(event.ActorID, NotebookEntry{
+				Tick: event.Tick, SourceSequence: event.Sequence, Action: ActionSpeak, Fragment: true,
+			})
+			return
+		}
 		if x.Statement.Intent == "both" {
 			b.appendSighting(event.ActorID, NotebookEntry{
 				Tick: event.Tick, SourceSequence: event.Sequence, Subject: event.Payload.Target, Action: ActionSpeak, Bridged: true,

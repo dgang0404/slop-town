@@ -948,6 +948,45 @@ func TestMurmurIsNotWords(t *testing.T) {
 	}
 }
 
+func TestFragmentRetellingKeepsTheSpeakerUnknown(t *testing.T) {
+	c := separateCircleFar(t, false, false, false, false, true, false)
+	const visitor, clerk = "bakery/visitor", "bakery/clerk"
+	c.bakery.Entities[clerk] = SpatialEntity{Name: "clerk", Kind: Actor, Placement: c.bakery.Entities[visitor].Placement}
+	before, err := c.Journal(clerk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(journalSpeech(before), "after closing") || strings.Contains(journalSpeech(before), "customer") {
+		t.Fatal(journalSpeech(before))
+	}
+	ask := func(name, from, to, topic string) Result {
+		t.Helper()
+		return c.Submit(from, spatialProposal(c, name, ActionSpeak, ActionArgs{Target: to, Speech: SpeechLine{Topic: topic, Intent: "ask", Tone: "curious"}}))
+	}
+	if r := ask("news", visitor, clerk, "news"); r.Status != "accepted" || strings.Contains(r.Message, "after closing") || strings.Contains(r.Message, "customer") || strings.Contains(r.Message, "other table") {
+		t.Fatal(r)
+	}
+	if r := ask("hearsay", visitor, clerk, "hearsay"); r.Status != "accepted" || strings.Contains(r.Message, "after closing") || strings.Contains(r.Message, "customer") || strings.Contains(r.Message, "other table") {
+		t.Fatal(r)
+	}
+	if r := ask("retell", clerk, visitor, "conversation"); r.Status != "accepted" || !strings.Contains(r.Message, "I heard “after closing.” I don't know who spoke.") || strings.Contains(r.Message, "customer") || strings.Contains(r.Message, "other table") {
+		t.Fatal(r)
+	}
+	pages, err := c.Journal(clerk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(journalSpeech(pages), "I heard “after closing.” I don't know who spoke.") || strings.Contains(journalSpeech(pages), "customer") || strings.Contains(journalSpeech(pages), "other table") {
+		t.Fatal(journalSpeech(pages))
+	}
+	if r := ask("again", visitor, clerk, "conversation"); r.Status != "accepted" || !strings.Contains(r.Message, "I heard “after closing.” I don't know who spoke.") || strings.Contains(r.Message, "customer") || strings.Contains(r.Message, "other table") {
+		t.Fatal(r)
+	}
+	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func separateCircleFar(t *testing.T, neighborSeated, between, far, attend, fragment, murmur bool) *Coordinator {
 	t.Helper()
 	scope := Scope{"bakery", "main"}
