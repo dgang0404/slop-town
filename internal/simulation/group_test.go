@@ -817,6 +817,27 @@ func TestSplitAccountSurvivesReopen(t *testing.T) {
 	}
 }
 
+func TestYieldedListenerHearsThatTheyLetThemGoFirst(t *testing.T) {
+	c := nextWordsAfterTheLift(t)
+	const baker, neighbor = "bakery/baker", "bakery/neighbor"
+	who := c.bakery.Entities[baker]
+	who.Placement = c.bakery.Entities[neighbor].Placement
+	c.bakery.Entities[baker] = who
+	if r := c.Submit(neighbor, spatialProposal(c, "yield", ActionSpeak, ActionArgs{Target: baker, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "I heard the customer speak from the other table.") ||
+		!strings.Contains(r.Message, "The neighbor let them go first.") ||
+		strings.Contains(r.Message, "felt fine") || strings.Contains(r.Message, "I missed what you said.") {
+		t.Fatal(r)
+	}
+	pages, err := c.Journal(baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(journalSpeech(pages), "I missed what they said.") {
+		t.Fatal(journalSpeech(pages))
+	}
+}
+
 func TestNextWordsGetThroughAfterTheLift(t *testing.T) {
 	c := nextWordsAfterTheLift(t)
 	pages, err := c.Journal("bakery/baker")
