@@ -593,6 +593,146 @@ func TestRestedListenerAnswersBothCircles(t *testing.T) {
 	}
 }
 
+func TestResidentAnswersBothCircles(t *testing.T) {
+	c := residentBetween(t)
+	const baker, porter, customer = "bakery/baker", "bakery/porter", "bakery/customer"
+	var said []string
+	for _, e := range c.History() {
+		if e.ActorID == porter && e.Payload.Dialogue.Statement.Intent == "both" {
+			said = append(said, e.Payload.Target+" "+e.Payload.Dialogue.Words)
+		}
+	}
+	if len(said) != 2 || !strings.Contains(said[0], baker) || !strings.Contains(said[0], "I heard the baker ask the player how they were holding up.") ||
+		!strings.Contains(said[1], customer) || !strings.Contains(said[1], "I heard the customer speak from the other table.") || strings.Contains(said[0], "other table") || strings.Contains(said[1], "holding up") {
+		t.Fatal(said)
+	}
+	ask := func(who, id string) Result {
+		at := c.bakery.Entities[who].Placement
+		listener := c.bakery.Entities[porter]
+		listener.Placement = at
+		c.bakery.Entities[porter] = listener
+		return c.Submit(who, spatialProposal(c, id, ActionSpeak, ActionArgs{Target: porter, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}}))
+	}
+	if r := ask(baker, "check-in"); r.Status != "accepted" || !strings.Contains(r.Message, "I heard the baker ask the player how they were holding up.") || strings.Contains(r.Message, "other table") {
+		t.Fatal(r)
+	}
+	if r := ask(customer, "greeting"); r.Status != "accepted" || !strings.Contains(r.Message, "I heard the customer speak from the other table.") || strings.Contains(r.Message, "holding up") {
+		t.Fatal(r)
+	}
+	again := 0
+	for _, e := range c.History() {
+		if e.ActorID == porter && e.Payload.Dialogue.Statement.Intent == "both" {
+			again++
+		}
+	}
+	if again != 2 {
+		t.Fatal(again)
+	}
+	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func residentBetween(t *testing.T) *Coordinator {
+	t.Helper()
+	scope := Scope{"bakery", "main"}
+	c, err := (BakerySetup{Practice: true}).NewCoordinator(scope, 42)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const baker, porter, player, guest, customer = "bakery/baker", "bakery/porter", "bakery/player", "bakery/guest", "bakery/customer"
+	c.bakery.ContentVersion = answerFirstVersion
+	spot := c.bakery.Entities[baker].Placement
+	for _, id := range []string{porter, player} {
+		actor := c.bakery.Entities[id]
+		actor.Placement = spot
+		c.bakery.Entities[id] = actor
+	}
+	seated := c.bakery.Entities[player]
+	seated.Seated = true
+	c.bakery.Entities[player] = seated
+	c.bakery.Entities[guest] = SpatialEntity{Name: "guest", Kind: Actor, Placement: spot}
+	if r := c.Submit(baker, spatialProposal(c, "ask", ActionSpeak, ActionArgs{Target: player, Speech: checkInQuestion})); r.Status != "accepted" || strings.Contains(r.Message, "replies") {
+		t.Fatal(r)
+	}
+	for _, id := range []string{baker, player, guest} {
+		actor := c.bakery.Entities[id]
+		actor.Placement = spot
+		if id == player {
+			actor.Seated = true
+		}
+		c.bakery.Entities[id] = actor
+	}
+	doorY := c.bakery.Entities["bakery/door"].Placement.Cell.Y
+	hidden := false
+	var hide Placement
+	for y := 0; y < bakeryHeight; y++ {
+		if y == doorY {
+			continue
+		}
+		hide = c.bakery.Entities["bakery/door"].Placement
+		hide.Cell.X, hide.Cell.Y = 0, y
+		away := c.bakery.Entities[porter]
+		away.Placement, away.Seated = hide, false
+		c.bakery.Entities[porter] = away
+		view, err := c.bakery.Observe(scope, porter)
+		if err == nil && !view.hasTarget(baker) && !view.hasTarget(player) {
+			hidden = true
+			break
+		}
+	}
+	if !hidden {
+		t.Fatal("no cell hides the other conversation")
+	}
+	c.bakery.Entities[customer] = SpatialEntity{Name: "customer", Kind: Actor, Placement: hide}
+	const neighbor = "bakery/neighbor"
+	c.bakery.Entities[neighbor] = SpatialEntity{Name: "neighbor", Kind: Actor, Placement: hide}
+	found := false
+	for y := 0; y < bakeryHeight && !found; y++ {
+		for x := 0; x < bakeryWidth; x++ {
+			at := hide
+			at.Cell.X, at.Cell.Y = x, y
+			if at == hide || !c.bakery.isFloorCell(at.Cell) {
+				continue
+			}
+			who := c.bakery.Entities[porter]
+			who.Placement, who.Seated, who.Fatigue = at, false, 0
+			c.bakery.Entities[porter] = who
+			view, err := c.bakery.Observe(scope, porter)
+			if err == nil && view.hasTarget(baker) && view.hasTarget(player) && view.hasTarget(customer) && view.hasTarget(neighbor) {
+				found = true
+				break
+			}
+		}
+	}
+	if !found {
+		t.Fatal("no cell sees both circles")
+	}
+	var open NotebookEntry
+	for _, note := range c.bakery.Notebooks[guest] {
+		if note.Overheard && note.Open && note.Target == player {
+			open = note
+		}
+	}
+	choices, err := c.DialogueChoices(guest, baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var answer SpeechLine
+	for _, choice := range choices {
+		if choice.Words == "The player is taking a breather." {
+			answer = choice.Line
+		}
+	}
+	if answer.Source != open.SourceSequence {
+		t.Fatal(choices)
+	}
+	if r := c.Submit(guest, spatialProposal(c, "answer", ActionSpeak, ActionArgs{Target: baker, Speech: answer})); r.Status != "accepted" {
+		t.Fatal(r)
+	}
+	return c
+}
+
 func separateCircle(t *testing.T, neighborSeated, between bool) *Coordinator {
 	t.Helper()
 	scope := Scope{"bakery", "main"}

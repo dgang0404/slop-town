@@ -25,7 +25,22 @@ func (b *Bakery) advanceResidents(clock *Timeline, primary Event) ([]Event, []he
 		}
 		events = append(events, action)
 	}
+	porterID := url.PathEscape(b.WorldID) + "/porter"
+	spoke := false
+	if porterID != primary.ActorID && b.holdsBothCircles(porterID) {
+		for _, effect := range b.residentBothCircles(porterID) {
+			action := primary.child(primary.Sequence+uint64(len(events))+1, effect.entityID, "spatial", effect.kind, effect.payload)
+			if err := b.applySpatial(&action, effect, clock); err != nil {
+				return nil, nil, err
+			}
+			events = append(events, action)
+			spoke = true
+		}
+	}
 	for _, role := range roles {
+		if spoke && role == "porter" {
+			continue
+		}
 		id := url.PathEscape(b.WorldID) + "/" + role
 		if id == primary.ActorID || (primary.Kind == "call_answered" && primary.Payload.Target == id) {
 			continue
@@ -269,6 +284,49 @@ func (b *Bakery) secondCircle(primary Event) spatialEffect {
 	x := Exchange{Words: "Hello from the other table.", Reply: reply, Statement: SpeechLine{Intent: "aside"}}
 	return spatialEffect{kind: "actors_conversed", payload: EventPayload{Target: listener, Dialogue: x},
 		message: x.message(b.Entities[listener].Name), entityID: speaker, entity: b.Entities[speaker]}
+}
+
+func (b *Bakery) alreadyBridged(owner, to string) bool {
+	for _, e := range b.Notebooks[owner] {
+		if e.Bridged && e.Subject == to {
+			return true
+		}
+	}
+	return false
+}
+
+// A rested resident who can hear both circles answers each one once.
+func (b *Bakery) residentBothCircles(speaker string) []spatialEffect {
+	var checkIn, aside NotebookEntry
+	var hasCheckIn, hasAside bool
+	for i := len(b.Notebooks[speaker]) - 1; i >= 0; i-- {
+		e := b.Notebooks[speaker][i]
+		if !hasAside && e.Aside && !e.Missed {
+			aside, hasAside = e, true
+		}
+		if !hasCheckIn && e.Overheard && e.Open {
+			checkIn, hasCheckIn = e, true
+		}
+	}
+	if !hasCheckIn || !hasAside {
+		return nil
+	}
+	say := func(to, words string) spatialEffect {
+		if b.alreadyBridged(speaker, to) {
+			return spatialEffect{}
+		}
+		x := Exchange{Words: words, Statement: SpeechLine{Intent: "both"}}
+		return spatialEffect{kind: "actors_conversed", payload: EventPayload{Target: to, Dialogue: x},
+			message: x.message(b.Entities[to].Name), entityID: speaker, entity: b.Entities[speaker]}
+	}
+	var effects []spatialEffect
+	if effect := say(checkIn.Subject, checkIn.overheardCheckIn(b.Entities[checkIn.Subject].Name, b.Entities[checkIn.Target].Name)); effect.kind != "" {
+		effects = append(effects, effect)
+	}
+	if effect := say(aside.Subject, b.asideWords(aside)); effect.kind != "" {
+		effects = append(effects, effect)
+	}
+	return effects
 }
 
 func (b *Bakery) apartFrom(primary Event, speaker, listener string) bool {

@@ -24,6 +24,7 @@ type NotebookEntry struct {
 	Aside          bool           `json:"aside,omitempty"`     // This owner heard a separate circle they did not join.
 	Yielded        bool           `json:"yielded,omitempty"`   // The other person at that table let the speaker go first.
 	Missed         bool           `json:"missed,omitempty"`    // Both started, so this owner missed the words.
+	Bridged        bool           `json:"bridged,omitempty"`   // This owner already gave a light answer to this circle.
 	Asked          bool           `json:"asked,omitempty"`
 	Container      string         `json:"container,omitempty"` // Visible destination of a put or landmark for a hand movement.
 	Sound          PerceptionKind `json:"sound,omitempty"`     // The listener recalls the sound alone.
@@ -219,6 +220,12 @@ func (b *Bakery) recordWitnesses(event Event) {
 			b.recordAside(event)
 			return
 		}
+		if x.Statement.Intent == "both" {
+			b.appendSighting(event.ActorID, NotebookEntry{
+				Tick: event.Tick, SourceSequence: event.Sequence, Subject: event.Payload.Target, Action: ActionSpeak, Bridged: true,
+			})
+			return
+		}
 		if x.Condition != "" {
 			entry.Subject, entry.Target, entry.Action = event.Payload.Target, "", ActionSpeak
 			entry.Condition, entry.Asked = x.Condition, true
@@ -362,6 +369,12 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 			case ActionSpeak:
 				if (e.Yielded && !e.Aside) || (e.Missed && (!e.Aside || e.Yielded)) {
 					return fmt.Errorf("invalid yield for %q at sequence %d", owner, e.SourceSequence)
+				}
+				if e.Bridged {
+					if b.ContentVersion < answerFirstVersion || e.Condition != "" || e.Reported != 0 || e.Overheard || e.Open || e.Answered || e.Heard || e.Aside || e.Asked || e.Yielded || e.Missed || b.Entities[e.Subject].Kind != Actor {
+						return fmt.Errorf("invalid bridge for %q at sequence %d", owner, e.SourceSequence)
+					}
+					break
 				}
 				if e.Aside {
 					if b.ContentVersion < answerFirstVersion || e.Condition != "" || e.Reported != 0 || e.Overheard || e.Open || e.Answered || e.Heard || e.Asked || e.Target == "" ||
