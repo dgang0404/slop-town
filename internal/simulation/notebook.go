@@ -281,6 +281,7 @@ func (b *Bakery) recordWitnesses(event Event) {
 			b.appendSighting(event.ActorID, NotebookEntry{
 				Tick: event.Tick, SourceSequence: event.Sequence, Subject: event.Payload.Target, Action: ActionSpeak, Bridged: true,
 			})
+			b.weighDeliveryTime(event)
 			return
 		}
 		if x.Condition != "" {

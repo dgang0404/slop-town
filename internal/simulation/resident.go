@@ -295,6 +295,28 @@ func (b *Bakery) alreadyBridged(owner, to string) bool {
 	return false
 }
 
+// “At noon” is a light reply for the porter and a heavy one for the baker who hears it.
+func (b *Bakery) weighDeliveryTime(event Event) {
+	if b.ContentVersion < answerFirstVersion || event.Payload.Dialogue.Words != "At noon." {
+		return
+	}
+	bakerID := url.PathEscape(b.WorldID) + "/baker"
+	if bakerID == event.ActorID {
+		return
+	}
+	baker := b.Entities[bakerID]
+	if baker.Kind != Actor {
+		return
+	}
+	speaker := b.Entities[event.ActorID].Placement.Cell
+	if !b.soundReaches(speaker, baker.Placement.Cell, conversationReach) {
+		return
+	}
+	baker.Occupied = true
+	baker.WeightTurns = weightDuration
+	b.Entities[bakerID] = baker
+}
+
 // A rested resident who can hear both circles answers each one once.
 func (b *Bakery) residentBothCircles(speaker string) []spatialEffect {
 	var checkIn, heard, missed NotebookEntry

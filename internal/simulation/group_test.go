@@ -594,6 +594,17 @@ func TestRestedListenerAnswersBothCircles(t *testing.T) {
 	}
 }
 
+func TestNoonWeighsOnTheBaker(t *testing.T) {
+	c := residentBetween(t, false, false, false)
+	const baker, porter = "bakery/baker", "bakery/porter"
+	if c.bakery.Entities[porter].Occupied || !c.bakery.Entities[baker].Occupied {
+		t.Fatal(c.bakery.Entities[porter].Occupied, c.bakery.Entities[baker].Occupied)
+	}
+	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestResidentAnswersBothCircles(t *testing.T) {
 	c := residentBetween(t, false, false, false)
 	const baker, porter, customer = "bakery/baker", "bakery/porter", "bakery/customer"
