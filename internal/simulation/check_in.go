@@ -199,6 +199,24 @@ func (b *Bakery) unansweredWords(fact NotebookEntry, speaker string) string {
 	return who + " asked how I was holding up. I haven't answered."
 }
 
+// A rested listener who heard both circles can answer the one they were asked about.
+func (b *Bakery) holdsBothCircles(owner string) bool {
+	who := b.Entities[owner]
+	if who.Kind != Actor || who.Seated || who.Fatigue != 0 {
+		return false
+	}
+	var checkIn, aside bool
+	for _, e := range b.Notebooks[owner] {
+		if e.Overheard && e.Open {
+			checkIn = true
+		}
+		if e.Aside && !e.Missed {
+			aside = true
+		}
+	}
+	return checkIn && aside
+}
+
 func (b *Bakery) asideWords(fact NotebookEntry) string {
 	if fact.Missed {
 		return "The " + b.Entities[fact.Subject].Name + " and the " + b.Entities[fact.Target].Name + " spoke at once. I missed what they said."

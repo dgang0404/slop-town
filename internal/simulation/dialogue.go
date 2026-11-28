@@ -451,8 +451,12 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 				}
 				continue
 			}
-			if line.Topic == "conversation" && fact.Aside {
+			if line.Topic == "conversation" && fact.Aside && (!b.holdsBothCircles(listener) || fact.Subject == speaker || fact.Target == speaker) {
 				x.Reply = b.asideWords(fact)
+				break
+			}
+			if line.Topic == "conversation" && b.holdsBothCircles(listener) && fact.Overheard && fact.Open && (fact.Subject == speaker || fact.Target == speaker) {
+				x.Reply = fact.overheardCheckIn(b.Entities[fact.Subject].Name, b.Entities[fact.Target].Name)
 				break
 			}
 			if line.Topic == "conversation" && b.keptOwnAnswer(listener, fact) {
