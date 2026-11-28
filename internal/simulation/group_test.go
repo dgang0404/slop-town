@@ -1014,6 +1014,17 @@ func TestFadedFreshAnswerSurvivesReopen(t *testing.T) {
 	}
 }
 
+func TestFadedBringerRepeatsTheHeardLine(t *testing.T) {
+	c := fadedBringerHearsTheCircle(t)
+	const guest, customer = "bakery/guest", "bakery/customer"
+	who := c.bakery.Entities[guest]
+	who.Placement = c.bakery.Entities[customer].Placement
+	c.bakery.Entities[guest] = who
+	if r := c.Submit(customer, spatialProposal(c, "ask-bringer", ActionSpeak, ActionArgs{Target: guest, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" || !strings.Contains(r.Message, "I heard the customer speak from the other table.") || strings.Contains(r.Message, "I was following another conversation.") || strings.Contains(r.Message, "I missed what you said.") {
+		t.Fatal(r)
+	}
+}
+
 func TestFadedBringerSurvivesReopen(t *testing.T) {
 	c := fadedBringerHearsTheCircle(t)
 	const guest = "bakery/guest"
