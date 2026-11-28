@@ -806,6 +806,79 @@ func TestRoutineAnswerLetsTheAttentionGo(t *testing.T) {
 	}
 }
 
+func TestBringerStillFollowsTheHeavyAnswer(t *testing.T) {
+	c := residentBetween(t, false, false, true)
+	const baker, porter, player, guest, spare, clerk = "bakery/baker", "bakery/porter", "bakery/player", "bakery/guest", "bakery/spare", "bakery/clerk"
+	if c.bakery.Entities[guest].Attention != baker || c.bakery.Entities[baker].Attention != guest {
+		t.Fatal(c.bakery.Entities[guest].Attention, c.bakery.Entities[baker].Attention)
+	}
+	heard := c.bakery.Entities[porter].Placement
+	station := c.bakery.Entities[player].Placement
+	for _, id := range []string{baker, player} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		who.Seated = false
+		c.bakery.Entities[id] = who
+	}
+	if r := c.Submit(player, spatialProposal(c, "routine", ActionSpeak, ActionArgs{Target: baker, Speech: checkInQuestion})); r.Status != "accepted" || c.bakery.Entities[baker].Attention != "" || c.bakery.Entities[guest].Attention != baker {
+		t.Fatal(r, c.bakery.Entities[baker].Attention, c.bakery.Entities[guest].Attention)
+	}
+	c.bakery.Entities[clerk] = SpatialEntity{Name: "clerk", Kind: Actor, Placement: station}
+	for _, id := range []string{player, spare, clerk} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		who.Seated = id == spare
+		c.bakery.Entities[id] = who
+	}
+	if r := c.Submit(player, spatialProposal(c, "ask-spare", ActionSpeak, ActionArgs{Target: spare, Speech: checkInQuestion})); r.Status != "accepted" || strings.Contains(r.Message, "replies") {
+		t.Fatal(r)
+	}
+	for _, id := range []string{baker, guest} {
+		who := c.bakery.Entities[id]
+		who.Placement = heard
+		who.Seated = false
+		c.bakery.Entities[id] = who
+	}
+	for _, id := range []string{player, clerk} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		who.Seated = false
+		c.bakery.Entities[id] = who
+	}
+	var open NotebookEntry
+	for _, note := range c.bakery.Notebooks[clerk] {
+		if note.Overheard && note.Open && note.Target == spare {
+			open = note
+		}
+	}
+	choices, err := c.DialogueChoices(clerk, player)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var answer SpeechLine
+	for _, choice := range choices {
+		if choice.Words == "The spare is taking a breather." && choice.Line.Source == open.SourceSequence {
+			answer = choice.Line
+		}
+	}
+	if answer.Source == 0 {
+		t.Fatal(choices)
+	}
+	if r := c.Submit(clerk, spatialProposal(c, "later", ActionSpeak, ActionArgs{Target: player, Speech: answer})); r.Status != "accepted" {
+		t.Fatal(r)
+	}
+	guestJournal, err := c.Journal(guest)
+	bakerJournal, err2 := c.Journal(baker)
+	if err != nil || err2 != nil {
+		t.Fatal(err, err2)
+	}
+	guestText, bakerText := journalSpeech(guestJournal), journalSpeech(bakerJournal)
+	if !strings.Contains(guestText, "I was following another conversation. I missed what they said.") || strings.Contains(guestText, "other table") ||
+		!strings.Contains(bakerText, "I heard the customer speak from the other table.") || strings.Contains(bakerText, "I was following another conversation.") {
+		t.Fatal(guestText, bakerText)
+	}
+}
+
 func TestUnrestoredMissSurvivesReopen(t *testing.T) {
 	c := weightLiftedAfterTheMiss(t)
 	const baker, customer = "bakery/baker", "bakery/customer"
