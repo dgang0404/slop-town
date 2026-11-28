@@ -82,10 +82,13 @@ func (b *Bakery) applySpatial(event *Event, effect spatialEffect, clock *Timelin
 	}
 	b.Entities[effect.entityID] = effect.entity
 	if event.Kind == "actors_conversed" && event.Payload.Dialogue.Statement.Intent == "answer_first" && b.ContentVersion >= answerFirstVersion {
-		speaker := b.Entities[event.ActorID]
-		if speaker.Kind == Actor {
-			speaker.Occupied = true
-			b.Entities[event.ActorID] = speaker
+		for _, id := range []string{event.ActorID, event.Payload.Target} {
+			person := b.Entities[id]
+			if person.Kind != Actor {
+				continue
+			}
+			person.Occupied = true
+			b.Entities[id] = person
 		}
 	}
 	if placesItem && b.ContentVersion >= itemWitnessContentVersion {

@@ -814,6 +814,72 @@ func TestHeavyAnswerOccupiesTheSpeaker(t *testing.T) {
 	}
 }
 
+func TestHeavyNewsOccupiesTheListener(t *testing.T) {
+	c := residentBetween(t, false, false, true)
+	const baker, porter, player, guest, spare = "bakery/baker", "bakery/porter", "bakery/player", "bakery/guest", "bakery/spare"
+	if !c.bakery.Entities[baker].Occupied || c.bakery.Entities[porter].Occupied {
+		t.Fatal(c.bakery.Entities[baker].Occupied, c.bakery.Entities[porter].Occupied)
+	}
+	station := c.bakery.Entities[player].Placement
+	for _, id := range []string{player, guest, spare} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		if id == spare {
+			who.Seated = true
+		}
+		c.bakery.Entities[id] = who
+	}
+	if r := c.Submit(player, spatialProposal(c, "ask-spare", ActionSpeak, ActionArgs{Target: spare, Speech: checkInQuestion})); r.Status != "accepted" || strings.Contains(r.Message, "replies") {
+		t.Fatal(r)
+	}
+	heard := c.bakery.Entities[porter].Placement
+	bakerAt := c.bakery.Entities[baker]
+	bakerAt.Placement = heard
+	c.bakery.Entities[baker] = bakerAt
+	for _, id := range []string{player, guest, spare} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		if id == spare {
+			who.Seated = true
+		}
+		c.bakery.Entities[id] = who
+	}
+	var open NotebookEntry
+	for _, note := range c.bakery.Notebooks[guest] {
+		if note.Overheard && note.Open && note.Target == spare {
+			open = note
+		}
+	}
+	choices, err := c.DialogueChoices(guest, player)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var answer SpeechLine
+	for _, choice := range choices {
+		if choice.Words == "The spare is taking a breather." {
+			answer = choice.Line
+		}
+	}
+	if answer.Source == 0 || answer.Source != open.SourceSequence {
+		t.Fatal(choices)
+	}
+	if r := c.Submit(guest, spatialProposal(c, "told", ActionSpeak, ActionArgs{Target: player, Speech: answer})); r.Status != "accepted" {
+		t.Fatal(r)
+	}
+	bakerJournal, err := c.Journal(baker)
+	porterJournal, err2 := c.Journal(porter)
+	if err != nil || err2 != nil {
+		t.Fatal(err, err2)
+	}
+	if c.bakery.Entities[baker].Occupied || !strings.Contains(journalSpeech(bakerJournal), "I missed what they said.") || strings.Contains(journalSpeech(bakerJournal), "other table") ||
+		!strings.Contains(journalSpeech(porterJournal), "I heard the customer speak from the other table.") {
+		t.Fatal(journalSpeech(bakerJournal), journalSpeech(porterJournal))
+	}
+	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func residentBetween(t *testing.T, overlap, weighted, spare bool) *Coordinator {
 	t.Helper()
 	scope := Scope{"bakery", "main"}
