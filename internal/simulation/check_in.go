@@ -242,6 +242,10 @@ func (b *Bakery) repeatWords() string {
 	return "Could you say that again? I missed what you said."
 }
 
+func (b *Bakery) fragmentWords() string {
+	return "I heard “after closing.” I don't know who spoke."
+}
+
 func (b *Bakery) asideWords(fact NotebookEntry) string {
 	if fact.Elsewhere {
 		return "I was following another conversation. I missed what they said."

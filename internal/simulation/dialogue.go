@@ -451,6 +451,10 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 				}
 				continue
 			}
+			if line.Topic == "conversation" && fact.Fragment {
+				x.Reply = b.fragmentWords()
+				break
+			}
 			if line.Topic == "conversation" && fact.Aside {
 				if fact.Missed && (fact.Subject == speaker || fact.Target == speaker) {
 					x.Reply = b.repeatWords()
@@ -488,7 +492,7 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 				}
 			}
 			if (line.Topic == "sounds" && fact.Action == ActionListen) ||
-				(line.Topic == "news" && fact.Reported == 0 && !fact.Aside && !fact.Bridged && fact.Action != ActionListen) || (line.Topic == "conversation" && fact.Condition != "" && !fact.Heard && !fact.Answered) ||
+				(line.Topic == "news" && fact.Reported == 0 && !fact.Aside && !fact.Bridged && !fact.Fragment && fact.Action != ActionListen) || (line.Topic == "conversation" && fact.Condition != "" && !fact.Heard && !fact.Answered) ||
 				(fact.Action == ActionIntroduce && fact.Subject == line.Topic) {
 				x.Reply = b.sightingWords(fact, speaker, false)
 				x.ReplySource = fact.SourceSequence
