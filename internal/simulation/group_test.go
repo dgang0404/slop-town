@@ -301,6 +301,11 @@ func TestBystanderAnswersBeforeThePersonAsked(t *testing.T) {
 		t.Fatal(err)
 	}
 	place()
+	if r := c.Submit(porter, spatialProposal(c, "asker", ActionSpeak, ActionArgs{Target: baker, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "The player said you were taking a breather.") || strings.Contains(r.Message, "I told") || strings.Contains(r.Message, "felt fine") {
+		t.Fatal(r)
+	}
+	place()
 	if r := c.Submit(baker, spatialProposal(c, "stand", ActionSpeak, ActionArgs{Target: porter, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
 		!strings.Contains(r.Message, "The player said I was taking a breather.") || strings.Contains(r.Message, "I told") {
 		t.Fatal(r)

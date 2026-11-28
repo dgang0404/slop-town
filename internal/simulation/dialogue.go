@@ -415,6 +415,12 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 				x.ReplySource = fact.SourceSequence
 				break
 			}
+			if line.Topic == "conversation" {
+				if words, ok := b.earlyAnswerWords(fact, listener, speaker); ok {
+					x.Reply = words
+					break
+				}
+			}
 			if (line.Topic == "sounds" && fact.Action == ActionListen) ||
 				(line.Topic == "news" && fact.Reported == 0 && fact.Action != ActionListen) || (line.Topic == "conversation" && fact.Condition != "" && !fact.Heard) ||
 				(fact.Action == ActionIntroduce && fact.Subject == line.Topic) {

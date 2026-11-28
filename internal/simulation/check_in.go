@@ -119,6 +119,34 @@ func (e NotebookEntry) checkInAccount(name string, aboutHearer, confirm bool) st
 	return "The " + name + " checked in on me. I told them I " + state + "."
 }
 
+func (b *Bakery) earlyAnswerWords(fact NotebookEntry, owner, speaker string) (string, bool) {
+	if b.ContentVersion < answerFirstVersion || fact.Action != ActionSpeak || fact.Reported == 0 {
+		return "", false
+	}
+	cited, ok := b.entryAt(fact.Subject, fact.Reported)
+	if !ok || !cited.Overheard || !cited.Open || cited.Subject != owner {
+		return "", false
+	}
+	var matched bool
+	for _, e := range b.Notebooks[fact.Subject] {
+		if e.Answered && e.Subject == cited.Target && e.Condition == resting && e.SourceSequence > cited.SourceSequence && e.SourceSequence <= fact.SourceSequence {
+			matched = true
+		}
+	}
+	if !matched {
+		return "", false
+	}
+	who := "The " + b.Entities[fact.Subject].Name
+	if fact.Subject == speaker {
+		who = "You"
+	}
+	about, verb := "the "+b.Entities[cited.Target].Name, "was"
+	if cited.Target == speaker {
+		about, verb = "you", "were"
+	}
+	return who + " said " + about + " " + verb + " taking a breather.", true
+}
+
 func (b *Bakery) stoodWords(fact NotebookEntry, speaker string) string {
 	who := "The " + b.Entities[fact.Subject].Name
 	if fact.Subject == speaker {
