@@ -20,6 +20,7 @@ type NotebookEntry struct {
 	Overheard      bool           `json:"overheard,omitempty"` // This owner saw the exchange without taking part.
 	Open           bool           `json:"open,omitempty"`      // The question was heard and has not been answered by the person asked.
 	Answered       bool           `json:"answered,omitempty"`  // This owner answered a question addressed to someone else.
+	Heard          bool           `json:"heard,omitempty"`     // This owner heard someone else answer a question addressed to them.
 	Asked          bool           `json:"asked,omitempty"`
 	Container      string         `json:"container,omitempty"` // Visible destination of a put or landmark for a hand movement.
 	Sound          PerceptionKind `json:"sound,omitempty"`     // The listener recalls the sound alone.
@@ -107,6 +108,12 @@ func (b *Bakery) recordAnswerFirst(event Event) {
 	b.appendSighting(event.Payload.Target, NotebookEntry{
 		Tick: event.Tick, SourceSequence: event.Sequence, Subject: event.ActorID, Action: ActionSpeak, Reported: event.Payload.Dialogue.Statement.Source,
 	})
+	seen, err := b.Observe(event.Scope, about)
+	if err == nil && seen.hasTarget(event.ActorID) && seen.hasTarget(event.Payload.Target) {
+		b.appendSighting(about, NotebookEntry{
+			Tick: event.Tick, SourceSequence: event.Sequence, Subject: event.ActorID, Action: ActionSpeak, Condition: resting, Heard: true,
+		})
+	}
 }
 
 func (b *Bakery) recordPickedUp(event Event) {
@@ -127,6 +134,19 @@ func (b *Bakery) recordPickedUp(event Event) {
 		}
 		b.appendSighting(id, heard)
 	}
+}
+
+func (b *Bakery) openQuestionTo(owner string, before uint64) (NotebookEntry, bool) {
+	for i := len(b.Notebooks[owner]) - 1; i >= 0; i-- {
+		e := b.Notebooks[owner][i]
+		if e.SourceSequence >= before {
+			continue
+		}
+		if e.Open && !e.Overheard && !e.Asked {
+			return e, true
+		}
+	}
+	return NotebookEntry{}, false
 }
 
 func (b *Bakery) openCheckInAbout(owner, about string, before uint64) (NotebookEntry, bool) {
@@ -341,6 +361,15 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 					_, heard := b.openCheckInAbout(owner, e.Subject, e.SourceSequence)
 					if b.ContentVersion < answerFirstVersion || !valid || e.Condition != resting || e.Asked || e.Overheard || e.Reported != 0 || e.Target != "" || !heard {
 						return fmt.Errorf("invalid early answer for %q at sequence %d", owner, e.SourceSequence)
+					}
+					break
+				}
+				if e.Heard {
+					answer, found := b.entryAt(e.Subject, e.SourceSequence)
+					_, asked := b.openQuestionTo(owner, e.SourceSequence)
+					if b.ContentVersion < answerFirstVersion || e.Condition != resting || e.Asked || e.Overheard || e.Answered || e.Open || e.Reported != 0 || e.Target != "" ||
+						!found || !answer.Answered || answer.Subject != owner || answer.Condition != resting || !asked {
+						return fmt.Errorf("invalid heard answer for %q at sequence %d", owner, e.SourceSequence)
 					}
 					break
 				}

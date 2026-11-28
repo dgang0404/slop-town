@@ -119,6 +119,14 @@ func (e NotebookEntry) checkInAccount(name string, aboutHearer, confirm bool) st
 	return "The " + name + " checked in on me. I told them I " + state + "."
 }
 
+func (b *Bakery) stoodWords(fact NotebookEntry, speaker string) string {
+	who := "The " + b.Entities[fact.Subject].Name
+	if fact.Subject == speaker {
+		who = "You"
+	}
+	return who + " said I was taking a breather."
+}
+
 func (e NotebookEntry) overheardCheckIn(asker, listener string) string {
 	if e.Open {
 		return "I heard the " + asker + " ask the " + listener + " how they were holding up."

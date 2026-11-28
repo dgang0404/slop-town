@@ -285,13 +285,25 @@ func TestBystanderAnswersBeforeThePersonAsked(t *testing.T) {
 	if !answered {
 		t.Fatal(c.bakery.Notebooks[player])
 	}
+	var heardAnswer bool
 	for _, note := range c.bakery.Notebooks[porter] {
-		if note.SourceSequence >= open.SourceSequence && note.Condition != "" {
+		if note.Heard && note.Subject == player && note.Condition == resting {
+			heardAnswer = true
+		}
+		if note.SourceSequence >= open.SourceSequence && note.Condition != "" && !note.Heard {
 			t.Fatal("the porter answered", note)
 		}
 	}
+	if !heardAnswer {
+		t.Fatal(c.bakery.Notebooks[porter])
+	}
 	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
 		t.Fatal(err)
+	}
+	place()
+	if r := c.Submit(baker, spatialProposal(c, "stand", ActionSpeak, ActionArgs{Target: porter, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "The player said I was taking a breather.") || strings.Contains(r.Message, "I told") {
+		t.Fatal(r)
 	}
 	place()
 	seated = c.bakery.Entities[porter]
