@@ -242,6 +242,16 @@ func (b *Bakery) repeatWords() string {
 	return "Could you say that again? I missed what you said."
 }
 
+// A check-in with this person stays their account after another circle was heard.
+func (b *Bakery) checkInWith(owner, asker string) bool {
+	for _, e := range b.Notebooks[owner] {
+		if e.Condition != "" && !e.Heard && !e.Answered && !e.Asked && e.Subject == asker {
+			return true
+		}
+	}
+	return false
+}
+
 // A later check-in does not replace the line this person was already missed on.
 func (b *Bakery) missedAsideWith(owner, asker string) bool {
 	for _, e := range b.Notebooks[owner] {

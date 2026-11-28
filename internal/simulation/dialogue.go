@@ -468,7 +468,11 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 					x.Reply = b.repeatWords()
 					break
 				}
-				if !(fact.Missed && b.missedTheOtherCircle(listener)) && (!b.holdsBothCircles(listener) || fact.Subject == speaker || fact.Target == speaker) {
+				inAside := fact.Subject == speaker || fact.Target == speaker
+				if !inAside && b.checkInWith(listener, speaker) {
+					continue
+				}
+				if !(fact.Missed && b.missedTheOtherCircle(listener)) && (!b.holdsBothCircles(listener) || inAside) {
 					x.Reply = b.asideWords(fact)
 					break
 				}

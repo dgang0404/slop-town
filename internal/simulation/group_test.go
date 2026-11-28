@@ -751,6 +751,27 @@ func TestHeardLineIsWhatGetsRepeated(t *testing.T) {
 	}
 }
 
+func TestRoutineAskerDoesNotHearTheOtherCircle(t *testing.T) {
+	c := nextWordsAfterTheLift(t)
+	const baker, player = "bakery/baker", "bakery/player"
+	who := c.bakery.Entities[baker]
+	who.Placement = c.bakery.Entities[player].Placement
+	who.Seated = false
+	c.bakery.Entities[baker] = who
+	if r := c.Submit(player, spatialProposal(c, "own-check-in", ActionSpeak, ActionArgs{Target: baker, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "You checked in on me. I told you I felt fine.") || strings.Contains(r.Message, "other table") {
+		t.Fatal(r)
+	}
+	pages, err := c.Journal(baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := journalSpeech(pages)
+	if !strings.Contains(text, "I missed what they said.") || !strings.Contains(text, "I heard the customer speak from the other table.") {
+		t.Fatal(text)
+	}
+}
+
 func TestNextWordsGetThroughAfterTheLift(t *testing.T) {
 	c := nextWordsAfterTheLift(t)
 	pages, err := c.Journal("bakery/baker")
