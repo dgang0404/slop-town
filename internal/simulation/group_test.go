@@ -1445,6 +1445,99 @@ func TestRepeatedLineAfterTheFurtherMissSurvivesReopen(t *testing.T) {
 	}
 }
 
+func TestFreshAnswerDrawsAttentionBackAnew(t *testing.T) {
+	c := nextCircleAfterTheFurtherMissIsHeard(t)
+	const baker, guest, player, pilot, guard, clerk = "bakery/baker", "bakery/guest", "bakery/player", "bakery/pilot", "bakery/guard", "bakery/clerk"
+	heard := c.bakery.Entities[guest].Placement
+	station := c.bakery.Entities[player].Placement
+	c.bakery.Entities[pilot] = SpatialEntity{Name: "pilot", Kind: Actor, Placement: station, Seated: true}
+	for _, id := range []string{baker, guest, player, pilot} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		who.Seated = id == pilot
+		c.bakery.Entities[id] = who
+	}
+	if r := c.Submit(player, spatialProposal(c, "ask-pilot", ActionSpeak, ActionArgs{Target: pilot, Speech: checkInQuestion})); r.Status != "accepted" || strings.Contains(r.Message, "replies") {
+		t.Fatal(r)
+	}
+	var open NotebookEntry
+	for _, note := range c.bakery.Notebooks[guest] {
+		if note.Overheard && note.Open && note.Target == pilot {
+			open = note
+		}
+	}
+	choices, err := c.DialogueChoices(guest, player)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var heavy SpeechLine
+	for _, choice := range choices {
+		if choice.Words == "The pilot is taking a breather." && choice.Line.Source == open.SourceSequence {
+			heavy = choice.Line
+		}
+	}
+	if heavy.Source == 0 {
+		t.Fatal(choices)
+	}
+	if r := c.Submit(guest, spatialProposal(c, "draw-anew", ActionSpeak, ActionArgs{Target: player, Speech: heavy})); r.Status != "accepted" || c.bakery.Entities[guest].Attention != player || !c.bakery.Entities[guest].Occupied || c.bakery.Entities[baker].Attention != "" || c.bakery.Entities[baker].Occupied {
+		t.Fatal(r, c.bakery.Entities[guest].Attention, c.bakery.Entities[guest].Occupied, c.bakery.Entities[baker].Attention, c.bakery.Entities[baker].Occupied)
+	}
+	c.bakery.Entities[guard] = SpatialEntity{Name: "guard", Kind: Actor, Placement: station, Seated: true}
+	for _, id := range []string{player, guard, clerk} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		who.Seated = id == guard
+		c.bakery.Entities[id] = who
+	}
+	if r := c.Submit(player, spatialProposal(c, "ask-guard", ActionSpeak, ActionArgs{Target: guard, Speech: checkInQuestion})); r.Status != "accepted" || strings.Contains(r.Message, "replies") {
+		t.Fatal(r)
+	}
+	for _, id := range []string{baker, guest} {
+		who := c.bakery.Entities[id]
+		who.Placement = heard
+		who.Seated = false
+		c.bakery.Entities[id] = who
+	}
+	for _, id := range []string{player, clerk} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		who.Seated = false
+		c.bakery.Entities[id] = who
+	}
+	open = NotebookEntry{}
+	for _, note := range c.bakery.Notebooks[clerk] {
+		if note.Overheard && note.Open && note.Target == guard {
+			open = note
+		}
+	}
+	choices, err = c.DialogueChoices(clerk, player)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var answer SpeechLine
+	for _, choice := range choices {
+		if choice.Words == "The guard is taking a breather." && choice.Line.Source == open.SourceSequence {
+			answer = choice.Line
+		}
+	}
+	if answer.Source == 0 {
+		t.Fatal(choices)
+	}
+	if r := c.Submit(clerk, spatialProposal(c, "circle-anew", ActionSpeak, ActionArgs{Target: player, Speech: answer})); r.Status != "accepted" {
+		t.Fatal(r)
+	}
+	guestPages, err := c.Journal(guest)
+	bakerPages, err2 := c.Journal(baker)
+	if err != nil || err2 != nil || len(guestPages) == 0 || len(bakerPages) == 0 {
+		t.Fatal(err, err2)
+	}
+	guestText := journalSpeech(guestPages[len(guestPages)-1:])
+	bakerText := journalSpeech(bakerPages[len(bakerPages)-1:])
+	if !strings.Contains(guestText, "I was following another conversation. I missed what they said.") || strings.Contains(guestText, "I heard the customer speak from the other table.") || !strings.Contains(bakerText, "I heard the customer speak from the other table.") || strings.Contains(bakerText, "I was following another conversation.") {
+		t.Fatal(guestText, bakerText)
+	}
+}
+
 func TestHeardCircleAfterTheFurtherMissSurvivesReopen(t *testing.T) {
 	c := nextCircleAfterTheFurtherMissIsHeard(t)
 	const baker, guest = "bakery/baker", "bakery/guest"
