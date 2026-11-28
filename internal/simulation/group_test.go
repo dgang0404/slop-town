@@ -677,7 +677,49 @@ func TestNoonMakesTheBakerMiss(t *testing.T) {
 	}
 }
 
+func TestUnrestoredMissSurvivesReopen(t *testing.T) {
+	c := weightLiftedAfterTheMiss(t)
+	const baker, customer = "bakery/baker", "bakery/customer"
+	before, err := c.Journal(baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := c.bakery.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := RestoreBakery(raw, c.scope.WorldID, c.clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := restored.Snapshot()
+	if err != nil || !bytes.Equal(raw, again) {
+		t.Fatal(err)
+	}
+	c.bakery = restored
+	after, err := c.Journal(baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := journalSpeech(after)
+	if journalSpeech(before) != text || !strings.Contains(text, "I missed what they said.") || strings.Contains(text, "other table") || restored.Entities[baker].Occupied {
+		t.Fatal(text, restored.Entities[baker].Occupied)
+	}
+	if r := c.Submit(customer, spatialProposal(c, "reopened", ActionSpeak, ActionArgs{Target: baker, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "I missed what you said.") || strings.Contains(r.Message, "other table") {
+		t.Fatal(r)
+	}
+}
+
 func TestLiftedWeightLeavesTheMiss(t *testing.T) {
+	c := weightLiftedAfterTheMiss(t)
+	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func weightLiftedAfterTheMiss(t *testing.T) *Coordinator {
+	t.Helper()
 	c := residentBetween(t, false, false, true)
 	const baker, porter, player, guest, spare, customer = "bakery/baker", "bakery/porter", "bakery/player", "bakery/guest", "bakery/spare", "bakery/customer"
 	heard := c.bakery.Entities[porter].Placement
@@ -745,9 +787,7 @@ func TestLiftedWeightLeavesTheMiss(t *testing.T) {
 		!strings.Contains(r.Message, "I missed what you said.") || strings.Contains(r.Message, "other table") {
 		t.Fatal(r)
 	}
-	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
-		t.Fatal(err)
-	}
+	return c
 }
 
 func TestRoutineAnswerLiftsTheDeliveryWeight(t *testing.T) {
