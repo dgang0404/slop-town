@@ -410,6 +410,9 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 				}
 				continue
 			}
+			if line.Topic == "conversation" && b.keptOwnAnswer(listener, fact) {
+				continue
+			}
 			if line.Topic == "conversation" && fact.Answered {
 				x.Reply = b.answeredWords(fact, speaker)
 				break

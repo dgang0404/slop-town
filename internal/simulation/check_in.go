@@ -147,6 +147,18 @@ func (b *Bakery) earlyAnswerWords(fact NotebookEntry, owner, speaker string) (st
 	return who + " said " + about + " " + verb + " taking a breather.", true
 }
 
+func (b *Bakery) keptOwnAnswer(owner string, fact NotebookEntry) bool {
+	if b.ContentVersion < answerFirstVersion || !fact.Overheard || fact.Condition == "" {
+		return false
+	}
+	for _, e := range b.Notebooks[owner] {
+		if e.Answered && e.Subject == fact.Target && e.Condition == fact.Condition && e.SourceSequence < fact.SourceSequence {
+			return true
+		}
+	}
+	return false
+}
+
 func (b *Bakery) answeredWords(fact NotebookEntry, speaker string) string {
 	about, verb := "the "+b.Entities[fact.Subject].Name, "was"
 	if fact.Subject == speaker {

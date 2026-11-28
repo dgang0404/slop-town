@@ -360,6 +360,11 @@ func TestBystanderAnswersBeforeThePersonAsked(t *testing.T) {
 		!strings.Contains(r.Message, "You checked in on me. I told you I had stopped for a breather.") {
 		t.Fatal(r)
 	}
+	place()
+	if r := c.Submit(baker, spatialProposal(c, "still-own", ActionSpeak, ActionArgs{Target: player, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "I said the porter was taking a breather.") || strings.Contains(r.Message, "I heard the baker check in") {
+		t.Fatal(r)
+	}
 	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
 		t.Fatal(err)
 	}
