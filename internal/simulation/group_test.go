@@ -898,6 +898,35 @@ func TestOutsiderHearsTheYield(t *testing.T) {
 	}
 }
 
+func TestCheckInReplyLeavesTheOutsiderAccount(t *testing.T) {
+	c := nextWordsAfterTheLift(t)
+	const baker, player, spare = "bakery/baker", "bakery/player", "bakery/spare"
+	who := c.bakery.Entities[baker]
+	who.Placement = c.bakery.Entities[player].Placement
+	who.Seated = false
+	c.bakery.Entities[baker] = who
+	if r := c.Submit(player, spatialProposal(c, "own-check-in", ActionSpeak, ActionArgs{Target: baker, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "You checked in on me. I told you I felt fine.") || strings.Contains(r.Message, "other table") {
+		t.Fatal(r)
+	}
+	who = c.bakery.Entities[baker]
+	who.Placement = c.bakery.Entities[spare].Placement
+	c.bakery.Entities[baker] = who
+	if r := c.Submit(spare, spatialProposal(c, "outside", ActionSpeak, ActionArgs{Target: baker, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "I heard the customer speak from the other table.") ||
+		!strings.Contains(r.Message, "The neighbor let them go first.") ||
+		strings.Contains(r.Message, "felt fine") || strings.Contains(r.Message, "I missed what you said.") {
+		t.Fatal(r)
+	}
+	pages, err := c.Journal(baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(journalSpeech(pages), "I missed what they said.") {
+		t.Fatal(journalSpeech(pages))
+	}
+}
+
 func TestNextWordsGetThroughAfterTheLift(t *testing.T) {
 	c := nextWordsAfterTheLift(t)
 	pages, err := c.Journal("bakery/baker")
