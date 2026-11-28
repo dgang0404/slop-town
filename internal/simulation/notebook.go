@@ -81,6 +81,13 @@ func (b *Bakery) applySpatial(event *Event, effect spatialEffect, clock *Timelin
 		effect.entity.Growth = plantGrowth{WateredTick: event.Tick, WateredSequence: event.Sequence}
 	}
 	b.Entities[effect.entityID] = effect.entity
+	if event.Kind == "actors_conversed" && event.Payload.Dialogue.Statement.Intent == "answer_first" && b.ContentVersion >= answerFirstVersion {
+		speaker := b.Entities[event.ActorID]
+		if speaker.Kind == Actor {
+			speaker.Occupied = true
+			b.Entities[event.ActorID] = speaker
+		}
+	}
 	if placesItem && b.ContentVersion >= itemWitnessContentVersion {
 		b.recordWitnesses(*event)
 	}
