@@ -879,7 +879,47 @@ func TestBringerStillFollowsTheHeavyAnswer(t *testing.T) {
 	}
 }
 
+func TestReleasedAttentionSurvivesReopen(t *testing.T) {
+	c := releasedBringerHearsTheCircle(t)
+	const baker, guest = "bakery/baker", "bakery/guest"
+	beforeGuest, err := c.Journal(guest)
+	beforeBaker, err2 := c.Journal(baker)
+	if err != nil || err2 != nil {
+		t.Fatal(err, err2)
+	}
+	raw, err := c.bakery.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := RestoreBakery(raw, c.scope.WorldID, c.clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := restored.Snapshot()
+	if err != nil || !bytes.Equal(raw, again) {
+		t.Fatal(err)
+	}
+	c.bakery = restored
+	afterGuest, err := c.Journal(guest)
+	afterBaker, err2 := c.Journal(baker)
+	if err != nil || err2 != nil {
+		t.Fatal(err, err2)
+	}
+	guestText, bakerText := journalSpeech(afterGuest), journalSpeech(afterBaker)
+	if journalSpeech(beforeGuest) != guestText || journalSpeech(beforeBaker) != bakerText ||
+		!strings.Contains(guestText, "I heard the customer speak from the other table.") || strings.Contains(guestText, "I was following another conversation.") ||
+		!strings.Contains(bakerText, "I heard the customer speak from the other table.") || strings.Contains(bakerText, "I was following another conversation.") ||
+		restored.Entities[guest].Attention != "" || restored.Entities[baker].Attention != "" {
+		t.Fatal(guestText, bakerText, restored.Entities[guest].Attention, restored.Entities[baker].Attention)
+	}
+}
+
 func TestRoutineAnswerReleasesTheBringer(t *testing.T) {
+	releasedBringerHearsTheCircle(t)
+}
+
+func releasedBringerHearsTheCircle(t *testing.T) *Coordinator {
+	t.Helper()
 	c := residentBetween(t, false, false, true)
 	const baker, porter, player, guest, spare, clerk = "bakery/baker", "bakery/porter", "bakery/player", "bakery/guest", "bakery/spare", "bakery/clerk"
 	heard := c.bakery.Entities[porter].Placement
@@ -956,6 +996,7 @@ func TestRoutineAnswerReleasesTheBringer(t *testing.T) {
 		!strings.Contains(bakerText, "I heard the customer speak from the other table.") || strings.Contains(bakerText, "I was following another conversation.") {
 		t.Fatal(guestText, bakerText)
 	}
+	return c
 }
 
 func TestUnrestoredMissSurvivesReopen(t *testing.T) {
