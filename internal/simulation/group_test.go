@@ -594,7 +594,7 @@ func TestRestedListenerAnswersBothCircles(t *testing.T) {
 }
 
 func TestResidentAnswersBothCircles(t *testing.T) {
-	c := residentBetween(t, false)
+	c := residentBetween(t, false, false)
 	const baker, porter, customer = "bakery/baker", "bakery/porter", "bakery/customer"
 	var said []string
 	for _, e := range c.History() {
@@ -634,7 +634,7 @@ func TestResidentAnswersBothCircles(t *testing.T) {
 }
 
 func TestResidentAsksToRepeatOverlap(t *testing.T) {
-	c := residentBetween(t, true)
+	c := residentBetween(t, true, false)
 	const baker, porter, customer = "bakery/baker", "bakery/porter", "bakery/customer"
 	var said []string
 	for _, e := range c.History() {
@@ -675,7 +675,41 @@ func TestResidentAsksToRepeatOverlap(t *testing.T) {
 	}
 }
 
-func residentBetween(t *testing.T, overlap bool) *Coordinator {
+func TestHeavyAnswerMissesTheOtherCircle(t *testing.T) {
+	c := residentBetween(t, false, true)
+	const baker, porter, customer, calm = "bakery/baker", "bakery/porter", "bakery/customer", "bakery/calm"
+	var said []string
+	for _, e := range c.History() {
+		if e.ActorID == porter && e.Payload.Dialogue.Statement.Intent == "both" {
+			said = append(said, e.Payload.Target+" "+e.Payload.Dialogue.Words)
+		}
+	}
+	if len(said) != 2 || !strings.Contains(said[0], baker) || !strings.Contains(said[0], "I heard the baker ask the player how they were holding up.") ||
+		!strings.Contains(said[1], customer) || !strings.Contains(said[1], "Could you say that again? I missed what you said.") ||
+		strings.Contains(said[1], "other table") {
+		t.Fatal(said)
+	}
+	calmJournal, err := c.Journal(calm)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(journalSpeech(calmJournal), "I heard the customer speak from the other table.") {
+		t.Fatal(journalSpeech(calmJournal))
+	}
+	at := c.bakery.Entities[customer].Placement
+	who := c.bakery.Entities[porter]
+	who.Placement = at
+	c.bakery.Entities[porter] = who
+	if r := c.Submit(customer, spatialProposal(c, "again", ActionSpeak, ActionArgs{Target: porter, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "Could you say that again? I missed what you said.") || strings.Contains(r.Message, "other table") {
+		t.Fatal(r)
+	}
+	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func residentBetween(t *testing.T, overlap, weighted bool) *Coordinator {
 	t.Helper()
 	scope := Scope{"bakery", "main"}
 	c, err := (BakerySetup{Practice: true}).NewCoordinator(scope, 42)
@@ -768,6 +802,12 @@ func residentBetween(t *testing.T, overlap bool) *Coordinator {
 	}
 	if answer.Source != open.SourceSequence {
 		t.Fatal(choices)
+	}
+	if weighted {
+		who := c.bakery.Entities[porter]
+		who.Occupied = true
+		c.bakery.Entities[porter] = who
+		c.bakery.Entities["bakery/calm"] = SpatialEntity{Name: "calm", Kind: Actor, Placement: who.Placement}
 	}
 	if r := c.Submit(guest, spatialProposal(c, "answer", ActionSpeak, ActionArgs{Target: baker, Speech: answer})); r.Status != "accepted" {
 		t.Fatal(r)

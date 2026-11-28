@@ -131,7 +131,7 @@ func (b *Bakery) recordAside(event Event) {
 		}
 		b.appendSighting(id, NotebookEntry{
 			Tick: event.Tick, SourceSequence: event.Sequence, Subject: event.ActorID, Target: event.Payload.Target, Action: ActionSpeak, Aside: true,
-			Yielded: event.Payload.Dialogue.Reply == "", Missed: event.Payload.Dialogue.Reply != "",
+			Yielded: event.Payload.Dialogue.Reply == "" && !e.Occupied, Missed: event.Payload.Dialogue.Reply != "" || e.Occupied,
 		})
 	}
 }

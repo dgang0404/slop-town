@@ -61,6 +61,7 @@ type SpatialEntity struct {
 	BakingBouts         int             `json:",omitempty"`
 	BakingKneads        int             `json:",omitempty"`
 	ReliefTurns         int             `json:",omitempty"`
+	Occupied            bool            `json:",omitempty"` // A heavy answer is still on this actor's mind.
 	WorkroomToolUseTick int64           `json:",omitempty"` // Last workroom bench use on this actor's timeline.
 	DropSound           PerceptionKind  `json:",omitempty"` // Sound made when this item hits the floor.
 	StealthPractice     stealthPractice `json:",omitzero"`
@@ -370,6 +371,9 @@ func (b *Bakery) Validate() error {
 		}
 		if e.StealthPractice != (stealthPractice{}) && (e.Kind != Actor || b.ContentVersion < stealthPracticeContentVersion) {
 			return fmt.Errorf("unexpected stealth practice for %q", id)
+		}
+		if e.Occupied && (e.Kind != Actor || b.ContentVersion < answerFirstVersion) {
+			return fmt.Errorf("unexpected weight for %q", id)
 		}
 		if e.ReliefTurns != 0 && (e.Kind != Actor || b.ContentVersion < emotionContentVersion || e.ReliefTurns < 0 || e.ReliefTurns > reliefDuration) {
 			return fmt.Errorf("invalid relief for %q", id)
