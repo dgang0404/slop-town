@@ -987,6 +987,31 @@ func TestFragmentRetellingKeepsTheSpeakerUnknown(t *testing.T) {
 	}
 }
 
+func TestResidentKeepsTheCircleTheyJoined(t *testing.T) {
+	c := separateCircleFar(t, false, false, false, false, true, false)
+	const baker, porter, clerk = "bakery/baker", "bakery/porter", "bakery/clerk"
+	spot := c.bakery.Entities[baker].Placement
+	for _, id := range []string{porter, clerk} {
+		who := c.bakery.Entities[id]
+		if id == clerk {
+			who = SpatialEntity{Name: "clerk", Kind: Actor}
+		}
+		who.Placement = spot
+		c.bakery.Entities[id] = who
+	}
+	if r := c.Submit(porter, spatialProposal(c, "joined", ActionSpeak, ActionArgs{Target: baker, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "The player said you were taking a breather.") || strings.Contains(r.Message, "after closing") || strings.Contains(r.Message, "customer") || strings.Contains(r.Message, "other table") {
+		t.Fatal(r)
+	}
+	if r := c.Submit(clerk, spatialProposal(c, "outside", ActionSpeak, ActionArgs{Target: baker, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "I heard “after closing.” I don't know who spoke.") || strings.Contains(r.Message, "checked in") || strings.Contains(r.Message, "customer") || strings.Contains(r.Message, "other table") {
+		t.Fatal(r)
+	}
+	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestFragmentSurvivesReopen(t *testing.T) {
 	c := separateCircleFar(t, false, false, false, false, true, false)
 	const visitor, clerk = "bakery/visitor", "bakery/clerk"

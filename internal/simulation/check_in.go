@@ -246,6 +246,19 @@ func (b *Bakery) fragmentWords() string {
 	return "I heard “after closing.” I don't know who spoke."
 }
 
+// The listener already shared a conversation they understood with this person.
+func (b *Bakery) sharesAClearerExchange(owner, with string) bool {
+	for _, e := range b.Notebooks[owner] {
+		if e.Fragment || e.Murmur || e.Missed || (e.Subject != with && e.Target != with) {
+			continue
+		}
+		if e.Condition != "" || e.Overheard || e.Open || e.Answered || e.Heard || e.Aside || e.Asked || e.Bridged {
+			return true
+		}
+	}
+	return false
+}
+
 func (b *Bakery) murmurWords() string {
 	return "I heard a murmur."
 }

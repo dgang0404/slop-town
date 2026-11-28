@@ -456,6 +456,9 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 				continue
 			}
 			if line.Topic == "conversation" && fact.Fragment {
+				if b.sharesAClearerExchange(listener, speaker) {
+					continue
+				}
 				x.Reply = b.fragmentWords()
 				x.Fragment = true
 				break
