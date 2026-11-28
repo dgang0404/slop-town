@@ -181,6 +181,9 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 					page := entryAt(e.Tick)
 					page.Observations = append(page.Observations, JournalObservation{Kind: s.Sound, Text: s.Sound.Description()})
 				}
+			} else if s.Murmur {
+				page := entryAt(e.Tick)
+				page.Observations = append(page.Observations, JournalObservation{Text: b.murmurWords()})
 			} else if s.Fragment {
 				page := entryAt(e.Tick)
 				page.Observations = append(page.Observations, JournalObservation{Text: b.fragmentWords()})

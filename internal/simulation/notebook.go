@@ -26,6 +26,7 @@ type NotebookEntry struct {
 	Missed         bool           `json:"missed,omitempty"`    // Both started, so this owner missed the words.
 	Elsewhere      bool           `json:"elsewhere,omitempty"` // Attention was on another circle, so the words were missed.
 	Fragment       bool           `json:"fragment,omitempty"`  // Words heard without knowing who spoke.
+	Murmur         bool           `json:"murmur,omitempty"`    // Atmosphere only. The words were not made out.
 	Bridged        bool           `json:"bridged,omitempty"`   // This owner already gave a light answer to this circle.
 	Asked          bool           `json:"asked,omitempty"`
 	Container      string         `json:"container,omitempty"` // Visible destination of a put or landmark for a hand movement.
@@ -134,9 +135,16 @@ func (b *Bakery) recordAside(event Event) {
 		}
 		seesSpeaker := view.hasTarget(event.ActorID)
 		// A voice can carry past a corner as a fragment after the speaker is out of sight.
-		if !seesSpeaker && b.soundReaches(speaker, e.Placement.Cell, conversationReach+6) {
+		// Farther than that, the sound is only a murmur.
+		if !seesSpeaker && b.soundReaches(speaker, e.Placement.Cell, fragmentReach) {
 			b.appendSighting(id, NotebookEntry{
 				Tick: event.Tick, SourceSequence: event.Sequence, Action: ActionSpeak, Fragment: true,
+			})
+			continue
+		}
+		if !seesSpeaker && b.soundReaches(speaker, e.Placement.Cell, murmurReach) {
+			b.appendSighting(id, NotebookEntry{
+				Tick: event.Tick, SourceSequence: event.Sequence, Action: ActionSpeak, Murmur: true,
 			})
 			continue
 		}
@@ -366,7 +374,7 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 				(e.Action != ActionSpeak && (e.Reported != 0 || e.Condition != "")) || (e.Asked && e.Condition == "" && !e.Open) ||
 				(e.Container != "" && e.Action != ActionPut && e.Action != SightHandMovement) || e.Subject == owner ||
 				(e.Action != ActionListen && e.Sound != "") ||
-				(e.Action != ActionListen && e.Action != SightHandMovement && !e.Fragment && b.Entities[e.Subject].Kind != Actor) {
+				(e.Action != ActionListen && e.Action != SightHandMovement && !e.Fragment && !e.Murmur && b.Entities[e.Subject].Kind != Actor) {
 				return fmt.Errorf("invalid notebook sighting for %q at sequence %d", owner, e.SourceSequence)
 			}
 			switch e.Action {
@@ -382,8 +390,8 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 					return fmt.Errorf("invalid hand movement sighting for %q at sequence %d", owner, e.SourceSequence)
 				}
 			case ActionSpeak:
-				if e.Fragment {
-					if b.ContentVersion < answerFirstVersion || e.Subject != "" || e.Target != "" || e.Condition != "" || e.Reported != 0 || e.Aside || e.Overheard || e.Open || e.Answered || e.Heard || e.Asked || e.Yielded || e.Missed || e.Elsewhere || e.Bridged {
+				if e.Fragment || e.Murmur {
+					if b.ContentVersion < answerFirstVersion || e.Fragment && e.Murmur || e.Subject != "" || e.Target != "" || e.Condition != "" || e.Reported != 0 || e.Aside || e.Overheard || e.Open || e.Answered || e.Heard || e.Asked || e.Yielded || e.Missed || e.Elsewhere || e.Bridged {
 						return fmt.Errorf("invalid fragment for %q at sequence %d", owner, e.SourceSequence)
 					}
 					break

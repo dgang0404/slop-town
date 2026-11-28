@@ -74,7 +74,12 @@ func (b *Bakery) audibleAction(listener string, event Event) PerceptionKind {
 }
 
 // Conversation carries a shorter way than a knock. Skill adds at most one step.
-const conversationReach = 2
+// A fragment can pass out of sight a little farther. Beyond that, only a murmur remains.
+const (
+	conversationReach = 2
+	fragmentReach     = conversationReach + 3
+	murmurReach       = conversationReach + 6
+)
 
 func (b *Bakery) withinEarshot(listener string, source CellPosition, reach int) bool {
 	if perceptionAptitude(b.Seed, listener) >= 14 {
