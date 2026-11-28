@@ -183,7 +183,7 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 				}
 			} else if s.Aside {
 				page := entryAt(e.Tick)
-				page.Observations = append(page.Observations, JournalObservation{Text: "I heard the " + b.Entities[s.Subject].Name + " speak from the other table."})
+				page.Observations = append(page.Observations, JournalObservation{Text: b.asideWords(s)})
 			} else if s.Overheard {
 				page := entryAt(e.Tick)
 				text := s.overheardCheckIn(b.Entities[s.Subject].Name, b.Entities[s.Target].Name)

@@ -199,6 +199,10 @@ func (b *Bakery) unansweredWords(fact NotebookEntry, speaker string) string {
 	return who + " asked how I was holding up. I haven't answered."
 }
 
+func (b *Bakery) asideWords(fact NotebookEntry) string {
+	return "I heard the " + b.Entities[fact.Subject].Name + " speak from the other table."
+}
+
 func (b *Bakery) stoodWords(fact NotebookEntry, speaker string) string {
 	who := "The " + b.Entities[fact.Subject].Name
 	if fact.Subject == speaker {

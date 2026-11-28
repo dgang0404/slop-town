@@ -583,6 +583,14 @@ func TestSeparateCircleSpeaksDuringTheSameTurn(t *testing.T) {
 	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
 		t.Fatal(err)
 	}
+	at := c.bakery.Entities[baker].Placement
+	who := c.bakery.Entities[porter]
+	who.Placement = at
+	c.bakery.Entities[porter] = who
+	if r := c.Submit(baker, spatialProposal(c, "retell", ActionSpeak, ActionArgs{Target: porter, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "I heard the customer speak from the other table.") || strings.Contains(r.Message, "breather") || strings.Contains(r.Message, "checked in") {
+		t.Fatal(r)
+	}
 }
 
 func journalSpeech(pages []JournalEntry) string {
