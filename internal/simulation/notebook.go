@@ -151,10 +151,15 @@ func (b *Bakery) recordAside(event Event) {
 		if !seesSpeaker || !view.hasTarget(event.Payload.Target) || !b.withinEarshot(id, speaker, conversationReach) {
 			continue
 		}
+		occupied := e.Occupied
+		if occupied {
+			e.Occupied = false
+			b.Entities[id] = e
+		}
 		elsewhere := e.Attention != "" && e.Attention != event.ActorID && e.Attention != event.Payload.Target
 		b.appendSighting(id, NotebookEntry{
 			Tick: event.Tick, SourceSequence: event.Sequence, Subject: event.ActorID, Target: event.Payload.Target, Action: ActionSpeak, Aside: true,
-			Yielded: event.Payload.Dialogue.Reply == "" && !e.Occupied && !elsewhere, Missed: event.Payload.Dialogue.Reply != "" || e.Occupied || elsewhere, Elsewhere: elsewhere,
+			Yielded: event.Payload.Dialogue.Reply == "" && !occupied && !elsewhere, Missed: event.Payload.Dialogue.Reply != "" || occupied || elsewhere, Elsewhere: elsewhere,
 		})
 	}
 }

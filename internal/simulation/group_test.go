@@ -595,7 +595,7 @@ func TestRestedListenerAnswersBothCircles(t *testing.T) {
 }
 
 func TestResidentAnswersBothCircles(t *testing.T) {
-	c := residentBetween(t, false, false)
+	c := residentBetween(t, false, false, false)
 	const baker, porter, customer = "bakery/baker", "bakery/porter", "bakery/customer"
 	var said []string
 	for _, e := range c.History() {
@@ -635,7 +635,7 @@ func TestResidentAnswersBothCircles(t *testing.T) {
 }
 
 func TestResidentAsksToRepeatOverlap(t *testing.T) {
-	c := residentBetween(t, true, false)
+	c := residentBetween(t, true, false, false)
 	const baker, porter, customer = "bakery/baker", "bakery/porter", "bakery/customer"
 	var said []string
 	for _, e := range c.History() {
@@ -677,7 +677,7 @@ func TestResidentAsksToRepeatOverlap(t *testing.T) {
 }
 
 func TestHeavyAnswerMissesTheOtherCircle(t *testing.T) {
-	c := residentBetween(t, false, true)
+	c := residentBetween(t, false, true, false)
 	const baker, porter, customer, calm = "bakery/baker", "bakery/porter", "bakery/customer", "bakery/calm"
 	var said []string
 	for _, e := range c.History() {
@@ -710,7 +710,60 @@ func TestHeavyAnswerMissesTheOtherCircle(t *testing.T) {
 	}
 }
 
-func residentBetween(t *testing.T, overlap, weighted bool) *Coordinator {
+func TestHeavyAnswerEases(t *testing.T) {
+	c := residentBetween(t, false, true, true)
+	const baker, porter, spare = "bakery/baker", "bakery/porter", "bakery/spare"
+	if c.bakery.Entities[porter].Occupied {
+		t.Fatal("still occupied")
+	}
+	pages, err := c.Journal(porter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(journalSpeech(pages), "I missed what they said.") || strings.Contains(journalSpeech(pages), "other table") {
+		t.Fatal(journalSpeech(pages))
+	}
+	station := c.bakery.Entities["bakery/player"].Placement
+	for _, id := range []string{baker, spare} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		c.bakery.Entities[id] = who
+	}
+	var open NotebookEntry
+	for _, note := range c.bakery.Notebooks[spare] {
+		if note.Overheard && note.Open && note.Target == "bakery/player" {
+			open = note
+		}
+	}
+	choices, err := c.DialogueChoices(spare, baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var answer SpeechLine
+	for _, choice := range choices {
+		if choice.Words == "The player is taking a breather." {
+			answer = choice.Line
+		}
+	}
+	if answer.Source != open.SourceSequence {
+		t.Fatal(choices)
+	}
+	if r := c.Submit(spare, spatialProposal(c, "ease", ActionSpeak, ActionArgs{Target: baker, Speech: answer})); r.Status != "accepted" {
+		t.Fatal(r)
+	}
+	after, err := c.Journal(porter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.bakery.Entities[porter].Occupied || !strings.Contains(journalSpeech(after), "I heard the customer speak from the other table.") || !strings.Contains(journalSpeech(after), "I missed what they said.") {
+		t.Fatal(journalSpeech(after))
+	}
+	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func residentBetween(t *testing.T, overlap, weighted, spare bool) *Coordinator {
 	t.Helper()
 	scope := Scope{"bakery", "main"}
 	c, err := (BakerySetup{Practice: true}).NewCoordinator(scope, 42)
@@ -729,6 +782,9 @@ func residentBetween(t *testing.T, overlap, weighted bool) *Coordinator {
 	seated.Seated = true
 	c.bakery.Entities[player] = seated
 	c.bakery.Entities[guest] = SpatialEntity{Name: "guest", Kind: Actor, Placement: spot}
+	if spare {
+		c.bakery.Entities["bakery/spare"] = SpatialEntity{Name: "spare", Kind: Actor, Placement: spot}
+	}
 	if r := c.Submit(baker, spatialProposal(c, "ask", ActionSpeak, ActionArgs{Target: player, Speech: checkInQuestion})); r.Status != "accepted" || strings.Contains(r.Message, "replies") {
 		t.Fatal(r)
 	}
