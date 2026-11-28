@@ -961,6 +961,102 @@ func TestRepeatedLineSurvivesReopen(t *testing.T) {
 	}
 }
 
+func TestFreshHeavyAnswerDrawsAttentionBack(t *testing.T) {
+	c := residentBetween(t, false, false, true)
+	const baker, porter, player, guest, spare, clerk = "bakery/baker", "bakery/porter", "bakery/player", "bakery/guest", "bakery/spare", "bakery/clerk"
+	heard := c.bakery.Entities[porter].Placement
+	station := c.bakery.Entities[player].Placement
+	for _, id := range []string{baker, player} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		who.Seated = false
+		c.bakery.Entities[id] = who
+	}
+	if r := c.Submit(player, spatialProposal(c, "routine", ActionSpeak, ActionArgs{Target: baker, Speech: checkInQuestion})); r.Status != "accepted" || c.bakery.Entities[baker].Attention != "" {
+		t.Fatal(r, c.bakery.Entities[baker].Attention)
+	}
+	for _, id := range []string{baker, player, guest} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		who.Seated = id == player
+		c.bakery.Entities[id] = who
+	}
+	if r := c.Submit(baker, spatialProposal(c, "ask-again", ActionSpeak, ActionArgs{Target: player, Speech: checkInQuestion})); r.Status != "accepted" || strings.Contains(r.Message, "replies") {
+		t.Fatal(r)
+	}
+	var open NotebookEntry
+	for _, note := range c.bakery.Notebooks[guest] {
+		if note.Overheard && note.Open && note.Target == player {
+			open = note
+		}
+	}
+	choices, err := c.DialogueChoices(guest, baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var heavy SpeechLine
+	for _, choice := range choices {
+		if choice.Words == "The player is taking a breather." && choice.Line.Source == open.SourceSequence {
+			heavy = choice.Line
+		}
+	}
+	if heavy.Source == 0 {
+		t.Fatal(choices)
+	}
+	if r := c.Submit(guest, spatialProposal(c, "again", ActionSpeak, ActionArgs{Target: baker, Speech: heavy})); r.Status != "accepted" || c.bakery.Entities[baker].Attention != guest {
+		t.Fatal(r, c.bakery.Entities[baker].Attention)
+	}
+	c.bakery.Entities[clerk] = SpatialEntity{Name: "clerk", Kind: Actor, Placement: station}
+	for _, id := range []string{player, spare, clerk} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		who.Seated = id == spare
+		c.bakery.Entities[id] = who
+	}
+	if r := c.Submit(player, spatialProposal(c, "ask-spare", ActionSpeak, ActionArgs{Target: spare, Speech: checkInQuestion})); r.Status != "accepted" || strings.Contains(r.Message, "replies") {
+		t.Fatal(r)
+	}
+	who := c.bakery.Entities[baker]
+	who.Placement = heard
+	who.Seated = false
+	c.bakery.Entities[baker] = who
+	for _, id := range []string{player, clerk} {
+		person := c.bakery.Entities[id]
+		person.Placement = station
+		person.Seated = false
+		c.bakery.Entities[id] = person
+	}
+	open = NotebookEntry{}
+	for _, note := range c.bakery.Notebooks[clerk] {
+		if note.Overheard && note.Open && note.Target == spare {
+			open = note
+		}
+	}
+	choices, err = c.DialogueChoices(clerk, player)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var answer SpeechLine
+	for _, choice := range choices {
+		if choice.Words == "The spare is taking a breather." && choice.Line.Source == open.SourceSequence {
+			answer = choice.Line
+		}
+	}
+	if answer.Source == 0 {
+		t.Fatal(choices)
+	}
+	if r := c.Submit(clerk, spatialProposal(c, "later", ActionSpeak, ActionArgs{Target: player, Speech: answer})); r.Status != "accepted" {
+		t.Fatal(r)
+	}
+	pages, err := c.Journal(baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.bakery.Entities[baker].Attention != "" || !strings.Contains(journalSpeech(pages), "I was following another conversation. I missed what they said.") {
+		t.Fatal(c.bakery.Entities[baker].Attention, journalSpeech(pages))
+	}
+}
+
 func TestRoutineAnswerReleasesTheBringer(t *testing.T) {
 	releasedBringerHearsTheCircle(t)
 }
