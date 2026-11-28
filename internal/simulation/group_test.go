@@ -1445,6 +1445,105 @@ func TestRepeatedLineAfterTheFurtherMissSurvivesReopen(t *testing.T) {
 	}
 }
 
+func TestFreshAnswerDrawsAttentionBackOverAndOverOnceMore(t *testing.T) {
+	freshAnswerDrawsAttentionBackOverAndOverOnceMore(t)
+}
+
+func freshAnswerDrawsAttentionBackOverAndOverOnceMore(t *testing.T) *Coordinator {
+	t.Helper()
+	c := nextCircleAfterTheOnceMoreOverAndOverMissIsHeard(t)
+	const baker, guest, player, bellringer, layreader, clerk = "bakery/baker", "bakery/guest", "bakery/player", "bakery/bellringer", "bakery/layreader", "bakery/clerk"
+	heard := c.bakery.Entities[guest].Placement
+	station := c.bakery.Entities[player].Placement
+	c.bakery.Entities[bellringer] = SpatialEntity{Name: "bellringer", Kind: Actor, Placement: station, Seated: true}
+	for _, id := range []string{baker, guest, player, bellringer} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		who.Seated = id == bellringer
+		c.bakery.Entities[id] = who
+	}
+	if r := c.Submit(player, spatialProposal(c, "ask-bellringer", ActionSpeak, ActionArgs{Target: bellringer, Speech: checkInQuestion})); r.Status != "accepted" || strings.Contains(r.Message, "replies") {
+		t.Fatal(r)
+	}
+	var open NotebookEntry
+	for _, note := range c.bakery.Notebooks[guest] {
+		if note.Overheard && note.Open && note.Target == bellringer {
+			open = note
+		}
+	}
+	choices, err := c.DialogueChoices(guest, player)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var heavy SpeechLine
+	for _, choice := range choices {
+		if choice.Words == "The bellringer is taking a breather." && choice.Line.Source == open.SourceSequence {
+			heavy = choice.Line
+		}
+	}
+	if heavy.Source == 0 {
+		t.Fatal(choices)
+	}
+	if r := c.Submit(guest, spatialProposal(c, "draw-over-and-over-once-more", ActionSpeak, ActionArgs{Target: player, Speech: heavy})); r.Status != "accepted" || c.bakery.Entities[guest].Attention != player || !c.bakery.Entities[guest].Occupied || c.bakery.Entities[baker].Attention != "" || c.bakery.Entities[baker].Occupied {
+		t.Fatal(r, c.bakery.Entities[guest].Attention, c.bakery.Entities[guest].Occupied, c.bakery.Entities[baker].Attention, c.bakery.Entities[baker].Occupied)
+	}
+	c.bakery.Entities[layreader] = SpatialEntity{Name: "layreader", Kind: Actor, Placement: station, Seated: true}
+	for _, id := range []string{player, layreader, clerk} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		who.Seated = id == layreader
+		c.bakery.Entities[id] = who
+	}
+	if r := c.Submit(player, spatialProposal(c, "ask-layreader", ActionSpeak, ActionArgs{Target: layreader, Speech: checkInQuestion})); r.Status != "accepted" || strings.Contains(r.Message, "replies") {
+		t.Fatal(r)
+	}
+	for _, id := range []string{baker, guest} {
+		who := c.bakery.Entities[id]
+		who.Placement = heard
+		who.Seated = false
+		c.bakery.Entities[id] = who
+	}
+	for _, id := range []string{player, clerk} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		who.Seated = false
+		c.bakery.Entities[id] = who
+	}
+	open = NotebookEntry{}
+	for _, note := range c.bakery.Notebooks[clerk] {
+		if note.Overheard && note.Open && note.Target == layreader {
+			open = note
+		}
+	}
+	choices, err = c.DialogueChoices(clerk, player)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var answer SpeechLine
+	for _, choice := range choices {
+		if choice.Words == "The layreader is taking a breather." && choice.Line.Source == open.SourceSequence {
+			answer = choice.Line
+		}
+	}
+	if answer.Source == 0 {
+		t.Fatal(choices)
+	}
+	if r := c.Submit(clerk, spatialProposal(c, "circle-over-and-over-once-more", ActionSpeak, ActionArgs{Target: player, Speech: answer})); r.Status != "accepted" {
+		t.Fatal(r)
+	}
+	guestPages, err := c.Journal(guest)
+	bakerPages, err2 := c.Journal(baker)
+	if err != nil || err2 != nil || len(guestPages) == 0 || len(bakerPages) == 0 {
+		t.Fatal(err, err2)
+	}
+	guestText := journalSpeech(guestPages[len(guestPages)-1:])
+	bakerText := journalSpeech(bakerPages[len(bakerPages)-1:])
+	if !strings.Contains(guestText, "I was following another conversation. I missed what they said.") || strings.Contains(guestText, "I heard the customer speak from the other table.") || !strings.Contains(bakerText, "I heard the customer speak from the other table.") || strings.Contains(bakerText, "I was following another conversation.") {
+		t.Fatal(guestText, bakerText)
+	}
+	return c
+}
+
 func TestFreshAnswerDrawsAttentionBackOnceMoreOverAndOver(t *testing.T) {
 	freshAnswerDrawsAttentionBackOnceMoreOverAndOver(t)
 }
