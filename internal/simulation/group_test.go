@@ -984,6 +984,40 @@ func TestRoutineAnswerReleasesDrawnAttention(t *testing.T) {
 	}
 }
 
+func TestFadedFreshAnswerReleasesAttention(t *testing.T) {
+	c, heard, station := attentionDrawnBack(t)
+	const baker, player = "bakery/baker", "bakery/player"
+	if c.bakery.Entities[baker].Attention == "" || !c.bakery.Entities[baker].Occupied {
+		t.Fatal(c.bakery.Entities[baker].Attention, c.bakery.Entities[baker].Occupied)
+	}
+	for _, name := range []string{"quiet-a", "quiet-b", "quiet-c", "quiet-d"} {
+		if !c.bakery.Entities[baker].Occupied {
+			break
+		}
+		for _, id := range []string{baker, player} {
+			who := c.bakery.Entities[id]
+			who.Placement = station
+			who.Seated = false
+			c.bakery.Entities[id] = who
+		}
+		if r := c.Submit(player, spatialProposal(c, name, ActionSpeak, ActionArgs{Target: baker, Speech: SpeechLine{Topic: "news", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" || strings.Contains(r.Message, "Doing all right") {
+			t.Fatal(r)
+		}
+	}
+	if c.bakery.Entities[baker].Occupied || c.bakery.Entities[baker].Attention != "" {
+		t.Fatal(c.bakery.Entities[baker].Occupied, c.bakery.Entities[baker].Attention)
+	}
+	finishDrawnAside(t, c, heard, station)
+	pages, err := c.Journal(baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := journalSpeech(pages)
+	if !strings.Contains(text, "I heard the customer speak from the other table.") || strings.Contains(text, "I was following another conversation.") {
+		t.Fatal(text)
+	}
+}
+
 func TestFreshHeavyAnswerDrawsAttentionBack(t *testing.T) {
 	c, heard, station := attentionDrawnBack(t)
 	finishDrawnAside(t, c, heard, station)
