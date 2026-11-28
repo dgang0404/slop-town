@@ -56,6 +56,9 @@ func (e NotebookEntry) speechLine(intent, tone string) SpeechLine {
 // who told it. A relay keeps its original observer even when the teller changes.
 func (b *Bakery) memoryLine(e NotebookEntry, speaker, listener string) (SpeechLine, string) {
 	if e.Reported == 0 {
+		if e.Overheard {
+			return SpeechLine{}, "" // Asked about conversations, not offered ahead of older memories.
+		}
 		return e.speechLine("share", "plain"), b.sightingWords(e, listener, false)
 	}
 	if e.Subject == listener {

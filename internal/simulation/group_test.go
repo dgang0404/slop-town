@@ -6,6 +6,36 @@ import (
 	"testing"
 )
 
+func TestFreshTownCheckInIsOverheard(t *testing.T) {
+	scope := Scope{"bakery", "main"}
+	c, err := (BakerySetup{Practice: true}).NewCoordinator(scope, 42)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.bakery.ContentVersion < groupConversationVersion {
+		t.Fatalf("new practice town is content %d", c.bakery.ContentVersion)
+	}
+	const baker, porter, player = "bakery/baker", "bakery/porter", "bakery/player"
+	spot := c.bakery.Entities[baker].Placement
+	for _, id := range []string{porter, player} {
+		actor := c.bakery.Entities[id]
+		actor.Placement = spot
+		c.bakery.Entities[id] = actor
+	}
+	if r := c.Submit(baker, spatialProposal(c, "check-in", ActionSpeak, ActionArgs{Target: porter, Speech: checkInQuestion})); r.Status != "accepted" {
+		t.Fatal(r)
+	}
+	var overheard bool
+	for _, note := range c.bakery.Notebooks[player] {
+		if note.Overheard && note.Subject == baker && note.Target == porter {
+			overheard = true
+		}
+	}
+	if !overheard {
+		t.Fatal(c.bakery.Notebooks[player])
+	}
+}
+
 func TestBystanderRemembersAVisibleCheckIn(t *testing.T) {
 	scope := Scope{"bakery", "main"}
 	c, err := (BakerySetup{Practice: true}).NewCoordinator(scope, 42)

@@ -159,7 +159,7 @@ func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, err
 	if setup.Practice || setup.Generated {
 		// One version number for a new town. Phone, mail, harvest, and the
 		// other practice rules stay active because each check is >= its own version.
-		b.ContentVersion = bakingContentVersion
+		b.ContentVersion = groupConversationVersion
 		prefix := url.PathEscape(worldID) + "/"
 		for localID, detail := range bakeryCloseDetails {
 			id := prefix + localID
