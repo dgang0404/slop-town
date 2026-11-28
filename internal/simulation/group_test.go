@@ -293,4 +293,52 @@ func TestBystanderAnswersBeforeThePersonAsked(t *testing.T) {
 	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
 		t.Fatal(err)
 	}
+	place()
+	seated = c.bakery.Entities[porter]
+	seated.Seated = true
+	c.bakery.Entities[porter] = seated
+	choices, err = c.DialogueChoices(porter, baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var pickUp SpeechLine
+	const agreed = "Yes. I was taking a breather."
+	for _, choice := range choices {
+		if choice.Words == agreed {
+			pickUp = choice.Line
+		}
+	}
+	if pickUp.Intent != "pick_up" || pickUp.Source != open.SourceSequence {
+		t.Fatal(choices)
+	}
+	if r := c.Submit(porter, spatialProposal(c, "pick-up", ActionSpeak, ActionArgs{Target: baker, Speech: pickUp})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, agreed) || !strings.Contains(r.Message, "The baker replies, “All right.”") {
+		t.Fatal(r)
+	}
+	var own bool
+	for _, note := range c.bakery.Notebooks[porter] {
+		if note.Condition == resting && !note.Asked && !note.Answered && note.Subject == baker && note.SourceSequence > open.SourceSequence {
+			own = true
+		}
+	}
+	if !own {
+		t.Fatal(c.bakery.Notebooks[porter])
+	}
+	var heard bool
+	for _, note := range c.bakery.Notebooks[player] {
+		if note.Overheard && !note.Open && note.Subject == baker && note.Target == porter && note.Condition == resting {
+			heard = true
+		}
+	}
+	if !heard {
+		t.Fatal(c.bakery.Notebooks[player])
+	}
+	place()
+	if r := c.Submit(baker, spatialProposal(c, "after", ActionSpeak, ActionArgs{Target: porter, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "You checked in on me. I told you I had stopped for a breather.") {
+		t.Fatal(r)
+	}
+	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
+		t.Fatal(err)
+	}
 }

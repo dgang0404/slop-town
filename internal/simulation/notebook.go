@@ -109,6 +109,26 @@ func (b *Bakery) recordAnswerFirst(event Event) {
 	})
 }
 
+func (b *Bakery) recordPickedUp(event Event) {
+	entry := NotebookEntry{Tick: event.Tick, SourceSequence: event.Sequence, Action: ActionSpeak, Condition: resting, Subject: event.ActorID, Asked: true}
+	b.appendSighting(event.Payload.Target, entry)
+	entry.Subject, entry.Asked = event.Payload.Target, false
+	b.appendSighting(event.ActorID, entry)
+	heard := entry
+	heard.Overheard, heard.Asked = true, false
+	heard.Subject, heard.Target = event.Payload.Target, event.ActorID
+	for id, e := range b.Entities {
+		if e.Kind != Actor || id == event.ActorID || id == event.Payload.Target {
+			continue
+		}
+		view, err := b.Observe(event.Scope, id)
+		if err != nil || !view.hasTarget(event.ActorID) || !view.hasTarget(event.Payload.Target) {
+			continue
+		}
+		b.appendSighting(id, heard)
+	}
+}
+
 func (b *Bakery) openCheckInAbout(owner, about string, before uint64) (NotebookEntry, bool) {
 	for i := len(b.Notebooks[owner]) - 1; i >= 0; i-- {
 		e := b.Notebooks[owner][i]
@@ -150,6 +170,10 @@ func (b *Bakery) recordWitnesses(event Event) {
 		}
 		if x.Statement.Intent == "answer_first" {
 			b.recordAnswerFirst(event)
+			return
+		}
+		if x.Statement.Intent == "pick_up" {
+			b.recordPickedUp(event)
 			return
 		}
 		if x.Condition != "" {
