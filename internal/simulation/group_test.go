@@ -1016,13 +1016,37 @@ func TestFadedFreshAnswerSurvivesReopen(t *testing.T) {
 
 func TestFadedBringerRepeatsTheHeardLine(t *testing.T) {
 	c := fadedBringerHearsTheCircle(t)
+	if r := askFadedBringer(c, "ask-bringer"); r.Status != "accepted" || !strings.Contains(r.Message, "I heard the customer speak from the other table.") || strings.Contains(r.Message, "I was following another conversation.") || strings.Contains(r.Message, "I missed what you said.") {
+		t.Fatal(r)
+	}
+}
+
+func TestFadedBringerReplySurvivesReopen(t *testing.T) {
+	c := fadedBringerHearsTheCircle(t)
+	raw, err := c.bakery.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := RestoreBakery(raw, c.scope.WorldID, c.clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := restored.Snapshot()
+	if err != nil || !bytes.Equal(raw, again) {
+		t.Fatal(err)
+	}
+	c.bakery = restored
+	if r := askFadedBringer(c, "reopened-bringer"); r.Status != "accepted" || !strings.Contains(r.Message, "I heard the customer speak from the other table.") || strings.Contains(r.Message, "I was following another conversation.") || strings.Contains(r.Message, "I missed what you said.") {
+		t.Fatal(r)
+	}
+}
+
+func askFadedBringer(c *Coordinator, name string) Result {
 	const guest, customer = "bakery/guest", "bakery/customer"
 	who := c.bakery.Entities[guest]
 	who.Placement = c.bakery.Entities[customer].Placement
 	c.bakery.Entities[guest] = who
-	if r := c.Submit(customer, spatialProposal(c, "ask-bringer", ActionSpeak, ActionArgs{Target: guest, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" || !strings.Contains(r.Message, "I heard the customer speak from the other table.") || strings.Contains(r.Message, "I was following another conversation.") || strings.Contains(r.Message, "I missed what you said.") {
-		t.Fatal(r)
-	}
+	return c.Submit(customer, spatialProposal(c, name, ActionSpeak, ActionArgs{Target: guest, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}}))
 }
 
 func TestFadedBringerSurvivesReopen(t *testing.T) {
