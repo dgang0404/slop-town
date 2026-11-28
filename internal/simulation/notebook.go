@@ -117,7 +117,7 @@ func (b *Bakery) recordAnswerFirst(event Event) {
 }
 
 func (b *Bakery) recordPickedUp(event Event) {
-	entry := NotebookEntry{Tick: event.Tick, SourceSequence: event.Sequence, Action: ActionSpeak, Condition: resting, Subject: event.ActorID, Asked: true}
+	entry := NotebookEntry{Tick: event.Tick, SourceSequence: event.Sequence, Action: ActionSpeak, Condition: event.Payload.Dialogue.Condition, Subject: event.ActorID, Asked: true}
 	b.appendSighting(event.Payload.Target, entry)
 	entry.Subject, entry.Asked = event.Payload.Target, false
 	b.appendSighting(event.ActorID, entry)
@@ -192,7 +192,7 @@ func (b *Bakery) recordWitnesses(event Event) {
 			b.recordAnswerFirst(event)
 			return
 		}
-		if x.Statement.Intent == "pick_up" {
+		if x.Statement.Intent == "pick_up" || x.Statement.Intent == "respond" {
 			b.recordPickedUp(event)
 			return
 		}

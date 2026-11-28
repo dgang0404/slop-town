@@ -69,6 +69,7 @@ func (b *Bakery) dialogueChoices(view Observation, listener string, includeWitne
 	add(checkInQuestion, checkInWords)
 	add(b.answerFirstLine(view, listener))
 	add(b.pickUpLine(view.ObserverID, listener))
+	add(b.respondLine(view.ObserverID, listener))
 	add(SpeechLine{Topic: "news", Intent: "ask", Tone: "curious"}, "What have you seen around here?")
 
 	if b.GeneratorVersion >= 4 && b.ContentVersion >= supplyQuestionVersion && listener == url.PathEscape(b.WorldID)+"/baker" {
@@ -223,6 +224,43 @@ func (b *Bakery) pickedUpCheckIn(speaker, asker string, question uint64) bool {
 	return false
 }
 
+func (b *Bakery) heardAnswer(owner string, question uint64) bool {
+	for _, e := range b.Notebooks[owner] {
+		if e.Heard && e.SourceSequence > question {
+			return true
+		}
+	}
+	return false
+}
+
+func (b *Bakery) respondLine(speaker, listener string) (SpeechLine, string) {
+	if b.ContentVersion < answerFirstVersion {
+		return SpeechLine{}, ""
+	}
+	for i := len(b.Notebooks[speaker]) - 1; i >= 0; i-- {
+		e := b.Notebooks[speaker][i]
+		if !e.Open || e.Overheard || e.Asked || e.Subject != listener || b.heardAnswer(speaker, e.SourceSequence) || b.pickedUpCheckIn(speaker, listener, e.SourceSequence) {
+			continue
+		}
+		return SpeechLine{Topic: "condition", Intent: "respond", Tone: "plain", Source: e.SourceSequence}, checkInAnswers[b.Entities[speaker].workCondition()].reply
+	}
+	return SpeechLine{}, ""
+}
+
+func (b *Bakery) respondCheckIn(view Observation, listener string, choice DialogueChoice) (spatialEffect, *actionFailure) {
+	reject := &actionFailure{"line_unavailable", "That line is no longer available."}
+	speaker := view.ObserverID
+	entry, ok := b.entryAt(speaker, choice.Line.Source)
+	cond := b.Entities[speaker].workCondition()
+	if !b.canTalk(view, listener) || !ok || !entry.Open || entry.Overheard || entry.Asked || entry.Subject != listener ||
+		b.heardAnswer(speaker, entry.SourceSequence) || b.pickedUpCheckIn(speaker, listener, entry.SourceSequence) || choice.Words != checkInAnswers[cond].reply {
+		return spatialEffect{}, reject
+	}
+	x := Exchange{Words: choice.Words, Reply: "All right.", Condition: cond, Statement: SpeechLine{Intent: "respond", Source: choice.Line.Source}}
+	return spatialEffect{kind: "actors_conversed", payload: EventPayload{Target: listener, Dialogue: x},
+		message: x.message(b.Entities[listener].Name), entityID: speaker, entity: b.Entities[speaker]}, nil
+}
+
 func (b *Bakery) pickUpCheckIn(view Observation, listener string, choice DialogueChoice) (spatialEffect, *actionFailure) {
 	reject := &actionFailure{"line_unavailable", "That line is no longer available."}
 	speaker := view.ObserverID
@@ -286,6 +324,9 @@ func (b *Bakery) speak(view Observation, listener string, line SpeechLine) (spat
 		}
 		if line.Intent == "pick_up" {
 			return b.pickUpCheckIn(view, listener, choice)
+		}
+		if line.Intent == "respond" {
+			return b.respondCheckIn(view, listener, choice)
 		}
 		if line.Intent == "share" || line.Intent == "relay" {
 			effect, failure := b.transferReport(view, listener, line)

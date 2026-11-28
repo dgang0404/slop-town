@@ -447,4 +447,31 @@ func TestUnheardAnswerLeavesTheQuestionOpen(t *testing.T) {
 		!strings.Contains(r.Message, "You asked how I was holding up. I haven't answered.") || strings.Contains(r.Message, "player") || strings.Contains(r.Message, "breather") {
 		t.Fatal(r)
 	}
+	together()
+	ready := c.bakery.Entities[porter]
+	ready.Seated, ready.SeekingRestSpot, ready.Fatigue, ready.ReliefTurns = false, false, 0, 0
+	c.bakery.Entities[porter] = ready
+	choices, err = c.DialogueChoices(porter, baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var respond SpeechLine
+	const own = "Doing all right, thank you."
+	for _, choice := range choices {
+		if choice.Words == own {
+			respond = choice.Line
+		}
+	}
+	if respond.Intent != "respond" || respond.Source != open.SourceSequence {
+		t.Fatal(choices)
+	}
+	if r := c.Submit(porter, spatialProposal(c, "respond", ActionSpeak, ActionArgs{Target: baker, Speech: respond})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, own) || !strings.Contains(r.Message, "The baker replies, “All right.”") {
+		t.Fatal(r)
+	}
+	together()
+	if r := c.Submit(baker, spatialProposal(c, "own-reply", ActionSpeak, ActionArgs{Target: porter, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "You checked in on me. I told you I felt fine.") || strings.Contains(r.Message, "haven't answered") || strings.Contains(r.Message, "player") {
+		t.Fatal(r)
+	}
 }
