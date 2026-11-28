@@ -474,7 +474,7 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 				}
 			}
 			if (line.Topic == "sounds" && fact.Action == ActionListen) ||
-				(line.Topic == "news" && fact.Reported == 0 && fact.Action != ActionListen) || (line.Topic == "conversation" && fact.Condition != "" && !fact.Heard && !fact.Answered) ||
+				(line.Topic == "news" && fact.Reported == 0 && !fact.Aside && fact.Action != ActionListen) || (line.Topic == "conversation" && fact.Condition != "" && !fact.Heard && !fact.Answered) ||
 				(fact.Action == ActionIntroduce && fact.Subject == line.Topic) {
 				x.Reply = b.sightingWords(fact, speaker, false)
 				x.ReplySource = fact.SourceSequence

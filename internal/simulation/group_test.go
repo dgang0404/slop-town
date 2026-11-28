@@ -547,6 +547,8 @@ func TestSeparateCircleSpeaksDuringTheSameTurn(t *testing.T) {
 		t.Fatal("no cell hides the other conversation")
 	}
 	c.bakery.Entities[customer] = SpatialEntity{Name: "customer", Kind: Actor, Placement: hide}
+	const neighbor = "bakery/neighbor"
+	c.bakery.Entities[neighbor] = SpatialEntity{Name: "neighbor", Kind: Actor, Placement: hide}
 	var open NotebookEntry
 	for _, note := range c.bakery.Notebooks[player] {
 		if note.Overheard && note.Open && note.Target == porter {
@@ -570,13 +572,16 @@ func TestSeparateCircleSpeaksDuringTheSameTurn(t *testing.T) {
 		t.Fatal(r)
 	}
 	playerJournal, err := c.Journal(player)
-	otherJournal, err2 := c.Journal(porter)
+	besideJournal, err2 := c.Journal(porter)
 	if err != nil || err2 != nil {
 		t.Fatal(err, err2)
 	}
-	playerText, otherText := journalSpeech(playerJournal), journalSpeech(otherJournal)
-	if strings.Contains(playerText, "other table") || !strings.Contains(otherText, "Hello from the other table.") {
-		t.Fatal(playerText, otherText)
+	playerText, besideText := journalSpeech(playerJournal), journalSpeech(besideJournal)
+	if strings.Contains(playerText, "other table") || !strings.Contains(besideText, "I heard the customer speak from the other table.") {
+		t.Fatal(playerText, besideText)
+	}
+	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
+		t.Fatal(err)
 	}
 }
 

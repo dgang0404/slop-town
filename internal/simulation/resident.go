@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package simulation
 
-import "net/url"
+import (
+	"net/url"
+	"slices"
+)
 
 // Workers take at most one spatial action in this fixed order, after the
 // primary actor. A break decision is logged immediately before its effect.
@@ -237,24 +240,28 @@ func (b *Bakery) secondCircle(primary Event) spatialEffect {
 		return spatialEffect{}
 	}
 	busy := map[string]bool{primary.ActorID: true, primary.Payload.Target: true}
-	var pair []string
+	var idle []string
 	for id, e := range b.Entities {
 		if e.Kind != Actor || busy[id] {
 			continue
 		}
-		pair = append(pair, id)
+		idle = append(idle, id)
 	}
-	if len(pair) != 2 {
+	slices.Sort(idle)
+	var speaker, listener string
+	found := false
+	for i := 0; i < len(idle) && !found; i++ {
+		for j := i + 1; j < len(idle); j++ {
+			if b.apartFrom(primary, idle[i], idle[j]) {
+				speaker, listener, found = idle[i], idle[j], true
+				break
+			}
+		}
+	}
+	if !found {
 		return spatialEffect{}
 	}
-	if pair[0] > pair[1] {
-		pair[0], pair[1] = pair[1], pair[0]
-	}
-	speaker, listener := pair[0], pair[1]
-	if !b.apartFrom(primary, speaker, listener) {
-		return spatialEffect{}
-	}
-	x := Exchange{Words: "Hello from the other table.", Reply: "Hello."}
+	x := Exchange{Words: "Hello from the other table.", Reply: "Hello.", Statement: SpeechLine{Intent: "aside"}}
 	return spatialEffect{kind: "actors_conversed", payload: EventPayload{Target: listener, Dialogue: x},
 		message: x.message(b.Entities[listener].Name), entityID: speaker, entity: b.Entities[speaker]}
 }

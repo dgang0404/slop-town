@@ -21,6 +21,7 @@ type NotebookEntry struct {
 	Open           bool           `json:"open,omitempty"`      // The question was heard and has not been answered by the person asked.
 	Answered       bool           `json:"answered,omitempty"`  // This owner answered a question addressed to someone else.
 	Heard          bool           `json:"heard,omitempty"`     // This owner heard someone else answer a question addressed to them.
+	Aside          bool           `json:"aside,omitempty"`     // This owner heard a separate circle they did not join.
 	Asked          bool           `json:"asked,omitempty"`
 	Container      string         `json:"container,omitempty"` // Visible destination of a put or landmark for a hand movement.
 	Sound          PerceptionKind `json:"sound,omitempty"`     // The listener recalls the sound alone.
@@ -116,6 +117,21 @@ func (b *Bakery) recordAnswerFirst(event Event) {
 	}
 }
 
+func (b *Bakery) recordAside(event Event) {
+	for id, e := range b.Entities {
+		if e.Kind != Actor || id == event.ActorID || id == event.Payload.Target {
+			continue
+		}
+		view, err := b.Observe(event.Scope, id)
+		if err != nil || !view.hasTarget(event.ActorID) || !view.hasTarget(event.Payload.Target) {
+			continue
+		}
+		b.appendSighting(id, NotebookEntry{
+			Tick: event.Tick, SourceSequence: event.Sequence, Subject: event.ActorID, Target: event.Payload.Target, Action: ActionSpeak, Aside: true,
+		})
+	}
+}
+
 func (b *Bakery) recordPickedUp(event Event) {
 	entry := NotebookEntry{Tick: event.Tick, SourceSequence: event.Sequence, Action: ActionSpeak, Condition: event.Payload.Dialogue.Condition, Subject: event.ActorID, Asked: true}
 	b.appendSighting(event.Payload.Target, entry)
@@ -194,6 +210,10 @@ func (b *Bakery) recordWitnesses(event Event) {
 		}
 		if x.Statement.Intent == "pick_up" || x.Statement.Intent == "respond" {
 			b.recordPickedUp(event)
+			return
+		}
+		if x.Statement.Intent == "aside" {
+			b.recordAside(event)
 			return
 		}
 		if x.Condition != "" {
@@ -337,6 +357,13 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 					return fmt.Errorf("invalid hand movement sighting for %q at sequence %d", owner, e.SourceSequence)
 				}
 			case ActionSpeak:
+				if e.Aside {
+					if b.ContentVersion < answerFirstVersion || e.Condition != "" || e.Reported != 0 || e.Overheard || e.Open || e.Answered || e.Heard || e.Asked || e.Target == "" ||
+						b.Entities[e.Subject].Kind != Actor || b.Entities[e.Target].Kind != Actor {
+						return fmt.Errorf("invalid aside for %q at sequence %d", owner, e.SourceSequence)
+					}
+					break
+				}
 				if e.Open {
 					if b.ContentVersion < answerFirstVersion || e.Condition != "" || e.Reported != 0 || e.Answered {
 						return fmt.Errorf("invalid open check-in for %q at sequence %d", owner, e.SourceSequence)
