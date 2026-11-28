@@ -261,8 +261,12 @@ func (b *Bakery) secondCircle(primary Event) spatialEffect {
 	if !found {
 		return spatialEffect{}
 	}
-	// Both start together. The later person yields, so only the first line is spoken.
-	x := Exchange{Words: "Hello from the other table.", Statement: SpeechLine{Intent: "aside"}}
+	// Both start together. A person already sitting starts too, and the words overlap.
+	reply := ""
+	if b.Entities[listener].Seated {
+		reply = "Hello."
+	}
+	x := Exchange{Words: "Hello from the other table.", Reply: reply, Statement: SpeechLine{Intent: "aside"}}
 	return spatialEffect{kind: "actors_conversed", payload: EventPayload{Target: listener, Dialogue: x},
 		message: x.message(b.Entities[listener].Name), entityID: speaker, entity: b.Entities[speaker]}
 }

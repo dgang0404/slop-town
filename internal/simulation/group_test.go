@@ -500,7 +500,65 @@ func TestUnheardAnswerLeavesTheQuestionOpen(t *testing.T) {
 	}
 }
 
+func TestOverlappingStartIsMissed(t *testing.T) {
+	c := separateCircle(t, true)
+	const baker, porter, player, customer = "bakery/baker", "bakery/porter", "bakery/player", "bakery/customer"
+	playerJournal, err := c.Journal(player)
+	besideJournal, err2 := c.Journal(porter)
+	speakerJournal, err3 := c.Journal(customer)
+	if err != nil || err2 != nil || err3 != nil {
+		t.Fatal(err, err2, err3)
+	}
+	playerText, besideText, speakerText := journalSpeech(playerJournal), journalSpeech(besideJournal), journalSpeech(speakerJournal)
+	if strings.Contains(playerText, "spoke at once") || strings.Contains(playerText, "other table") ||
+		strings.Contains(besideText, "other table") || strings.Contains(besideText, "let them") ||
+		!strings.Contains(besideText, "The customer and the neighbor spoke at once. I missed what they said.") ||
+		!strings.Contains(speakerText, "Hello from the other table.") {
+		t.Fatal(playerText, besideText, speakerText)
+	}
+	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
+		t.Fatal(err)
+	}
+	at := c.bakery.Entities[baker].Placement
+	who := c.bakery.Entities[porter]
+	who.Placement = at
+	c.bakery.Entities[porter] = who
+	if r := c.Submit(baker, spatialProposal(c, "retell", ActionSpeak, ActionArgs{Target: porter, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "The customer and the neighbor spoke at once. I missed what they said.") ||
+		strings.Contains(r.Message, "other table") || strings.Contains(r.Message, "breather") || strings.Contains(r.Message, "checked in") {
+		t.Fatal(r)
+	}
+}
+
 func TestSeparateCircleSpeaksDuringTheSameTurn(t *testing.T) {
+	c := separateCircle(t, false)
+	const baker, porter, player = "bakery/baker", "bakery/porter", "bakery/player"
+	playerJournal, err := c.Journal(player)
+	besideJournal, err2 := c.Journal(porter)
+	if err != nil || err2 != nil {
+		t.Fatal(err, err2)
+	}
+	playerText, besideText := journalSpeech(playerJournal), journalSpeech(besideJournal)
+	if strings.Contains(playerText, "other table") || strings.Contains(playerText, "let them") ||
+		!strings.Contains(besideText, "I heard the customer speak from the other table.") || !strings.Contains(besideText, "The neighbor let them go first.") {
+		t.Fatal(playerText, besideText)
+	}
+	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
+		t.Fatal(err)
+	}
+	at := c.bakery.Entities[baker].Placement
+	who := c.bakery.Entities[porter]
+	who.Placement = at
+	c.bakery.Entities[porter] = who
+	if r := c.Submit(baker, spatialProposal(c, "retell", ActionSpeak, ActionArgs{Target: porter, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "I heard the customer speak from the other table.") || !strings.Contains(r.Message, "The neighbor let them go first.") ||
+		strings.Contains(r.Message, "breather") || strings.Contains(r.Message, "checked in") {
+		t.Fatal(r)
+	}
+}
+
+func separateCircle(t *testing.T, neighborSeated bool) *Coordinator {
+	t.Helper()
 	scope := Scope{"bakery", "main"}
 	c, err := (BakerySetup{Practice: true}).NewCoordinator(scope, 42)
 	if err != nil {
@@ -548,7 +606,7 @@ func TestSeparateCircleSpeaksDuringTheSameTurn(t *testing.T) {
 	}
 	c.bakery.Entities[customer] = SpatialEntity{Name: "customer", Kind: Actor, Placement: hide}
 	const neighbor = "bakery/neighbor"
-	c.bakery.Entities[neighbor] = SpatialEntity{Name: "neighbor", Kind: Actor, Placement: hide}
+	c.bakery.Entities[neighbor] = SpatialEntity{Name: "neighbor", Kind: Actor, Placement: hide, Seated: neighborSeated}
 	var open NotebookEntry
 	for _, note := range c.bakery.Notebooks[player] {
 		if note.Overheard && note.Open && note.Target == porter {
@@ -571,28 +629,7 @@ func TestSeparateCircleSpeaksDuringTheSameTurn(t *testing.T) {
 	if r := c.Submit(player, spatialProposal(c, "answer", ActionSpeak, ActionArgs{Target: baker, Speech: answer})); r.Status != "accepted" {
 		t.Fatal(r)
 	}
-	playerJournal, err := c.Journal(player)
-	besideJournal, err2 := c.Journal(porter)
-	if err != nil || err2 != nil {
-		t.Fatal(err, err2)
-	}
-	playerText, besideText := journalSpeech(playerJournal), journalSpeech(besideJournal)
-	if strings.Contains(playerText, "other table") || strings.Contains(playerText, "let them") ||
-		!strings.Contains(besideText, "I heard the customer speak from the other table.") || !strings.Contains(besideText, "The neighbor let them go first.") {
-		t.Fatal(playerText, besideText)
-	}
-	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
-		t.Fatal(err)
-	}
-	at := c.bakery.Entities[baker].Placement
-	who := c.bakery.Entities[porter]
-	who.Placement = at
-	c.bakery.Entities[porter] = who
-	if r := c.Submit(baker, spatialProposal(c, "retell", ActionSpeak, ActionArgs{Target: porter, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
-		!strings.Contains(r.Message, "I heard the customer speak from the other table.") || !strings.Contains(r.Message, "The neighbor let them go first.") ||
-		strings.Contains(r.Message, "breather") || strings.Contains(r.Message, "checked in") {
-		t.Fatal(r)
-	}
+	return c
 }
 
 func journalSpeech(pages []JournalEntry) string {
