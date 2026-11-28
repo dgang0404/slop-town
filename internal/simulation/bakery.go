@@ -46,29 +46,29 @@ const (
 )
 
 type SpatialEntity struct {
-	RequestedItem      string `json:",omitempty"` // Tool named on a workroom supply order.
-	Name               string
-	Kind               EntityKind
-	Placement          Placement
-	Open               bool
-	Portable           bool
-	Fatigue            int             `json:",omitempty"`
-	Seated             bool            `json:",omitempty"`
-	RestInPlacePercent int             `json:",omitempty"`
-	SeekingRestSpot    bool            `json:",omitempty"`
-	WalkedCells        uint32          `json:",omitempty"`
-	EnduranceBouts     int             `json:",omitempty"`
-	BakingBouts        int             `json:",omitempty"`
-	BakingKneads       int             `json:",omitempty"`
-	ReliefTurns          int   `json:",omitempty"`
-	WorkroomToolUseTick  int64 `json:",omitempty"` // Last workroom bench use on this actor's timeline.
-	DropSound          PerceptionKind  `json:",omitempty"` // Sound made when this item hits the floor.
-	StealthPractice    stealthPractice `json:",omitzero"`
-	ProvidesCover      bool            `json:",omitempty"`
-	HiddenBehind       string          `json:",omitempty"` // Reference to the cover beside a crouching actor.
-	CloseDetail        string          `json:",omitempty"` // A visible distinguishing mark within arm's reach.
-	Disconnected       bool            `json:",omitempty"` // A fixed telephone whose line is out of service.
-	Growth             plantGrowth     `json:",omitzero"`
+	RequestedItem       string `json:",omitempty"` // Tool named on a workroom supply order.
+	Name                string
+	Kind                EntityKind
+	Placement           Placement
+	Open                bool
+	Portable            bool
+	Fatigue             int             `json:",omitempty"`
+	Seated              bool            `json:",omitempty"`
+	RestInPlacePercent  int             `json:",omitempty"`
+	SeekingRestSpot     bool            `json:",omitempty"`
+	WalkedCells         uint32          `json:",omitempty"`
+	EnduranceBouts      int             `json:",omitempty"`
+	BakingBouts         int             `json:",omitempty"`
+	BakingKneads        int             `json:",omitempty"`
+	ReliefTurns         int             `json:",omitempty"`
+	WorkroomToolUseTick int64           `json:",omitempty"` // Last workroom bench use on this actor's timeline.
+	DropSound           PerceptionKind  `json:",omitempty"` // Sound made when this item hits the floor.
+	StealthPractice     stealthPractice `json:",omitzero"`
+	ProvidesCover       bool            `json:",omitempty"`
+	HiddenBehind        string          `json:",omitempty"` // Reference to the cover beside a crouching actor.
+	CloseDetail         string          `json:",omitempty"` // A visible distinguishing mark within arm's reach.
+	Disconnected        bool            `json:",omitempty"` // A fixed telephone whose line is out of service.
+	Growth              plantGrowth     `json:",omitzero"`
 }
 
 // Bakery is authoritative fixture state. Cells are in row-major order and
@@ -82,7 +82,7 @@ type Bakery struct {
 	GeneratorVersion int
 	ContentVersion   int
 	Cells            [bakeryHeight][bakeryWidth]BakeryCell
-	PrepCell         CellPosition    `json:",omitempty"`
+	PrepCell         CellPosition `json:",omitempty"`
 	Entities         map[string]SpatialEntity
 	Contacts         []sharedContact            `json:"Addresses,omitempty"` // Original save field for contact disclosures.
 	Letters          []letter                   `json:",omitempty"`
@@ -130,7 +130,8 @@ const (
 	bakingContentVersion          = 30 // Learnable kneading at the prep bench.
 	workroomToolUseVersion        = 31 // Baker maintains the bench after collecting the order.
 	groupConversationVersion      = 32 // A bystander can remember a check-in they can see.
-	fatigueLimit                  = 5 // Steps since the last rest, capped during a break.
+	answerFirstVersion            = 33 // A bystander can answer a visible check-in before the person asked.
+	fatigueLimit                  = 5  // Steps since the last rest, capped during a break.
 )
 
 func (setup BakerySetup) Generate(worldID string, clock *Timeline) (*Bakery, error) {

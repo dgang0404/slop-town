@@ -18,6 +18,8 @@ type NotebookEntry struct {
 	Reported       uint64         `json:"reported,omitempty"`  // Entry in the immediate teller's notebook.
 	Condition      workCondition  `json:"condition,omitempty"` // Listener's answer during this owner's own exchange.
 	Overheard      bool           `json:"overheard,omitempty"` // This owner saw the exchange without taking part.
+	Open           bool           `json:"open,omitempty"`      // The question was heard and has not been answered by the person asked.
+	Answered       bool           `json:"answered,omitempty"`  // This owner answered a question addressed to someone else.
 	Asked          bool           `json:"asked,omitempty"`
 	Container      string         `json:"container,omitempty"` // Visible destination of a put or landmark for a hand movement.
 	Sound          PerceptionKind `json:"sound,omitempty"`     // The listener recalls the sound alone.
@@ -77,6 +79,49 @@ func (b *Bakery) applySpatial(event *Event, effect spatialEffect, clock *Timelin
 	return nil
 }
 
+func (b *Bakery) recordOpenCheckIn(event Event) {
+	entry := NotebookEntry{Tick: event.Tick, SourceSequence: event.Sequence, Action: ActionSpeak, Open: true, Subject: event.Payload.Target, Asked: true}
+	b.appendSighting(event.ActorID, entry)
+	entry.Subject, entry.Asked = event.ActorID, false
+	b.appendSighting(event.Payload.Target, entry)
+	heard := entry
+	heard.Overheard, heard.Asked = true, false
+	heard.Subject, heard.Target = event.ActorID, event.Payload.Target
+	for id, e := range b.Entities {
+		if e.Kind != Actor || id == event.ActorID || id == event.Payload.Target {
+			continue
+		}
+		view, err := b.Observe(event.Scope, id)
+		if err != nil || !view.hasTarget(event.ActorID) || !view.hasTarget(event.Payload.Target) {
+			continue
+		}
+		b.appendSighting(id, heard)
+	}
+}
+
+func (b *Bakery) recordAnswerFirst(event Event) {
+	about := event.Payload.Dialogue.Statement.Topic
+	b.appendSighting(event.ActorID, NotebookEntry{
+		Tick: event.Tick, SourceSequence: event.Sequence, Subject: about, Action: ActionSpeak, Condition: resting, Answered: true,
+	})
+	b.appendSighting(event.Payload.Target, NotebookEntry{
+		Tick: event.Tick, SourceSequence: event.Sequence, Subject: event.ActorID, Action: ActionSpeak, Reported: event.Payload.Dialogue.Statement.Source,
+	})
+}
+
+func (b *Bakery) openCheckInAbout(owner, about string, before uint64) (NotebookEntry, bool) {
+	for i := len(b.Notebooks[owner]) - 1; i >= 0; i-- {
+		e := b.Notebooks[owner][i]
+		if e.SourceSequence >= before {
+			continue
+		}
+		if e.Overheard && e.Open && e.Target == about {
+			return e, true
+		}
+	}
+	return NotebookEntry{}, false
+}
+
 func (b *Bakery) overhearCheckIn(event Event, heard NotebookEntry) {
 	heard.Overheard = true
 	heard.Asked = false
@@ -99,6 +144,14 @@ func (b *Bakery) recordWitnesses(event Event) {
 	switch event.Kind {
 	case "actors_conversed", "call_answered":
 		x := event.Payload.Dialogue
+		if x.Open {
+			b.recordOpenCheckIn(event)
+			return
+		}
+		if x.Statement.Intent == "answer_first" {
+			b.recordAnswerFirst(event)
+			return
+		}
 		if x.Condition != "" {
 			entry.Subject, entry.Target, entry.Action = event.Payload.Target, "", ActionSpeak
 			entry.Condition, entry.Asked = x.Condition, true
@@ -221,7 +274,7 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 		var prev NotebookEntry
 		for _, e := range entries {
 			if e.Tick <= 0 || e.Tick < prev.Tick || e.Tick > tick || e.SourceSequence <= prev.SourceSequence ||
-				(e.Action != ActionSpeak && (e.Reported != 0 || e.Condition != "")) || (e.Asked && e.Condition == "") ||
+				(e.Action != ActionSpeak && (e.Reported != 0 || e.Condition != "")) || (e.Asked && e.Condition == "" && !e.Open) ||
 				(e.Container != "" && e.Action != ActionPut && e.Action != SightHandMovement) || e.Subject == owner ||
 				(e.Action != ActionListen && e.Sound != "") ||
 				(e.Action != ActionListen && e.Action != SightHandMovement && b.Entities[e.Subject].Kind != Actor) {
@@ -240,6 +293,33 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 					return fmt.Errorf("invalid hand movement sighting for %q at sequence %d", owner, e.SourceSequence)
 				}
 			case ActionSpeak:
+				if e.Open {
+					if b.ContentVersion < answerFirstVersion || e.Condition != "" || e.Reported != 0 || e.Answered {
+						return fmt.Errorf("invalid open check-in for %q at sequence %d", owner, e.SourceSequence)
+					}
+					if e.Overheard {
+						asker, heardAsker := b.firsthandAt(e.Subject, e.SourceSequence)
+						listener, heardListener := b.firsthandAt(e.Target, e.SourceSequence)
+						if e.Asked || e.Target == "" || !heardAsker || !heardListener || !asker.Open || !asker.Asked || asker.Overheard || asker.Subject != e.Target ||
+							!listener.Open || listener.Asked || listener.Overheard || listener.Subject != e.Subject {
+							return fmt.Errorf("invalid open check-in for %q at sequence %d", owner, e.SourceSequence)
+						}
+						break
+					}
+					other, found := b.firsthandAt(e.Subject, e.SourceSequence)
+					if e.Target != "" || !found || !other.Open || other.Overheard || other.Asked == e.Asked || other.Subject != owner {
+						return fmt.Errorf("invalid open check-in for %q at sequence %d", owner, e.SourceSequence)
+					}
+					break
+				}
+				if e.Answered {
+					_, valid := checkInAnswers[e.Condition]
+					_, heard := b.openCheckInAbout(owner, e.Subject, e.SourceSequence)
+					if b.ContentVersion < answerFirstVersion || !valid || e.Condition != resting || e.Asked || e.Overheard || e.Reported != 0 || e.Target != "" || !heard {
+						return fmt.Errorf("invalid early answer for %q at sequence %d", owner, e.SourceSequence)
+					}
+					break
+				}
 				if e.Overheard {
 					asker, heardAsker := b.firsthandAt(e.Subject, e.SourceSequence)
 					listener, heardListener := b.firsthandAt(e.Target, e.SourceSequence)

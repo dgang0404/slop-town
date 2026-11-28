@@ -209,3 +209,88 @@ func TestParticipantConfirmsWhatTheBystanderHeard(t *testing.T) {
 		t.Fatal(r)
 	}
 }
+
+func TestBystanderAnswersBeforeThePersonAsked(t *testing.T) {
+	scope := Scope{"bakery", "main"}
+	c, err := (BakerySetup{Practice: true}).NewCoordinator(scope, 42)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const baker, porter, player = "bakery/baker", "bakery/porter", "bakery/player"
+	place := func() {
+		b := c.bakery
+		b.ContentVersion = answerFirstVersion
+		spot := b.Entities[baker].Placement
+		for _, id := range []string{porter, player} {
+			actor := b.Entities[id]
+			actor.Placement = spot
+			b.Entities[id] = actor
+		}
+	}
+	place()
+	if r := c.Submit(baker, spatialProposal(c, "standing", ActionSpeak, ActionArgs{Target: porter, Speech: checkInQuestion})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "Doing all right, thank you.") {
+		t.Fatal(r)
+	}
+	place()
+	seated := c.bakery.Entities[porter]
+	seated.Seated = true
+	c.bakery.Entities[porter] = seated
+	if r := c.Submit(baker, spatialProposal(c, "sitting", ActionSpeak, ActionArgs{Target: porter, Speech: checkInQuestion})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "How are you holding up?") || strings.Contains(r.Message, "replies") {
+		t.Fatal(r)
+	}
+	place()
+	seated = c.bakery.Entities[porter]
+	seated.Seated = true
+	c.bakery.Entities[porter] = seated
+	var open NotebookEntry
+	for _, note := range c.bakery.Notebooks[player] {
+		if note.Overheard && note.Open && note.Subject == baker && note.Target == porter && note.Condition == "" {
+			open = note
+		}
+	}
+	if open.SourceSequence == 0 {
+		t.Fatal(c.bakery.Notebooks[player])
+	}
+	for _, note := range c.bakery.Notebooks[porter] {
+		if note.Open && note.Condition != "" {
+			t.Fatal(note)
+		}
+	}
+	choices, err := c.DialogueChoices(player, baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var answer SpeechLine
+	const words = "The porter is taking a breather."
+	for _, choice := range choices {
+		if choice.Words == words {
+			answer = choice.Line
+		}
+	}
+	if answer.Intent != "answer_first" || answer.Source != open.SourceSequence {
+		t.Fatal(choices)
+	}
+	if r := c.Submit(player, spatialProposal(c, "answer", ActionSpeak, ActionArgs{Target: baker, Speech: answer})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, words) || !strings.Contains(r.Message, "The baker replies, “All right.”") {
+		t.Fatal(r)
+	}
+	var answered bool
+	for _, note := range c.bakery.Notebooks[player] {
+		if note.Answered && note.Subject == porter && note.Condition == resting {
+			answered = true
+		}
+	}
+	if !answered {
+		t.Fatal(c.bakery.Notebooks[player])
+	}
+	for _, note := range c.bakery.Notebooks[porter] {
+		if note.SourceSequence >= open.SourceSequence && note.Condition != "" {
+			t.Fatal("the porter answered", note)
+		}
+	}
+	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
+		t.Fatal(err)
+	}
+}

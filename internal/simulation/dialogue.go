@@ -30,6 +30,7 @@ type Exchange struct {
 	Question      SpeechLine    `json:",omitzero"`
 	Statement     SpeechLine    `json:",omitzero"`
 	Condition     workCondition `json:",omitempty"`
+	Open          bool          `json:",omitempty"` // The question was heard. The person asked has not answered.
 }
 
 func (c *Coordinator) DialogueChoices(actor, listener string) ([]DialogueChoice, error) {
@@ -66,6 +67,7 @@ func (b *Bakery) dialogueChoices(view Observation, listener string, includeWitne
 	}
 	add(SpeechLine{Topic: "greeting", Intent: "greet", Tone: "warm"}, "Hello.")
 	add(checkInQuestion, checkInWords)
+	add(b.answerFirstLine(view, listener))
 	add(SpeechLine{Topic: "news", Intent: "ask", Tone: "curious"}, "What have you seen around here?")
 
 	if b.GeneratorVersion >= 4 && b.ContentVersion >= supplyQuestionVersion && listener == url.PathEscape(b.WorldID)+"/baker" {
@@ -154,6 +156,50 @@ func (b *Bakery) sightingWords(fact NotebookEntry, hearer string, confirm bool) 
 	return "I " + b.perceivedAct(fact, "", hearer) + "."
 }
 
+func (b *Bakery) answerFirstLine(view Observation, listener string) (SpeechLine, string) {
+	if b.ContentVersion < answerFirstVersion {
+		return SpeechLine{}, ""
+	}
+	entries := b.Notebooks[view.ObserverID]
+	for i := len(entries) - 1; i >= 0; i-- {
+		e := entries[i]
+		if !e.Overheard || !e.Open || e.Subject != listener || !view.hasTarget(e.Target) || !b.Entities[e.Target].Seated {
+			continue
+		}
+		if b.answeredCheckIn(view.ObserverID, e.Target, e.SourceSequence) {
+			continue
+		}
+		return SpeechLine{Topic: e.Target, Intent: "answer_first", Tone: "plain", Source: e.SourceSequence},
+			"The " + b.Entities[e.Target].Name + " is taking a breather."
+	}
+	return SpeechLine{}, ""
+}
+
+func (b *Bakery) answeredCheckIn(owner, about string, question uint64) bool {
+	for _, e := range b.Notebooks[owner] {
+		if e.Answered && e.Subject == about && e.SourceSequence > question {
+			return true
+		}
+	}
+	return false
+}
+
+func (b *Bakery) answerCheckIn(view Observation, listener string, choice DialogueChoice) (spatialEffect, *actionFailure) {
+	line := choice.Line
+	unavailable := spatialEffect{}
+	reject := &actionFailure{"line_unavailable", "That line is no longer available."}
+	if !b.canTalk(view, listener) || !view.hasTarget(line.Topic) || !b.Entities[line.Topic].Seated {
+		return unavailable, reject
+	}
+	entry, ok := b.entryAt(view.ObserverID, line.Source)
+	if !ok || !entry.Overheard || !entry.Open || entry.Subject != listener || entry.Target != line.Topic || b.answeredCheckIn(view.ObserverID, line.Topic, line.Source) {
+		return unavailable, reject
+	}
+	x := Exchange{Words: choice.Words, Reply: "All right.", Statement: SpeechLine{Topic: line.Topic, Intent: "answer_first", Source: line.Source}}
+	return spatialEffect{kind: "actors_conversed", payload: EventPayload{Target: listener, Dialogue: x},
+		message: x.message(b.Entities[listener].Name), entityID: view.ObserverID, entity: b.Entities[view.ObserverID]}, nil
+}
+
 func (b *Bakery) speak(view Observation, listener string, line SpeechLine) (spatialEffect, *actionFailure) {
 	if line == checkInQuestion {
 		effect, failure := b.checkIn(view, listener)
@@ -182,6 +228,9 @@ func (b *Bakery) speak(view Observation, listener string, line SpeechLine) (spat
 	for _, choice := range choices {
 		if choice.Line != line {
 			continue
+		}
+		if line.Intent == "answer_first" {
+			return b.answerCheckIn(view, listener, choice)
 		}
 		if line.Intent == "share" || line.Intent == "relay" {
 			effect, failure := b.transferReport(view, listener, line)

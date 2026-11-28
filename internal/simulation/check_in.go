@@ -45,9 +45,29 @@ func (b *Bakery) checkIn(view Observation, listener string) (spatialEffect, *act
 		// Existing explicit check-ins predate structured conversation memories.
 		words, reply := x.lines()
 		x = Exchange{Words: words, Reply: reply}
+	} else if b.holdsCheckIn(view, listener) {
+		// Sitting is visible. Someone who can see both people may answer before the person asked.
+		x.Condition, x.Open, x.Words = "", true, checkInWords
 	}
 	return spatialEffect{kind: "actors_conversed", payload: EventPayload{Target: listener, Dialogue: x},
 		entityID: view.ObserverID, entity: b.Entities[view.ObserverID]}, nil
+}
+
+func (b *Bakery) holdsCheckIn(view Observation, listener string) bool {
+	if b.ContentVersion < answerFirstVersion || !b.Entities[listener].Seated {
+		return false
+	}
+	asker := view.ObserverID
+	for id, e := range b.Entities {
+		if e.Kind != Actor || id == asker || id == listener {
+			continue
+		}
+		seen, err := b.Observe(view.Scope, id)
+		if err == nil && seen.hasTarget(asker) && seen.hasTarget(listener) {
+			return true
+		}
+	}
+	return false
 }
 
 func (x Exchange) lines() (string, string) {
@@ -59,7 +79,11 @@ func (x Exchange) lines() (string, string) {
 
 func (x Exchange) message(listenerName string) string {
 	words, reply := x.lines()
-	return "You say, “" + words + "”\nThe " + listenerName + " replies, “" + reply + "”"
+	said := "You say, “" + words + "”"
+	if reply == "" {
+		return said
+	}
+	return said + "\nThe " + listenerName + " replies, “" + reply + "”"
 }
 
 // The participant can report what was said even if the coworker's condition
@@ -96,6 +120,9 @@ func (e NotebookEntry) checkInAccount(name string, aboutHearer, confirm bool) st
 }
 
 func (e NotebookEntry) overheardCheckIn(asker, listener string) string {
+	if e.Open {
+		return "I heard the " + asker + " ask the " + listener + " how they were holding up."
+	}
 	return e.overheardAccount(asker, listener, false, false, false)
 }
 
