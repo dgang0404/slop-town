@@ -605,6 +605,78 @@ func TestNoonWeighsOnTheBaker(t *testing.T) {
 	}
 }
 
+func TestNoonMakesTheBakerMiss(t *testing.T) {
+	c := residentBetween(t, false, false, true)
+	const baker, porter, player, guest, spare = "bakery/baker", "bakery/porter", "bakery/player", "bakery/guest", "bakery/spare"
+	if c.bakery.Entities[porter].Occupied || !c.bakery.Entities[baker].Occupied {
+		t.Fatal(c.bakery.Entities[porter].Occupied, c.bakery.Entities[baker].Occupied)
+	}
+	heard := c.bakery.Entities[porter].Placement
+	station := c.bakery.Entities[player].Placement
+	before, err := c.Journal(baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(journalSpeech(before), "other table") {
+		t.Fatal(journalSpeech(before))
+	}
+	for _, id := range []string{player, guest, spare} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		who.Seated = id == spare
+		c.bakery.Entities[id] = who
+	}
+	if r := c.Submit(player, spatialProposal(c, "ask-spare", ActionSpeak, ActionArgs{Target: spare, Speech: checkInQuestion})); r.Status != "accepted" || strings.Contains(r.Message, "replies") {
+		t.Fatal(r)
+	}
+	bakerAt := c.bakery.Entities[baker]
+	bakerAt.Placement = heard
+	c.bakery.Entities[baker] = bakerAt
+	porterAt := c.bakery.Entities[porter]
+	porterAt.Placement = heard
+	c.bakery.Entities[porter] = porterAt
+	for _, id := range []string{player, guest} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		who.Seated = false
+		c.bakery.Entities[id] = who
+	}
+	var open NotebookEntry
+	for _, note := range c.bakery.Notebooks[guest] {
+		if note.Overheard && note.Open && note.Target == spare {
+			open = note
+		}
+	}
+	choices, err := c.DialogueChoices(guest, player)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var answer SpeechLine
+	for _, choice := range choices {
+		if choice.Words == "The spare is taking a breather." {
+			answer = choice.Line
+		}
+	}
+	if answer.Source == 0 || answer.Source != open.SourceSequence {
+		t.Fatal(choices)
+	}
+	if r := c.Submit(guest, spatialProposal(c, "later", ActionSpeak, ActionArgs{Target: player, Speech: answer})); r.Status != "accepted" {
+		t.Fatal(r)
+	}
+	bakerJournal, err := c.Journal(baker)
+	porterJournal, err2 := c.Journal(porter)
+	if err != nil || err2 != nil {
+		t.Fatal(err, err2)
+	}
+	if c.bakery.Entities[porter].Occupied || !strings.Contains(journalSpeech(bakerJournal), "I missed what they said.") || strings.Contains(journalSpeech(bakerJournal), "other table") ||
+		!strings.Contains(journalSpeech(porterJournal), "I heard the customer speak from the other table.") {
+		t.Fatal(journalSpeech(bakerJournal), journalSpeech(porterJournal))
+	}
+	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestResidentAnswersBothCircles(t *testing.T) {
 	c := residentBetween(t, false, false, false)
 	const baker, porter, customer = "bakery/baker", "bakery/porter", "bakery/customer"
