@@ -488,4 +488,29 @@ func TestUnheardAnswerLeavesTheQuestionOpen(t *testing.T) {
 		!strings.Contains(r.Message, "I said the porter was taking a breather.") || strings.Contains(r.Message, "felt fine") {
 		t.Fatal(r)
 	}
+	playerJournal, err := c.Journal(player)
+	porterJournal, err2 := c.Journal(porter)
+	if err != nil || err2 != nil {
+		t.Fatal(err, err2)
+	}
+	playerText, porterText := journalSpeech(playerJournal), journalSpeech(porterJournal)
+	if !strings.Contains(playerText, "I said the porter was taking a breather.") || strings.Contains(playerText, "felt fine") ||
+		!strings.Contains(porterText, "Doing all right, thank you.") || strings.Contains(porterText, "taking a breather") {
+		t.Fatal(playerText, porterText)
+	}
+}
+
+func journalSpeech(pages []JournalEntry) string {
+	var text strings.Builder
+	for _, page := range pages {
+		text.WriteString(page.Conversation.Words)
+		text.WriteString("\n")
+		text.WriteString(page.Conversation.Reply)
+		text.WriteString("\n")
+		for _, obs := range page.Observations {
+			text.WriteString(obs.Text)
+			text.WriteString("\n")
+		}
+	}
+	return text.String()
 }

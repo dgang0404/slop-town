@@ -183,7 +183,11 @@ func (b *Bakery) Journal(scope Scope, actor string, visit func(func(Event) error
 				}
 			} else if s.Overheard {
 				page := entryAt(e.Tick)
-				page.Observations = append(page.Observations, JournalObservation{Text: s.overheardCheckIn(b.Entities[s.Subject].Name, b.Entities[s.Target].Name)})
+				text := s.overheardCheckIn(b.Entities[s.Subject].Name, b.Entities[s.Target].Name)
+				if own := b.ownAnswerJournal(actor, s); own != "" {
+					text = own
+				}
+				page.Observations = append(page.Observations, JournalObservation{Text: text})
 			} else if s.Action != ActionIntroduce && s.Action != ActionSpeak {
 				page := entryAt(e.Tick)
 				page.Witnessed = append(page.Witnessed, b.witnessedAction(s))
