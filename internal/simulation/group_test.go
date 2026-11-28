@@ -369,3 +369,82 @@ func TestBystanderAnswersBeforeThePersonAsked(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestUnheardAnswerLeavesTheQuestionOpen(t *testing.T) {
+	scope := Scope{"bakery", "main"}
+	c, err := (BakerySetup{Practice: true}).NewCoordinator(scope, 42)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const baker, porter, player = "bakery/baker", "bakery/porter", "bakery/player"
+	spot := c.bakery.Entities[baker].Placement
+	c.bakery.ContentVersion = answerFirstVersion
+	together := func() {
+		b := c.bakery
+		for _, id := range []string{baker, porter, player} {
+			actor := b.Entities[id]
+			actor.Placement = spot
+			b.Entities[id] = actor
+		}
+	}
+	together()
+	seated := c.bakery.Entities[porter]
+	seated.Seated = true
+	c.bakery.Entities[porter] = seated
+	if r := c.Submit(baker, spatialProposal(c, "ask", ActionSpeak, ActionArgs{Target: porter, Speech: checkInQuestion})); r.Status != "accepted" || strings.Contains(r.Message, "replies") {
+		t.Fatal(r)
+	}
+	together()
+	away := c.bakery.Entities[porter]
+	away.Seated = false
+	doorY := c.bakery.Entities["bakery/door"].Placement.Cell.Y
+	hidden := false
+	for y := 0; y < bakeryHeight; y++ {
+		if y == doorY {
+			continue
+		}
+		away.Placement = c.bakery.Entities["bakery/door"].Placement
+		away.Placement.Cell.X, away.Placement.Cell.Y = 0, y
+		c.bakery.Entities[porter] = away
+		view, err := c.bakery.Observe(scope, porter)
+		if err == nil && !view.hasTarget(baker) && !view.hasTarget(player) {
+			hidden = true
+			break
+		}
+	}
+	if !hidden {
+		t.Fatal("no cell hides the other conversation")
+	}
+	var open NotebookEntry
+	for _, note := range c.bakery.Notebooks[player] {
+		if note.Overheard && note.Open && note.Subject == baker && note.Target == porter {
+			open = note
+		}
+	}
+	choices, err := c.DialogueChoices(player, baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var answer SpeechLine
+	for _, choice := range choices {
+		if choice.Words == "The porter is taking a breather." {
+			answer = choice.Line
+		}
+	}
+	if answer.Intent != "answer_first" || answer.Source != open.SourceSequence {
+		t.Fatal(choices)
+	}
+	if r := c.Submit(player, spatialProposal(c, "answer", ActionSpeak, ActionArgs{Target: baker, Speech: answer})); r.Status != "accepted" {
+		t.Fatal(r)
+	}
+	for _, note := range c.bakery.Notebooks[porter] {
+		if note.Heard {
+			t.Fatal("the porter heard an answer given out of sight", note)
+		}
+	}
+	together()
+	if r := c.Submit(baker, spatialProposal(c, "later", ActionSpeak, ActionArgs{Target: porter, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "You asked how I was holding up. I haven't answered.") || strings.Contains(r.Message, "player") || strings.Contains(r.Message, "breather") {
+		t.Fatal(r)
+	}
+}

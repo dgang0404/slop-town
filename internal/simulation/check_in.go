@@ -167,6 +167,26 @@ func (b *Bakery) answeredWords(fact NotebookEntry, speaker string) string {
 	return "I said " + about + " " + verb + " taking a breather."
 }
 
+func (b *Bakery) closedCheckIn(owner string, fact NotebookEntry) bool {
+	for _, e := range b.Notebooks[owner] {
+		if e.SourceSequence <= fact.SourceSequence {
+			continue
+		}
+		if e.Heard || (e.Condition != "" && !e.Asked && !e.Overheard && !e.Answered && e.Subject == fact.Subject) {
+			return true
+		}
+	}
+	return false
+}
+
+func (b *Bakery) unansweredWords(fact NotebookEntry, speaker string) string {
+	who := "The " + b.Entities[fact.Subject].Name
+	if fact.Subject == speaker {
+		who = "You"
+	}
+	return who + " asked how I was holding up. I haven't answered."
+}
+
 func (b *Bakery) stoodWords(fact NotebookEntry, speaker string) string {
 	who := "The " + b.Entities[fact.Subject].Name
 	if fact.Subject == speaker {

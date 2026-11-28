@@ -164,7 +164,7 @@ func (b *Bakery) answerFirstLine(view Observation, listener string) (SpeechLine,
 	entries := b.Notebooks[view.ObserverID]
 	for i := len(entries) - 1; i >= 0; i-- {
 		e := entries[i]
-		if !e.Overheard || !e.Open || e.Subject != listener || !view.hasTarget(e.Target) || !b.Entities[e.Target].Seated {
+		if !e.Overheard || !e.Open || e.Subject != listener {
 			continue
 		}
 		if b.answeredCheckIn(view.ObserverID, e.Target, e.SourceSequence) {
@@ -240,7 +240,7 @@ func (b *Bakery) answerCheckIn(view Observation, listener string, choice Dialogu
 	line := choice.Line
 	unavailable := spatialEffect{}
 	reject := &actionFailure{"line_unavailable", "That line is no longer available."}
-	if !b.canTalk(view, listener) || !view.hasTarget(line.Topic) || !b.Entities[line.Topic].Seated {
+	if !b.canTalk(view, listener) {
 		return unavailable, reject
 	}
 	entry, ok := b.entryAt(view.ObserverID, line.Source)
@@ -415,6 +415,10 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 			}
 			if line.Topic == "conversation" && fact.Answered {
 				x.Reply = b.answeredWords(fact, speaker)
+				break
+			}
+			if line.Topic == "conversation" && fact.Open && !fact.Overheard && !fact.Asked && !b.closedCheckIn(listener, fact) {
+				x.Reply = b.unansweredWords(fact, speaker)
 				break
 			}
 			if line.Topic == "conversation" && fact.Heard {
