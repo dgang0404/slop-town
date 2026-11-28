@@ -732,6 +732,74 @@ func TestRoutineAskerStillHearsTheCheckIn(t *testing.T) {
 	}
 }
 
+func TestNextWordsGetThroughAfterTheLift(t *testing.T) {
+	c := weightLiftedAfterTheMiss(t)
+	const baker, player, guest, spare, customer, neighbor = "bakery/baker", "bakery/player", "bakery/guest", "bakery/spare", "bakery/customer", "bakery/neighbor"
+	station := c.bakery.Entities[player].Placement
+	for _, id := range []string{player, guest, spare} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		who.Seated = id == spare
+		c.bakery.Entities[id] = who
+	}
+	if r := c.Submit(player, spatialProposal(c, "ask-again", ActionSpeak, ActionArgs{Target: spare, Speech: checkInQuestion})); r.Status != "accepted" || strings.Contains(r.Message, "replies") {
+		t.Fatal(r)
+	}
+	hide := c.bakery.Entities[customer].Placement
+	found := false
+	for y := 0; y < bakeryHeight && !found; y++ {
+		for x := 0; x < bakeryWidth; x++ {
+			heard := hide
+			heard.Cell.X, heard.Cell.Y = x, y
+			if heard == hide || !c.bakery.isFloorCell(heard.Cell) {
+				continue
+			}
+			who := c.bakery.Entities[baker]
+			who.Placement, who.Seated = heard, false
+			c.bakery.Entities[baker] = who
+			view, err := c.bakery.Observe(c.scope, baker)
+			if err == nil && view.hasTarget(customer) && view.hasTarget(neighbor) && view.hasTarget(player) && view.hasTarget(guest) &&
+				c.bakery.soundReaches(hide.Cell, heard.Cell, conversationReach) {
+				found = true
+				break
+			}
+		}
+	}
+	if !found || c.bakery.Entities[baker].Occupied {
+		t.Fatal(found, c.bakery.Entities[baker].Occupied)
+	}
+	var open NotebookEntry
+	for _, note := range c.bakery.Notebooks[guest] {
+		if note.Overheard && note.Open && note.Target == spare {
+			open = note
+		}
+	}
+	choices, err := c.DialogueChoices(guest, player)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var answer SpeechLine
+	for _, choice := range choices {
+		if choice.Words == "The spare is taking a breather." && choice.Line.Source == open.SourceSequence {
+			answer = choice.Line
+		}
+	}
+	if answer.Source == 0 {
+		t.Fatal(choices)
+	}
+	if r := c.Submit(guest, spatialProposal(c, "next", ActionSpeak, ActionArgs{Target: player, Speech: answer})); r.Status != "accepted" {
+		t.Fatal(r)
+	}
+	pages, err := c.Journal(baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := journalSpeech(pages)
+	if !strings.Contains(text, "I missed what they said.") || !strings.Contains(text, "I heard the customer speak from the other table.") {
+		t.Fatal(text)
+	}
+}
+
 func TestLiftedWeightLeavesTheMiss(t *testing.T) {
 	c := weightLiftedAfterTheMiss(t)
 	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
