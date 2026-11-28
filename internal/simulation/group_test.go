@@ -838,6 +838,45 @@ func TestYieldedListenerHearsThatTheyLetThemGoFirst(t *testing.T) {
 	}
 }
 
+func TestYieldSurvivesReopen(t *testing.T) {
+	c := nextWordsAfterTheLift(t)
+	const baker, neighbor = "bakery/baker", "bakery/neighbor"
+	before, err := c.Journal(baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := c.bakery.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := RestoreBakery(raw, c.scope.WorldID, c.clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := restored.Snapshot()
+	if err != nil || !bytes.Equal(raw, again) {
+		t.Fatal(err)
+	}
+	c.bakery = restored
+	after, err := c.Journal(baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := journalSpeech(after)
+	if journalSpeech(before) != text || !strings.Contains(text, "I missed what they said.") || !strings.Contains(text, "I heard the customer speak from the other table.") {
+		t.Fatal(text)
+	}
+	who := c.bakery.Entities[baker]
+	who.Placement = c.bakery.Entities[neighbor].Placement
+	c.bakery.Entities[baker] = who
+	if r := c.Submit(neighbor, spatialProposal(c, "yield", ActionSpeak, ActionArgs{Target: baker, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "I heard the customer speak from the other table.") ||
+		!strings.Contains(r.Message, "The neighbor let them go first.") ||
+		strings.Contains(r.Message, "felt fine") || strings.Contains(r.Message, "I missed what you said.") {
+		t.Fatal(r)
+	}
+}
+
 func TestNextWordsGetThroughAfterTheLift(t *testing.T) {
 	c := nextWordsAfterTheLift(t)
 	pages, err := c.Journal("bakery/baker")
