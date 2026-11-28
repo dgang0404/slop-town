@@ -984,7 +984,42 @@ func TestRoutineAnswerReleasesDrawnAttention(t *testing.T) {
 	}
 }
 
+func TestFadedFreshAnswerSurvivesReopen(t *testing.T) {
+	c := fadedFreshAnswerHearsTheCircle(t)
+	const baker = "bakery/baker"
+	before, err := c.Journal(baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := c.bakery.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := RestoreBakery(raw, c.scope.WorldID, c.clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := restored.Snapshot()
+	if err != nil || !bytes.Equal(raw, again) {
+		t.Fatal(err)
+	}
+	c.bakery = restored
+	after, err := c.Journal(baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := journalSpeech(after)
+	if journalSpeech(before) != text || !strings.Contains(text, "I heard the customer speak from the other table.") || strings.Contains(text, "I was following another conversation.") || restored.Entities[baker].Attention != "" || restored.Entities[baker].Occupied {
+		t.Fatal(text, restored.Entities[baker].Attention, restored.Entities[baker].Occupied)
+	}
+}
+
 func TestFadedFreshAnswerReleasesAttention(t *testing.T) {
+	fadedFreshAnswerHearsTheCircle(t)
+}
+
+func fadedFreshAnswerHearsTheCircle(t *testing.T) *Coordinator {
+	t.Helper()
 	c, heard, station := attentionDrawnBack(t)
 	const baker, player = "bakery/baker", "bakery/player"
 	if c.bakery.Entities[baker].Attention == "" || !c.bakery.Entities[baker].Occupied {
@@ -1016,6 +1051,7 @@ func TestFadedFreshAnswerReleasesAttention(t *testing.T) {
 	if !strings.Contains(text, "I heard the customer speak from the other table.") || strings.Contains(text, "I was following another conversation.") {
 		t.Fatal(text)
 	}
+	return c
 }
 
 func TestFreshHeavyAnswerDrawsAttentionBack(t *testing.T) {
