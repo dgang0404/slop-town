@@ -2,6 +2,7 @@
 package simulation
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 )
@@ -836,6 +837,39 @@ func TestSpeechBeyondEarshotStaysMissing(t *testing.T) {
 	}
 	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestMissedLineSurvivesReopen(t *testing.T) {
+	c := separateCircleFar(t, false, false, false, true)
+	const zeal, baker = "bakery/zeal", "bakery/baker"
+	before, err := c.Journal(zeal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := c.bakery.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := RestoreBakery(raw, c.scope.WorldID, c.clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := restored.Snapshot()
+	if err != nil || !bytes.Equal(raw, again) {
+		t.Fatal(err)
+	}
+	c.bakery = restored
+	after, err := c.Journal(zeal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := journalSpeech(after)
+	if journalSpeech(before) != text || !strings.Contains(text, "I was following another conversation. I missed what they said.") || strings.Contains(text, "other table") {
+		t.Fatal(journalSpeech(before), text)
+	}
+	if restored.Entities[zeal].Attention != baker {
+		t.Fatal(restored.Entities[zeal].Attention)
 	}
 }
 
