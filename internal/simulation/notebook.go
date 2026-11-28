@@ -92,6 +92,11 @@ func (b *Bakery) applySpatial(event *Event, effect spatialEffect, clock *Timelin
 			}
 			person.Occupied = true
 			person.WeightTurns = weightDuration
+			if id == event.ActorID {
+				person.Attention = event.Payload.Target
+			} else {
+				person.Attention = event.ActorID
+			}
 			b.Entities[id] = person
 		}
 	}
@@ -100,6 +105,7 @@ func (b *Bakery) applySpatial(event *Event, effect spatialEffect, clock *Timelin
 		if person.Kind == Actor {
 			person.Occupied = false
 			person.WeightTurns = 0
+			person.Attention = ""
 			b.Entities[event.Payload.Target] = person
 		}
 	}
@@ -174,12 +180,13 @@ func (b *Bakery) recordAside(event Event) {
 			continue
 		}
 		occupied := e.Occupied
+		elsewhere := e.Attention != "" && e.Attention != event.ActorID && e.Attention != event.Payload.Target
 		if occupied {
 			e.Occupied = false
 			e.WeightTurns = 0
+			e.Attention = ""
 			b.Entities[id] = e
 		}
-		elsewhere := e.Attention != "" && e.Attention != event.ActorID && e.Attention != event.Payload.Target
 		b.appendSighting(id, NotebookEntry{
 			Tick: event.Tick, SourceSequence: event.Sequence, Subject: event.ActorID, Target: event.Payload.Target, Action: ActionSpeak, Aside: true,
 			Yielded: event.Payload.Dialogue.Reply == "" && !occupied && !elsewhere, Missed: event.Payload.Dialogue.Reply != "" || occupied || elsewhere, Elsewhere: elsewhere,

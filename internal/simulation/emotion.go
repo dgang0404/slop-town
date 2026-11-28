@@ -36,6 +36,7 @@ func (b *Bakery) advanceWeight() {
 		actor.WeightTurns--
 		if actor.WeightTurns == 0 {
 			actor.Occupied = false
+			actor.Attention = ""
 		}
 		b.Entities[id] = actor
 	}
