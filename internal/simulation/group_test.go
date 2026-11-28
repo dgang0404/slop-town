@@ -961,7 +961,43 @@ func TestRepeatedLineSurvivesReopen(t *testing.T) {
 	}
 }
 
+func TestRoutineAnswerReleasesDrawnAttention(t *testing.T) {
+	c, heard, station := attentionDrawnBack(t)
+	const baker, player = "bakery/baker", "bakery/player"
+	for _, id := range []string{baker, player} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		who.Seated = false
+		c.bakery.Entities[id] = who
+	}
+	if r := c.Submit(player, spatialProposal(c, "release", ActionSpeak, ActionArgs{Target: baker, Speech: checkInQuestion})); r.Status != "accepted" || !strings.Contains(r.Message, "Doing all right, thank you.") || c.bakery.Entities[baker].Attention != "" || c.bakery.Entities[baker].Occupied {
+		t.Fatal(r, c.bakery.Entities[baker].Attention, c.bakery.Entities[baker].Occupied)
+	}
+	finishDrawnAside(t, c, heard, station)
+	pages, err := c.Journal(baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := journalSpeech(pages)
+	if c.bakery.Entities[baker].Attention != "" || !strings.Contains(text, "I heard the customer speak from the other table.") || strings.Contains(text, "I was following another conversation.") {
+		t.Fatal(c.bakery.Entities[baker].Attention, text)
+	}
+}
+
 func TestFreshHeavyAnswerDrawsAttentionBack(t *testing.T) {
+	c, heard, station := attentionDrawnBack(t)
+	finishDrawnAside(t, c, heard, station)
+	pages, err := c.Journal("bakery/baker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.bakery.Entities["bakery/baker"].Attention != "" || !strings.Contains(journalSpeech(pages), "I was following another conversation. I missed what they said.") {
+		t.Fatal(c.bakery.Entities["bakery/baker"].Attention, journalSpeech(pages))
+	}
+}
+
+func attentionDrawnBack(t *testing.T) (*Coordinator, Placement, Placement) {
+	t.Helper()
 	c := residentBetween(t, false, false, true)
 	const baker, porter, player, guest, spare, clerk = "bakery/baker", "bakery/porter", "bakery/player", "bakery/guest", "bakery/spare", "bakery/clerk"
 	heard := c.bakery.Entities[porter].Placement
@@ -1006,6 +1042,12 @@ func TestFreshHeavyAnswerDrawsAttentionBack(t *testing.T) {
 	if r := c.Submit(guest, spatialProposal(c, "again", ActionSpeak, ActionArgs{Target: baker, Speech: heavy})); r.Status != "accepted" || c.bakery.Entities[baker].Attention != guest {
 		t.Fatal(r, c.bakery.Entities[baker].Attention)
 	}
+	return c, heard, station
+}
+
+func finishDrawnAside(t *testing.T, c *Coordinator, heard, station Placement) {
+	t.Helper()
+	const baker, player, spare, clerk = "bakery/baker", "bakery/player", "bakery/spare", "bakery/clerk"
 	c.bakery.Entities[clerk] = SpatialEntity{Name: "clerk", Kind: Actor, Placement: station}
 	for _, id := range []string{player, spare, clerk} {
 		who := c.bakery.Entities[id]
@@ -1026,13 +1068,13 @@ func TestFreshHeavyAnswerDrawsAttentionBack(t *testing.T) {
 		person.Seated = false
 		c.bakery.Entities[id] = person
 	}
-	open = NotebookEntry{}
+	var open NotebookEntry
 	for _, note := range c.bakery.Notebooks[clerk] {
 		if note.Overheard && note.Open && note.Target == spare {
 			open = note
 		}
 	}
-	choices, err = c.DialogueChoices(clerk, player)
+	choices, err := c.DialogueChoices(clerk, player)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1047,13 +1089,6 @@ func TestFreshHeavyAnswerDrawsAttentionBack(t *testing.T) {
 	}
 	if r := c.Submit(clerk, spatialProposal(c, "later", ActionSpeak, ActionArgs{Target: player, Speech: answer})); r.Status != "accepted" {
 		t.Fatal(r)
-	}
-	pages, err := c.Journal(baker)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if c.bakery.Entities[baker].Attention != "" || !strings.Contains(journalSpeech(pages), "I was following another conversation. I missed what they said.") {
-		t.Fatal(c.bakery.Entities[baker].Attention, journalSpeech(pages))
 	}
 }
 
