@@ -1014,7 +1014,42 @@ func TestFadedFreshAnswerSurvivesReopen(t *testing.T) {
 	}
 }
 
+func TestFadedBringerSurvivesReopen(t *testing.T) {
+	c := fadedBringerHearsTheCircle(t)
+	const guest = "bakery/guest"
+	before, err := c.Journal(guest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := c.bakery.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := RestoreBakery(raw, c.scope.WorldID, c.clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := restored.Snapshot()
+	if err != nil || !bytes.Equal(raw, again) {
+		t.Fatal(err)
+	}
+	c.bakery = restored
+	after, err := c.Journal(guest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := journalSpeech(after)
+	if journalSpeech(before) != text || !strings.Contains(text, "I heard the customer speak from the other table.") || strings.Contains(text, "I was following another conversation.") || restored.Entities[guest].Attention != "" || restored.Entities[guest].Occupied {
+		t.Fatal(text, restored.Entities[guest].Attention, restored.Entities[guest].Occupied)
+	}
+}
+
 func TestFadedBringerHearsTheCircle(t *testing.T) {
+	fadedBringerHearsTheCircle(t)
+}
+
+func fadedBringerHearsTheCircle(t *testing.T) *Coordinator {
+	t.Helper()
 	c := fadedFreshAnswerHearsTheCircle(t)
 	const guest = "bakery/guest"
 	if c.bakery.Entities[guest].Occupied || c.bakery.Entities[guest].Attention != "" {
@@ -1028,6 +1063,7 @@ func TestFadedBringerHearsTheCircle(t *testing.T) {
 	if !strings.Contains(text, "I heard the customer speak from the other table.") || strings.Contains(text, "I was following another conversation.") {
 		t.Fatal(text)
 	}
+	return c
 }
 
 func TestFadedFreshAnswerReleasesAttention(t *testing.T) {
