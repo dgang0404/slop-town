@@ -242,6 +242,19 @@ func (b *Bakery) repeatWords() string {
 	return "Could you say that again? I missed what you said."
 }
 
+// The heavy answer lands on the person who asked, not on everyone who is later told.
+func (b *Bakery) carriesTheNews(listener, about string) bool {
+	if about == "" {
+		return false
+	}
+	for _, e := range b.Notebooks[listener] {
+		if e.Asked && e.Subject == about {
+			return true
+		}
+	}
+	return false
+}
+
 func (b *Bakery) fragmentWords() string {
 	return "I heard “after closing.” I don't know who spoke."
 }

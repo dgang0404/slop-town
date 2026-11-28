@@ -1214,6 +1214,58 @@ func TestHeavyAnswerReinforcesTheFeeling(t *testing.T) {
 	}
 }
 
+func TestHeavyNewsStaysWithTheAsker(t *testing.T) {
+	c := residentBetween(t, false, false, true)
+	const baker, player, spare = "bakery/baker", "bakery/player", "bakery/spare"
+	heardNews := false
+	for _, note := range c.bakery.Notebooks[player] {
+		if note.Heard && note.Condition == resting {
+			heardNews = true
+		}
+	}
+	if !heardNews || c.bakery.Entities[player].Occupied || !c.bakery.Entities[baker].Occupied {
+		t.Fatal(heardNews, c.bakery.Entities[player].Occupied, c.bakery.Entities[baker].Occupied)
+	}
+	heard := c.bakery.Entities["bakery/porter"].Placement
+	station := c.bakery.Entities[player].Placement
+	playerAt := c.bakery.Entities[player]
+	playerAt.Placement = heard
+	playerAt.Seated = false
+	c.bakery.Entities[player] = playerAt
+	for _, id := range []string{baker, spare} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		who.Seated = false
+		c.bakery.Entities[id] = who
+	}
+	choices, err := c.DialogueChoices(spare, baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var told SpeechLine
+	for _, choice := range choices {
+		if choice.Words == "The player is taking a breather." {
+			told = choice.Line
+		}
+	}
+	if told.Source == 0 {
+		t.Fatal(choices)
+	}
+	if r := c.Submit(spare, spatialProposal(c, "again", ActionSpeak, ActionArgs{Target: baker, Speech: told})); r.Status != "accepted" {
+		t.Fatal(r)
+	}
+	pages, err := c.Journal(player)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.bakery.Entities[player].Occupied || !c.bakery.Entities[baker].Occupied || !strings.Contains(journalSpeech(pages), "I heard the customer speak from the other table.") || strings.Contains(journalSpeech(pages), "I missed what they said.") {
+		t.Fatal(c.bakery.Entities[player].Occupied, c.bakery.Entities[baker].Occupied, journalSpeech(pages))
+	}
+	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func residentBetween(t *testing.T, overlap, weighted, spare bool) *Coordinator {
 	t.Helper()
 	scope := Scope{"bakery", "main"}
