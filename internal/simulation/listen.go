@@ -73,6 +73,9 @@ func (b *Bakery) audibleAction(listener string, event Event) PerceptionKind {
 	return ""
 }
 
+// Conversation carries a shorter way than a knock. Skill adds at most one step.
+const conversationReach = 2
+
 func (b *Bakery) withinEarshot(listener string, source CellPosition, reach int) bool {
 	if perceptionAptitude(b.Seed, listener) >= 14 {
 		reach++

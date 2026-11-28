@@ -126,7 +126,8 @@ func (b *Bakery) recordAside(event Event) {
 			continue
 		}
 		view, err := b.Observe(event.Scope, id)
-		if err != nil || !view.hasTarget(event.ActorID) || !view.hasTarget(event.Payload.Target) {
+		if err != nil || !view.hasTarget(event.ActorID) || !view.hasTarget(event.Payload.Target) ||
+			!b.withinEarshot(id, b.Entities[event.ActorID].Placement.Cell, conversationReach) {
 			continue
 		}
 		b.appendSighting(id, NotebookEntry{
