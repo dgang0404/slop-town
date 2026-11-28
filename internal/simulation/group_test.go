@@ -1106,6 +1106,114 @@ func TestHeavyFeelingFades(t *testing.T) {
 	}
 }
 
+func TestHeavyAnswerReinforcesTheFeeling(t *testing.T) {
+	c := residentBetween(t, false, false, true)
+	const baker, porter, player, guest, spare = "bakery/baker", "bakery/porter", "bakery/player", "bakery/guest", "bakery/spare"
+	if !c.bakery.Entities[baker].Occupied {
+		t.Fatal("expected the heavy news to linger")
+	}
+	heard := c.bakery.Entities[porter].Placement
+	station := c.bakery.Entities[player].Placement
+	news := func(name string) {
+		t.Helper()
+		for _, id := range []string{baker, player} {
+			who := c.bakery.Entities[id]
+			who.Placement = station
+			who.Seated = false
+			c.bakery.Entities[id] = who
+		}
+		if r := c.Submit(player, spatialProposal(c, name, ActionSpeak, ActionArgs{Target: baker, Speech: SpeechLine{Topic: "news", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" || strings.Contains(r.Message, "Doing all right") {
+			t.Fatal(r)
+		}
+	}
+	news("before")
+	if !c.bakery.Entities[baker].Occupied {
+		t.Fatal("faded before the fresh answer")
+	}
+	for _, id := range []string{player, guest, spare} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		who.Seated = id == spare
+		c.bakery.Entities[id] = who
+	}
+	if r := c.Submit(player, spatialProposal(c, "ask-spare", ActionSpeak, ActionArgs{Target: spare, Speech: checkInQuestion})); r.Status != "accepted" || strings.Contains(r.Message, "replies") {
+		t.Fatal(r)
+	}
+	for _, id := range []string{baker, spare} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		who.Seated = false
+		c.bakery.Entities[id] = who
+	}
+	choices, err := c.DialogueChoices(spare, baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var reinforce SpeechLine
+	for _, choice := range choices {
+		if choice.Words == "The player is taking a breather." {
+			reinforce = choice.Line
+		}
+	}
+	if reinforce.Source == 0 {
+		t.Fatal(choices)
+	}
+	if r := c.Submit(spare, spatialProposal(c, "reinforce", ActionSpeak, ActionArgs{Target: baker, Speech: reinforce})); r.Status != "accepted" || !c.bakery.Entities[baker].Occupied {
+		t.Fatal(r, c.bakery.Entities[baker].Occupied)
+	}
+	news("after-a")
+	news("after-b")
+	if !c.bakery.Entities[baker].Occupied {
+		t.Fatal("faded despite the fresh answer")
+	}
+	bakerAt := c.bakery.Entities[baker]
+	bakerAt.Placement = heard
+	c.bakery.Entities[baker] = bakerAt
+	porterAt := c.bakery.Entities[porter]
+	porterAt.Placement = heard
+	c.bakery.Entities[porter] = porterAt
+	for _, id := range []string{player, guest} {
+		who := c.bakery.Entities[id]
+		who.Placement = station
+		who.Seated = false
+		c.bakery.Entities[id] = who
+	}
+	var open NotebookEntry
+	for _, note := range c.bakery.Notebooks[guest] {
+		if note.Overheard && note.Open && note.Target == spare {
+			open = note
+		}
+	}
+	again, err := c.DialogueChoices(guest, player)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var answer SpeechLine
+	for _, choice := range again {
+		if choice.Words == "The spare is taking a breather." {
+			answer = choice.Line
+		}
+	}
+	if answer.Source == 0 || answer.Source != open.SourceSequence {
+		t.Fatal(again)
+	}
+	if r := c.Submit(guest, spatialProposal(c, "later", ActionSpeak, ActionArgs{Target: player, Speech: answer})); r.Status != "accepted" {
+		t.Fatal(r)
+	}
+	bakerJournal, err := c.Journal(baker)
+	porterJournal, err2 := c.Journal(porter)
+	if err != nil || err2 != nil {
+		t.Fatal(err, err2)
+	}
+	if !strings.Contains(journalSpeech(bakerJournal), "I missed what they said.") || strings.Contains(journalSpeech(bakerJournal), "other table") ||
+		!strings.Contains(journalSpeech(porterJournal), "I heard the customer speak from the other table.") {
+		t.Fatal(journalSpeech(bakerJournal), journalSpeech(porterJournal))
+	}
+	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func residentBetween(t *testing.T, overlap, weighted, spare bool) *Coordinator {
 	t.Helper()
 	scope := Scope{"bakery", "main"}
