@@ -1169,7 +1169,48 @@ func TestRepeatedLineAfterTheMissSurvivesReopen(t *testing.T) {
 	}
 }
 
+func TestDrawnAgainSplitSurvivesReopen(t *testing.T) {
+	c := freshAnswerDrawsAttentionBackAgain(t)
+	const baker, guest = "bakery/baker", "bakery/guest"
+	beforeGuest, err := c.Journal(guest)
+	beforeBaker, err2 := c.Journal(baker)
+	if err != nil || err2 != nil {
+		t.Fatal(err, err2)
+	}
+	raw, err := c.bakery.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := RestoreBakery(raw, c.scope.WorldID, c.clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := restored.Snapshot()
+	if err != nil || !bytes.Equal(raw, again) {
+		t.Fatal(err)
+	}
+	c.bakery = restored
+	afterGuest, err := c.Journal(guest)
+	afterBaker, err2 := c.Journal(baker)
+	if err != nil || err2 != nil || len(afterGuest) == 0 || len(afterBaker) == 0 {
+		t.Fatal(err, err2)
+	}
+	guestText := journalSpeech(afterGuest[len(afterGuest)-1:])
+	bakerText := journalSpeech(afterBaker[len(afterBaker)-1:])
+	if journalSpeech(beforeGuest) != journalSpeech(afterGuest) || journalSpeech(beforeBaker) != journalSpeech(afterBaker) ||
+		!strings.Contains(guestText, "I was following another conversation. I missed what they said.") || strings.Contains(guestText, "I heard the customer speak from the other table.") ||
+		!strings.Contains(bakerText, "I heard the customer speak from the other table.") || strings.Contains(bakerText, "I was following another conversation.") ||
+		restored.Entities[guest].Attention != "" || restored.Entities[guest].Occupied || restored.Entities[baker].Attention != "" || restored.Entities[baker].Occupied {
+		t.Fatal(guestText, bakerText, restored.Entities[guest].Attention, restored.Entities[baker].Attention)
+	}
+}
+
 func TestFreshAnswerDrawsAttentionBackAgain(t *testing.T) {
+	freshAnswerDrawsAttentionBackAgain(t)
+}
+
+func freshAnswerDrawsAttentionBackAgain(t *testing.T) *Coordinator {
+	t.Helper()
 	c := nextCircleAfterTheMissIsHeard(t)
 	const baker, guest, player, patron, regular, clerk = "bakery/baker", "bakery/guest", "bakery/player", "bakery/patron", "bakery/regular", "bakery/clerk"
 	heard := c.bakery.Entities[guest].Placement
@@ -1260,6 +1301,7 @@ func TestFreshAnswerDrawsAttentionBackAgain(t *testing.T) {
 	if !strings.Contains(guestText, "I was following another conversation. I missed what they said.") || strings.Contains(guestText, "I heard the customer speak from the other table.") || !strings.Contains(bakerText, "I heard the customer speak from the other table.") || strings.Contains(bakerText, "I was following another conversation.") {
 		t.Fatal(guestText, bakerText)
 	}
+	return c
 }
 
 func TestHeardCircleAfterTheMissSurvivesReopen(t *testing.T) {
