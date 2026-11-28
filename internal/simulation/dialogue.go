@@ -499,6 +499,9 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 					break
 				}
 			}
+			if line.Topic == "conversation" && fact.Condition != "" && !fact.Heard && !fact.Answered && b.missedAsideWith(listener, speaker) {
+				continue
+			}
 			if (line.Topic == "sounds" && fact.Action == ActionListen) ||
 				(line.Topic == "news" && fact.Reported == 0 && !fact.Aside && !fact.Bridged && !fact.Fragment && !fact.Murmur && fact.Action != ActionListen) || (line.Topic == "conversation" && fact.Condition != "" && !fact.Heard && !fact.Answered) ||
 				(fact.Action == ActionIntroduce && fact.Subject == line.Topic) {

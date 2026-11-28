@@ -242,6 +242,16 @@ func (b *Bakery) repeatWords() string {
 	return "Could you say that again? I missed what you said."
 }
 
+// A later check-in does not replace the line this person was already missed on.
+func (b *Bakery) missedAsideWith(owner, asker string) bool {
+	for _, e := range b.Notebooks[owner] {
+		if e.Aside && e.Missed && (e.Subject == asker || e.Target == asker) {
+			return true
+		}
+	}
+	return false
+}
+
 // The heavy answer lands on the person who asked, not on everyone who is later told.
 func (b *Bakery) carriesTheNews(listener, about string) bool {
 	if about == "" {
