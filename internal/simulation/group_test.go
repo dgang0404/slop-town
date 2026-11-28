@@ -1353,6 +1353,23 @@ func TestRepeatedLineAfterTheLatestMissSurvivesReopen(t *testing.T) {
 	}
 }
 
+func TestDrawnYetAgainSplitIsWhatTheyRepeat(t *testing.T) {
+	c := freshAnswerDrawsAttentionBackYetAgain(t)
+	const baker, guest, customer = "bakery/baker", "bakery/guest", "bakery/customer"
+	ask := func(id, name string) Result {
+		who := c.bakery.Entities[id]
+		who.Placement = c.bakery.Entities[customer].Placement
+		c.bakery.Entities[id] = who
+		return c.Submit(customer, spatialProposal(c, name, ActionSpeak, ActionArgs{Target: id, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}}))
+	}
+	if r := ask(baker, "ask-baker-yet-again"); r.Status != "accepted" || !strings.Contains(r.Message, "I heard the customer speak from the other table.") || strings.Contains(r.Message, "I was following another conversation.") || strings.Contains(r.Message, "I missed what you said.") {
+		t.Fatal(baker, r)
+	}
+	if r := ask(guest, "ask-guest-yet-again"); r.Status != "accepted" || !strings.Contains(r.Message, "Could you say that again? I missed what you said.") || strings.Contains(r.Message, "I heard the customer speak from the other table.") || strings.Contains(r.Message, "I was following another conversation.") {
+		t.Fatal(guest, r)
+	}
+}
+
 func TestDrawnYetAgainSplitSurvivesReopen(t *testing.T) {
 	c := freshAnswerDrawsAttentionBackYetAgain(t)
 	const baker, guest = "bakery/baker", "bakery/guest"
