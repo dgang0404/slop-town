@@ -147,6 +147,14 @@ func (b *Bakery) earlyAnswerWords(fact NotebookEntry, owner, speaker string) (st
 	return who + " said " + about + " " + verb + " taking a breather.", true
 }
 
+func (b *Bakery) answeredWords(fact NotebookEntry, speaker string) string {
+	about, verb := "the "+b.Entities[fact.Subject].Name, "was"
+	if fact.Subject == speaker {
+		about, verb = "you", "were"
+	}
+	return "I said " + about + " " + verb + " taking a breather."
+}
+
 func (b *Bakery) stoodWords(fact NotebookEntry, speaker string) string {
 	who := "The " + b.Entities[fact.Subject].Name
 	if fact.Subject == speaker {

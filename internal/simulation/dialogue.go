@@ -410,6 +410,10 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 				}
 				continue
 			}
+			if line.Topic == "conversation" && fact.Answered {
+				x.Reply = b.answeredWords(fact, speaker)
+				break
+			}
 			if line.Topic == "conversation" && fact.Heard {
 				x.Reply = b.stoodWords(fact, speaker)
 				x.ReplySource = fact.SourceSequence
@@ -422,7 +426,7 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 				}
 			}
 			if (line.Topic == "sounds" && fact.Action == ActionListen) ||
-				(line.Topic == "news" && fact.Reported == 0 && fact.Action != ActionListen) || (line.Topic == "conversation" && fact.Condition != "" && !fact.Heard) ||
+				(line.Topic == "news" && fact.Reported == 0 && fact.Action != ActionListen) || (line.Topic == "conversation" && fact.Condition != "" && !fact.Heard && !fact.Answered) ||
 				(fact.Action == ActionIntroduce && fact.Subject == line.Topic) {
 				x.Reply = b.sightingWords(fact, speaker, false)
 				x.ReplySource = fact.SourceSequence
