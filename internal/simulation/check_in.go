@@ -200,7 +200,11 @@ func (b *Bakery) unansweredWords(fact NotebookEntry, speaker string) string {
 }
 
 func (b *Bakery) asideWords(fact NotebookEntry) string {
-	return "I heard the " + b.Entities[fact.Subject].Name + " speak from the other table."
+	heard := "I heard the " + b.Entities[fact.Subject].Name + " speak from the other table."
+	if !fact.Yielded {
+		return heard
+	}
+	return heard + " The " + b.Entities[fact.Target].Name + " let them go first."
 }
 
 func (b *Bakery) stoodWords(fact NotebookEntry, speaker string) string {

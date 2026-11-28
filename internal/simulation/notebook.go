@@ -22,6 +22,7 @@ type NotebookEntry struct {
 	Answered       bool           `json:"answered,omitempty"`  // This owner answered a question addressed to someone else.
 	Heard          bool           `json:"heard,omitempty"`     // This owner heard someone else answer a question addressed to them.
 	Aside          bool           `json:"aside,omitempty"`     // This owner heard a separate circle they did not join.
+	Yielded        bool           `json:"yielded,omitempty"`   // The other person at that table let the speaker go first.
 	Asked          bool           `json:"asked,omitempty"`
 	Container      string         `json:"container,omitempty"` // Visible destination of a put or landmark for a hand movement.
 	Sound          PerceptionKind `json:"sound,omitempty"`     // The listener recalls the sound alone.
@@ -128,6 +129,7 @@ func (b *Bakery) recordAside(event Event) {
 		}
 		b.appendSighting(id, NotebookEntry{
 			Tick: event.Tick, SourceSequence: event.Sequence, Subject: event.ActorID, Target: event.Payload.Target, Action: ActionSpeak, Aside: true,
+			Yielded: event.Payload.Dialogue.Reply == "",
 		})
 	}
 }
@@ -357,6 +359,9 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 					return fmt.Errorf("invalid hand movement sighting for %q at sequence %d", owner, e.SourceSequence)
 				}
 			case ActionSpeak:
+				if e.Yielded && !e.Aside {
+					return fmt.Errorf("invalid yield for %q at sequence %d", owner, e.SourceSequence)
+				}
 				if e.Aside {
 					if b.ContentVersion < answerFirstVersion || e.Condition != "" || e.Reported != 0 || e.Overheard || e.Open || e.Answered || e.Heard || e.Asked || e.Target == "" ||
 						b.Entities[e.Subject].Kind != Actor || b.Entities[e.Target].Kind != Actor {
