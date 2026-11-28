@@ -91,6 +91,15 @@ func TestParticipantConfirmsWhatTheBystanderHeard(t *testing.T) {
 	heard := b.Entities[player]
 	heard.Placement = b.Entities[baker].Placement
 	b.Entities[player] = heard
+	hearsay := SpeechLine{Topic: "hearsay", Intent: "ask", Tone: "curious"}
+	if r := c.Submit(player, spatialProposal(c, "hearsay", ActionSpeak, ActionArgs{Target: baker, Speech: hearsay})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "You told me you heard me check in on the porter. They said they felt fine.") {
+		t.Fatal(r)
+	}
+	b = c.bakery
+	heard = b.Entities[player]
+	heard.Placement = b.Entities[baker].Placement
+	b.Entities[player] = heard
 	choices, err := c.DialogueChoices(baker, player)
 	if err != nil {
 		t.Fatal(err)

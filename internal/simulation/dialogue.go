@@ -294,6 +294,11 @@ func (b *Bakery) answer(speaker string, view Observation, choice DialogueChoice)
 					x.ReplySource = fact.SourceSequence
 					break
 				}
+				if overheard, ok := b.overheardReport(fact); ok {
+					x.Reply = b.overheardRelay(fact, overheard, listener, speaker, false)
+					x.ReplySource = fact.SourceSequence
+					break
+				}
 				continue
 			}
 			if (line.Topic == "sounds" && fact.Action == ActionListen) ||
