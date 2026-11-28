@@ -353,6 +353,7 @@ func (s State) Resolve(scope Scope, lastSequence uint64, actorID string, p Propo
 		if nextBakery.ContentVersion >= emotionContentVersion {
 			nextBakery.advanceRelief(events)
 		}
+		nextBakery.advanceWeight()
 		scene, err = (State{Clock: &next, Bakery: nextBakery}).Scene(scope, actorID)
 		if err != nil {
 			return reject("resolution_failed", "You cannot observe your surroundings."), nil

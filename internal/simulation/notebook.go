@@ -88,6 +88,7 @@ func (b *Bakery) applySpatial(event *Event, effect spatialEffect, clock *Timelin
 				continue
 			}
 			person.Occupied = true
+			person.WeightTurns = weightDuration
 			b.Entities[id] = person
 		}
 	}
@@ -95,6 +96,7 @@ func (b *Bakery) applySpatial(event *Event, effect spatialEffect, clock *Timelin
 		person := b.Entities[event.Payload.Target]
 		if person.Kind == Actor {
 			person.Occupied = false
+			person.WeightTurns = 0
 			b.Entities[event.Payload.Target] = person
 		}
 	}
@@ -171,6 +173,7 @@ func (b *Bakery) recordAside(event Event) {
 		occupied := e.Occupied
 		if occupied {
 			e.Occupied = false
+			e.WeightTurns = 0
 			b.Entities[id] = e
 		}
 		elsewhere := e.Attention != "" && e.Attention != event.ActorID && e.Attention != event.Payload.Target

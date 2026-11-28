@@ -62,6 +62,7 @@ type SpatialEntity struct {
 	BakingKneads        int             `json:",omitempty"`
 	ReliefTurns         int             `json:",omitempty"`
 	Occupied            bool            `json:",omitempty"` // A heavy answer is still on this actor's mind.
+	WeightTurns         int             `json:",omitempty"` // Turns left before that heavy answer fades.
 	Attention           string          `json:",omitempty"` // The actor this listener is following.
 	WorkroomToolUseTick int64           `json:",omitempty"` // Last workroom bench use on this actor's timeline.
 	DropSound           PerceptionKind  `json:",omitempty"` // Sound made when this item hits the floor.
@@ -378,6 +379,9 @@ func (b *Bakery) Validate() error {
 		}
 		if e.Occupied && (e.Kind != Actor || b.ContentVersion < answerFirstVersion) {
 			return fmt.Errorf("unexpected weight for %q", id)
+		}
+		if e.WeightTurns != 0 && (e.Kind != Actor || b.ContentVersion < answerFirstVersion || e.WeightTurns < 0 || e.WeightTurns > weightDuration) {
+			return fmt.Errorf("invalid weight for %q", id)
 		}
 		if e.ReliefTurns != 0 && (e.Kind != Actor || b.ContentVersion < emotionContentVersion || e.ReliefTurns < 0 || e.ReliefTurns > reliefDuration) {
 			return fmt.Errorf("invalid relief for %q", id)
