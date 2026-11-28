@@ -474,4 +474,18 @@ func TestUnheardAnswerLeavesTheQuestionOpen(t *testing.T) {
 		!strings.Contains(r.Message, "You checked in on me. I told you I felt fine.") || strings.Contains(r.Message, "haven't answered") || strings.Contains(r.Message, "player") {
 		t.Fatal(r)
 	}
+	var differed bool
+	for _, note := range c.bakery.Notebooks[player] {
+		if note.Overheard && note.Condition == doingFine && note.Target == porter {
+			differed = true
+		}
+	}
+	if !differed {
+		t.Fatal(c.bakery.Notebooks[player])
+	}
+	together()
+	if r := c.Submit(baker, spatialProposal(c, "different", ActionSpeak, ActionArgs{Target: player, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "I said the porter was taking a breather.") || strings.Contains(r.Message, "felt fine") {
+		t.Fatal(r)
+	}
 }

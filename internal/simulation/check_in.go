@@ -152,7 +152,7 @@ func (b *Bakery) keptOwnAnswer(owner string, fact NotebookEntry) bool {
 		return false
 	}
 	for _, e := range b.Notebooks[owner] {
-		if e.Answered && e.Subject == fact.Target && e.Condition == fact.Condition && e.SourceSequence < fact.SourceSequence {
+		if e.Answered && e.Subject == fact.Target && e.SourceSequence < fact.SourceSequence {
 			return true
 		}
 	}
