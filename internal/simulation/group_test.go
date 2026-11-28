@@ -1014,6 +1014,22 @@ func TestFadedFreshAnswerSurvivesReopen(t *testing.T) {
 	}
 }
 
+func TestFadedBringerHearsTheCircle(t *testing.T) {
+	c := fadedFreshAnswerHearsTheCircle(t)
+	const guest = "bakery/guest"
+	if c.bakery.Entities[guest].Occupied || c.bakery.Entities[guest].Attention != "" {
+		t.Fatal(c.bakery.Entities[guest].Occupied, c.bakery.Entities[guest].Attention)
+	}
+	pages, err := c.Journal(guest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := journalSpeech(pages)
+	if !strings.Contains(text, "I heard the customer speak from the other table.") || strings.Contains(text, "I was following another conversation.") {
+		t.Fatal(text)
+	}
+}
+
 func TestFadedFreshAnswerReleasesAttention(t *testing.T) {
 	fadedFreshAnswerHearsTheCircle(t)
 }
@@ -1117,7 +1133,7 @@ func attentionDrawnBack(t *testing.T) (*Coordinator, Placement, Placement) {
 
 func finishDrawnAside(t *testing.T, c *Coordinator, heard, station Placement) {
 	t.Helper()
-	const baker, player, spare, clerk = "bakery/baker", "bakery/player", "bakery/spare", "bakery/clerk"
+	const baker, guest, player, spare, clerk = "bakery/baker", "bakery/guest", "bakery/player", "bakery/spare", "bakery/clerk"
 	c.bakery.Entities[clerk] = SpatialEntity{Name: "clerk", Kind: Actor, Placement: station}
 	for _, id := range []string{player, spare, clerk} {
 		who := c.bakery.Entities[id]
@@ -1128,10 +1144,12 @@ func finishDrawnAside(t *testing.T, c *Coordinator, heard, station Placement) {
 	if r := c.Submit(player, spatialProposal(c, "ask-spare", ActionSpeak, ActionArgs{Target: spare, Speech: checkInQuestion})); r.Status != "accepted" || strings.Contains(r.Message, "replies") {
 		t.Fatal(r)
 	}
-	who := c.bakery.Entities[baker]
-	who.Placement = heard
-	who.Seated = false
-	c.bakery.Entities[baker] = who
+	for _, id := range []string{baker, guest} {
+		who := c.bakery.Entities[id]
+		who.Placement = heard
+		who.Seated = false
+		c.bakery.Entities[id] = who
+	}
 	for _, id := range []string{player, clerk} {
 		person := c.bakery.Entities[id]
 		person.Placement = station
