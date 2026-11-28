@@ -15,6 +15,13 @@ func (b *Bakery) advanceResidents(clock *Timeline, primary Event) ([]Event, []he
 	}
 	var events []Event
 	heard := b.soundsDuringAction(nil, primary, primary)
+	if effect := b.secondCircle(primary); effect.kind != "" {
+		action := primary.child(primary.Sequence+1, effect.entityID, "spatial", effect.kind, effect.payload)
+		if err := b.applySpatial(&action, effect, clock); err != nil {
+			return nil, nil, err
+		}
+		events = append(events, action)
+	}
 	for _, role := range roles {
 		id := url.PathEscape(b.WorldID) + "/" + role
 		if id == primary.ActorID || (primary.Kind == "call_answered" && primary.Payload.Target == id) {
@@ -225,6 +232,45 @@ func (b *Bakery) shopfrontIntroduction(scope Scope, speaker string) spatialEffec
 
 // Familiar coworkers can talk during a lull. One conversation per pair in
 // eight turns leaves room for the two four-turn legs of their work routine.
+func (b *Bakery) secondCircle(primary Event) spatialEffect {
+	if b.ContentVersion < answerFirstVersion || primary.Kind != "actors_conversed" || primary.Payload.Dialogue.Statement.Intent != "answer_first" {
+		return spatialEffect{}
+	}
+	busy := map[string]bool{primary.ActorID: true, primary.Payload.Target: true}
+	var pair []string
+	for id, e := range b.Entities {
+		if e.Kind != Actor || busy[id] {
+			continue
+		}
+		pair = append(pair, id)
+	}
+	if len(pair) != 2 {
+		return spatialEffect{}
+	}
+	if pair[0] > pair[1] {
+		pair[0], pair[1] = pair[1], pair[0]
+	}
+	speaker, listener := pair[0], pair[1]
+	if !b.apartFrom(primary, speaker, listener) {
+		return spatialEffect{}
+	}
+	x := Exchange{Words: "Hello from the other table.", Reply: "Hello."}
+	return spatialEffect{kind: "actors_conversed", payload: EventPayload{Target: listener, Dialogue: x},
+		message: x.message(b.Entities[listener].Name), entityID: speaker, entity: b.Entities[speaker]}
+}
+
+func (b *Bakery) apartFrom(primary Event, speaker, listener string) bool {
+	speakerView, err := b.Observe(primary.Scope, speaker)
+	if err != nil || !speakerView.hasTarget(listener) || speakerView.hasTarget(primary.ActorID) || speakerView.hasTarget(primary.Payload.Target) {
+		return false
+	}
+	listenerView, err := b.Observe(primary.Scope, listener)
+	if err != nil || !listenerView.hasTarget(speaker) || listenerView.hasTarget(primary.ActorID) || listenerView.hasTarget(primary.Payload.Target) {
+		return false
+	}
+	return true
+}
+
 func (b *Bakery) residentConversation(primary Event) spatialEffect {
 	prefix := url.PathEscape(b.WorldID) + "/"
 	baker, porter := prefix+"baker", prefix+"porter"
