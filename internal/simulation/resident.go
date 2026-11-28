@@ -314,10 +314,8 @@ func (b *Bakery) residentBothCircles(speaker string) []spatialEffect {
 	if !hasCheckIn || (!hasHeard && !hasMissed) {
 		return nil
 	}
-	aside, asideLine := heard, ""
-	if hasHeard {
-		asideLine = b.asideWords(aside)
-	} else {
+	aside, asideLine := heard, "At noon."
+	if !hasHeard {
 		aside, asideLine = missed, b.repeatWords()
 	}
 	say := func(to, words string) spatialEffect {
@@ -329,7 +327,7 @@ func (b *Bakery) residentBothCircles(speaker string) []spatialEffect {
 			message: x.message(b.Entities[to].Name), entityID: speaker, entity: b.Entities[speaker]}
 	}
 	var effects []spatialEffect
-	if effect := say(checkIn.Subject, checkIn.overheardCheckIn(b.Entities[checkIn.Subject].Name, b.Entities[checkIn.Target].Name)); effect.kind != "" {
+	if effect := say(checkIn.Subject, "Two trays."); effect.kind != "" {
 		effects = append(effects, effect)
 	}
 	if effect := say(aside.Subject, asideLine); effect.kind != "" {

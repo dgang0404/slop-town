@@ -603,8 +603,8 @@ func TestResidentAnswersBothCircles(t *testing.T) {
 			said = append(said, e.Payload.Target+" "+e.Payload.Dialogue.Words)
 		}
 	}
-	if len(said) != 2 || !strings.Contains(said[0], baker) || !strings.Contains(said[0], "I heard the baker ask the player how they were holding up.") ||
-		!strings.Contains(said[1], customer) || !strings.Contains(said[1], "I heard the customer speak from the other table.") || strings.Contains(said[0], "other table") || strings.Contains(said[1], "holding up") {
+	if len(said) != 2 || !strings.Contains(said[0], baker) || !strings.Contains(said[0], "Two trays.") ||
+		!strings.Contains(said[1], customer) || !strings.Contains(said[1], "At noon.") || strings.Contains(said[0], "At noon.") || strings.Contains(said[1], "Two trays.") {
 		t.Fatal(said)
 	}
 	ask := func(who, id string) Result {
@@ -643,9 +643,9 @@ func TestResidentAsksToRepeatOverlap(t *testing.T) {
 			said = append(said, e.Payload.Target+" "+e.Payload.Dialogue.Words)
 		}
 	}
-	if len(said) != 2 || !strings.Contains(said[0], baker) || !strings.Contains(said[0], "I heard the baker ask the player how they were holding up.") ||
+	if len(said) != 2 || !strings.Contains(said[0], baker) || !strings.Contains(said[0], "Two trays.") ||
 		!strings.Contains(said[1], customer) || !strings.Contains(said[1], "Could you say that again? I missed what you said.") ||
-		strings.Contains(said[1], "other table") || strings.Contains(said[1], "Hello from") {
+		strings.Contains(said[1], "other table") || strings.Contains(said[1], "Hello from") || strings.Contains(said[1], "At noon.") {
 		t.Fatal(said)
 	}
 	ask := func(who, id string) Result {
@@ -685,9 +685,9 @@ func TestHeavyAnswerMissesTheOtherCircle(t *testing.T) {
 			said = append(said, e.Payload.Target+" "+e.Payload.Dialogue.Words)
 		}
 	}
-	if len(said) != 2 || !strings.Contains(said[0], baker) || !strings.Contains(said[0], "I heard the baker ask the player how they were holding up.") ||
+	if len(said) != 2 || !strings.Contains(said[0], baker) || !strings.Contains(said[0], "Two trays.") ||
 		!strings.Contains(said[1], customer) || !strings.Contains(said[1], "Could you say that again? I missed what you said.") ||
-		strings.Contains(said[1], "other table") {
+		strings.Contains(said[1], "other table") || strings.Contains(said[1], "At noon.") {
 		t.Fatal(said)
 	}
 	calmJournal, err := c.Journal(calm)
