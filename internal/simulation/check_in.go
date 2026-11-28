@@ -243,6 +243,9 @@ func (b *Bakery) repeatWords() string {
 }
 
 func (b *Bakery) asideWords(fact NotebookEntry) string {
+	if fact.Elsewhere {
+		return "I was following another conversation. I missed what they said."
+	}
 	if fact.Missed {
 		return "The " + b.Entities[fact.Subject].Name + " and the " + b.Entities[fact.Target].Name + " spoke at once. I missed what they said."
 	}

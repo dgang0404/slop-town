@@ -817,7 +817,7 @@ func residentBetween(t *testing.T, overlap, weighted bool) *Coordinator {
 }
 
 func TestSpeechBeyondEarshotStaysMissing(t *testing.T) {
-	c := separateCircleFar(t, false, false, true)
+	c := separateCircleFar(t, false, false, true, false)
 	const porter, customer, zeal = "bakery/porter", "bakery/customer", "bakery/zeal"
 	nearJournal, err := c.Journal(porter)
 	farJournal, err2 := c.Journal(zeal)
@@ -841,10 +841,36 @@ func TestSpeechBeyondEarshotStaysMissing(t *testing.T) {
 
 func separateCircle(t *testing.T, neighborSeated, between bool) *Coordinator {
 	t.Helper()
-	return separateCircleFar(t, neighborSeated, between, false)
+	return separateCircleFar(t, neighborSeated, between, false, false)
 }
 
-func separateCircleFar(t *testing.T, neighborSeated, between, far bool) *Coordinator {
+func TestAttentionSwitchLeavesTheMiss(t *testing.T) {
+	c := separateCircleFar(t, false, false, false, true)
+	const porter, customer, zeal = "bakery/porter", "bakery/customer", "bakery/zeal"
+	nearJournal, err := c.Journal(porter)
+	awayJournal, err2 := c.Journal(zeal)
+	if err != nil || err2 != nil {
+		t.Fatal(err, err2)
+	}
+	if !strings.Contains(journalSpeech(nearJournal), "I heard the customer speak from the other table.") ||
+		!strings.Contains(journalSpeech(awayJournal), "I was following another conversation. I missed what they said.") ||
+		strings.Contains(journalSpeech(awayJournal), "other table") {
+		t.Fatal(journalSpeech(nearJournal), journalSpeech(awayJournal))
+	}
+	who := c.bakery.Entities[zeal]
+	who.Attention = customer
+	who.Placement = c.bakery.Entities[customer].Placement
+	c.bakery.Entities[zeal] = who
+	if r := c.Submit(customer, spatialProposal(c, "switch", ActionSpeak, ActionArgs{Target: zeal, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "I missed what you said.") || strings.Contains(r.Message, "other table") {
+		t.Fatal(r)
+	}
+	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func separateCircleFar(t *testing.T, neighborSeated, between, far, attend bool) *Coordinator {
 	t.Helper()
 	scope := Scope{"bakery", "main"}
 	c, err := (BakerySetup{Practice: true}).NewCoordinator(scope, 42)
@@ -947,6 +973,32 @@ func separateCircleFar(t *testing.T, neighborSeated, between, far bool) *Coordin
 		}
 		if !found {
 			t.Fatal("no cell sees the other table from beyond earshot")
+		}
+	}
+	if attend {
+		const zeal = "bakery/zeal"
+		c.bakery.Entities[zeal] = SpatialEntity{Name: "zeal", Kind: Actor, Placement: hide, Attention: baker}
+		found := false
+		for y := 0; y < bakeryHeight && !found; y++ {
+			for x := 0; x < bakeryWidth; x++ {
+				at := hide
+				at.Cell.X, at.Cell.Y = x, y
+				if at == hide || !c.bakery.isFloorCell(at.Cell) {
+					continue
+				}
+				who := c.bakery.Entities[zeal]
+				who.Placement = at
+				c.bakery.Entities[zeal] = who
+				view, err := c.bakery.Observe(scope, zeal)
+				if err != nil || !view.hasTarget(customer) || !view.hasTarget(neighbor) || !c.bakery.soundReaches(hide.Cell, at.Cell, conversationReach) {
+					continue
+				}
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatal("no cell hears the other table")
 		}
 	}
 	var open NotebookEntry

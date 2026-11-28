@@ -24,6 +24,7 @@ type NotebookEntry struct {
 	Aside          bool           `json:"aside,omitempty"`     // This owner heard a separate circle they did not join.
 	Yielded        bool           `json:"yielded,omitempty"`   // The other person at that table let the speaker go first.
 	Missed         bool           `json:"missed,omitempty"`    // Both started, so this owner missed the words.
+	Elsewhere      bool           `json:"elsewhere,omitempty"` // Attention was on another circle, so the words were missed.
 	Bridged        bool           `json:"bridged,omitempty"`   // This owner already gave a light answer to this circle.
 	Asked          bool           `json:"asked,omitempty"`
 	Container      string         `json:"container,omitempty"` // Visible destination of a put or landmark for a hand movement.
@@ -130,9 +131,10 @@ func (b *Bakery) recordAside(event Event) {
 			!b.withinEarshot(id, b.Entities[event.ActorID].Placement.Cell, conversationReach) {
 			continue
 		}
+		elsewhere := e.Attention != "" && e.Attention != event.ActorID && e.Attention != event.Payload.Target
 		b.appendSighting(id, NotebookEntry{
 			Tick: event.Tick, SourceSequence: event.Sequence, Subject: event.ActorID, Target: event.Payload.Target, Action: ActionSpeak, Aside: true,
-			Yielded: event.Payload.Dialogue.Reply == "" && !e.Occupied, Missed: event.Payload.Dialogue.Reply != "" || e.Occupied,
+			Yielded: event.Payload.Dialogue.Reply == "" && !e.Occupied && !elsewhere, Missed: event.Payload.Dialogue.Reply != "" || e.Occupied || elsewhere, Elsewhere: elsewhere,
 		})
 	}
 }
@@ -368,7 +370,7 @@ func (b *Bakery) validateNotebooks(tick int64) error {
 					return fmt.Errorf("invalid hand movement sighting for %q at sequence %d", owner, e.SourceSequence)
 				}
 			case ActionSpeak:
-				if (e.Yielded && !e.Aside) || (e.Missed && (!e.Aside || e.Yielded)) {
+				if (e.Yielded && !e.Aside) || (e.Missed && (!e.Aside || e.Yielded)) || (e.Elsewhere && (!e.Aside || !e.Missed || e.Yielded)) {
 					return fmt.Errorf("invalid yield for %q at sequence %d", owner, e.SourceSequence)
 				}
 				if e.Bridged {

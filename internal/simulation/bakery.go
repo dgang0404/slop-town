@@ -62,6 +62,7 @@ type SpatialEntity struct {
 	BakingKneads        int             `json:",omitempty"`
 	ReliefTurns         int             `json:",omitempty"`
 	Occupied            bool            `json:",omitempty"` // A heavy answer is still on this actor's mind.
+	Attention           string          `json:",omitempty"` // The actor this listener is following.
 	WorkroomToolUseTick int64           `json:",omitempty"` // Last workroom bench use on this actor's timeline.
 	DropSound           PerceptionKind  `json:",omitempty"` // Sound made when this item hits the floor.
 	StealthPractice     stealthPractice `json:",omitzero"`
@@ -371,6 +372,9 @@ func (b *Bakery) Validate() error {
 		}
 		if e.StealthPractice != (stealthPractice{}) && (e.Kind != Actor || b.ContentVersion < stealthPracticeContentVersion) {
 			return fmt.Errorf("unexpected stealth practice for %q", id)
+		}
+		if e.Attention != "" && (e.Kind != Actor || b.ContentVersion < answerFirstVersion || e.Attention == id || b.Entities[e.Attention].Kind != Actor) {
+			return fmt.Errorf("invalid attention for %q", id)
 		}
 		if e.Occupied && (e.Kind != Actor || b.ContentVersion < answerFirstVersion) {
 			return fmt.Errorf("unexpected weight for %q", id)
