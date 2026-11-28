@@ -987,6 +987,51 @@ func TestFragmentRetellingKeepsTheSpeakerUnknown(t *testing.T) {
 	}
 }
 
+func TestFragmentSurvivesReopen(t *testing.T) {
+	c := separateCircleFar(t, false, false, false, false, true, false)
+	const visitor, clerk = "bakery/visitor", "bakery/clerk"
+	c.bakery.Entities[clerk] = SpatialEntity{Name: "clerk", Kind: Actor, Placement: c.bakery.Entities[visitor].Placement}
+	if r := c.Submit(clerk, spatialProposal(c, "retell", ActionSpeak, ActionArgs{Target: visitor, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "I heard “after closing.” I don't know who spoke.") || strings.Contains(r.Message, "customer") {
+		t.Fatal(r)
+	}
+	heard, err := c.Journal(visitor)
+	passed, err2 := c.Journal(clerk)
+	if err != nil || err2 != nil {
+		t.Fatal(err, err2)
+	}
+	raw, err := c.bakery.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := RestoreBakery(raw, c.scope.WorldID, c.clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := restored.Snapshot()
+	if err != nil || !bytes.Equal(raw, again) {
+		t.Fatal(err)
+	}
+	c.bakery = restored
+	heardAgain, err := c.Journal(visitor)
+	passedAgain, err2 := c.Journal(clerk)
+	if err != nil || err2 != nil {
+		t.Fatal(err, err2)
+	}
+	heardText, passedText := journalSpeech(heardAgain), journalSpeech(passedAgain)
+	if journalSpeech(heard) != heardText || journalSpeech(passed) != passedText ||
+		!strings.Contains(heardText, "I heard “after closing.” I don't know who spoke.") ||
+		!strings.Contains(passedText, "I heard “after closing.” I don't know who spoke.") ||
+		strings.Contains(heardText, "customer") || strings.Contains(passedText, "customer") ||
+		strings.Contains(heardText, "other table") || strings.Contains(passedText, "other table") {
+		t.Fatal(heardText, passedText)
+	}
+	if r := c.Submit(visitor, spatialProposal(c, "again", ActionSpeak, ActionArgs{Target: clerk, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "I heard “after closing.” I don't know who spoke.") || strings.Contains(r.Message, "customer") || strings.Contains(r.Message, "other table") {
+		t.Fatal(r)
+	}
+}
+
 func separateCircleFar(t *testing.T, neighborSeated, between, far, attend, fragment, murmur bool) *Coordinator {
 	t.Helper()
 	scope := Scope{"bakery", "main"}
