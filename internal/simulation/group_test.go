@@ -732,7 +732,39 @@ func TestRoutineAskerStillHearsTheCheckIn(t *testing.T) {
 	}
 }
 
+func TestHeardLineIsWhatGetsRepeated(t *testing.T) {
+	c := nextWordsAfterTheLift(t)
+	const baker, customer = "bakery/baker", "bakery/customer"
+	who := c.bakery.Entities[baker]
+	who.Placement = c.bakery.Entities[customer].Placement
+	c.bakery.Entities[baker] = who
+	if r := c.Submit(customer, spatialProposal(c, "retell", ActionSpeak, ActionArgs{Target: baker, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}})); r.Status != "accepted" ||
+		!strings.Contains(r.Message, "I heard the customer speak from the other table.") || strings.Contains(r.Message, "I missed what you said.") {
+		t.Fatal(r)
+	}
+	pages, err := c.Journal(baker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(journalSpeech(pages), "I missed what they said.") {
+		t.Fatal(journalSpeech(pages))
+	}
+}
+
 func TestNextWordsGetThroughAfterTheLift(t *testing.T) {
+	c := nextWordsAfterTheLift(t)
+	pages, err := c.Journal("bakery/baker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := journalSpeech(pages)
+	if !strings.Contains(text, "I missed what they said.") || !strings.Contains(text, "I heard the customer speak from the other table.") {
+		t.Fatal(text)
+	}
+}
+
+func nextWordsAfterTheLift(t *testing.T) *Coordinator {
+	t.Helper()
 	c := weightLiftedAfterTheMiss(t)
 	const baker, player, guest, spare, customer, neighbor = "bakery/baker", "bakery/player", "bakery/guest", "bakery/spare", "bakery/customer", "bakery/neighbor"
 	station := c.bakery.Entities[player].Placement
@@ -798,6 +830,7 @@ func TestNextWordsGetThroughAfterTheLift(t *testing.T) {
 	if !strings.Contains(text, "I missed what they said.") || !strings.Contains(text, "I heard the customer speak from the other table.") {
 		t.Fatal(text)
 	}
+	return c
 }
 
 func TestLiftedWeightLeavesTheMiss(t *testing.T) {
