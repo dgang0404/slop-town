@@ -27,7 +27,7 @@ func (b *Bakery) advanceResidents(clock *Timeline, primary Event) ([]Event, []he
 	}
 	porterID := url.PathEscape(b.WorldID) + "/porter"
 	spoke := false
-	if porterID != primary.ActorID && b.holdsBothCircles(porterID) {
+	if porterID != primary.ActorID && (b.holdsBothCircles(porterID) || b.missedTheOtherCircle(porterID)) {
 		for _, effect := range b.residentBothCircles(porterID) {
 			action := primary.child(primary.Sequence+uint64(len(events))+1, effect.entityID, "spatial", effect.kind, effect.payload)
 			if err := b.applySpatial(&action, effect, clock); err != nil {
@@ -297,19 +297,28 @@ func (b *Bakery) alreadyBridged(owner, to string) bool {
 
 // A rested resident who can hear both circles answers each one once.
 func (b *Bakery) residentBothCircles(speaker string) []spatialEffect {
-	var checkIn, aside NotebookEntry
-	var hasCheckIn, hasAside bool
+	var checkIn, heard, missed NotebookEntry
+	var hasCheckIn, hasHeard, hasMissed bool
 	for i := len(b.Notebooks[speaker]) - 1; i >= 0; i-- {
 		e := b.Notebooks[speaker][i]
-		if !hasAside && e.Aside && !e.Missed {
-			aside, hasAside = e, true
+		if !hasHeard && e.Aside && !e.Missed {
+			heard, hasHeard = e, true
+		}
+		if !hasMissed && e.Aside && e.Missed {
+			missed, hasMissed = e, true
 		}
 		if !hasCheckIn && e.Overheard && e.Open {
 			checkIn, hasCheckIn = e, true
 		}
 	}
-	if !hasCheckIn || !hasAside {
+	if !hasCheckIn || (!hasHeard && !hasMissed) {
 		return nil
+	}
+	aside, asideLine := heard, ""
+	if hasHeard {
+		asideLine = b.asideWords(aside)
+	} else {
+		aside, asideLine = missed, b.repeatWords()
 	}
 	say := func(to, words string) spatialEffect {
 		if b.alreadyBridged(speaker, to) {
@@ -323,7 +332,7 @@ func (b *Bakery) residentBothCircles(speaker string) []spatialEffect {
 	if effect := say(checkIn.Subject, checkIn.overheardCheckIn(b.Entities[checkIn.Subject].Name, b.Entities[checkIn.Target].Name)); effect.kind != "" {
 		effects = append(effects, effect)
 	}
-	if effect := say(aside.Subject, b.asideWords(aside)); effect.kind != "" {
+	if effect := say(aside.Subject, asideLine); effect.kind != "" {
 		effects = append(effects, effect)
 	}
 	return effects

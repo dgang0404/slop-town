@@ -217,6 +217,31 @@ func (b *Bakery) holdsBothCircles(owner string) bool {
 	return checkIn && aside
 }
 
+// The other circle started together, so this rested listener still owes them a repeat.
+func (b *Bakery) missedTheOtherCircle(owner string) bool {
+	who := b.Entities[owner]
+	if who.Kind != Actor || who.Seated || who.Fatigue != 0 {
+		return false
+	}
+	var checkIn, missed, heard bool
+	for _, e := range b.Notebooks[owner] {
+		if e.Overheard && e.Open {
+			checkIn = true
+		}
+		if e.Aside && e.Missed {
+			missed = true
+		}
+		if e.Aside && !e.Missed {
+			heard = true
+		}
+	}
+	return checkIn && missed && !heard
+}
+
+func (b *Bakery) repeatWords() string {
+	return "Could you say that again? I missed what you said."
+}
+
 func (b *Bakery) asideWords(fact NotebookEntry) string {
 	if fact.Missed {
 		return "The " + b.Entities[fact.Subject].Name + " and the " + b.Entities[fact.Target].Name + " spoke at once. I missed what they said."

@@ -594,7 +594,7 @@ func TestRestedListenerAnswersBothCircles(t *testing.T) {
 }
 
 func TestResidentAnswersBothCircles(t *testing.T) {
-	c := residentBetween(t)
+	c := residentBetween(t, false)
 	const baker, porter, customer = "bakery/baker", "bakery/porter", "bakery/customer"
 	var said []string
 	for _, e := range c.History() {
@@ -633,7 +633,49 @@ func TestResidentAnswersBothCircles(t *testing.T) {
 	}
 }
 
-func residentBetween(t *testing.T) *Coordinator {
+func TestResidentAsksToRepeatOverlap(t *testing.T) {
+	c := residentBetween(t, true)
+	const baker, porter, customer = "bakery/baker", "bakery/porter", "bakery/customer"
+	var said []string
+	for _, e := range c.History() {
+		if e.ActorID == porter && e.Payload.Dialogue.Statement.Intent == "both" {
+			said = append(said, e.Payload.Target+" "+e.Payload.Dialogue.Words)
+		}
+	}
+	if len(said) != 2 || !strings.Contains(said[0], baker) || !strings.Contains(said[0], "I heard the baker ask the player how they were holding up.") ||
+		!strings.Contains(said[1], customer) || !strings.Contains(said[1], "Could you say that again? I missed what you said.") ||
+		strings.Contains(said[1], "other table") || strings.Contains(said[1], "Hello from") {
+		t.Fatal(said)
+	}
+	ask := func(who, id string) Result {
+		at := c.bakery.Entities[who].Placement
+		listener := c.bakery.Entities[porter]
+		listener.Placement = at
+		c.bakery.Entities[porter] = listener
+		return c.Submit(who, spatialProposal(c, id, ActionSpeak, ActionArgs{Target: porter, Speech: SpeechLine{Topic: "conversation", Intent: "ask", Tone: "curious"}}))
+	}
+	if r := ask(baker, "check-in"); r.Status != "accepted" || !strings.Contains(r.Message, "I heard the baker ask the player how they were holding up.") || strings.Contains(r.Message, "other table") {
+		t.Fatal(r)
+	}
+	if r := ask(customer, "again"); r.Status != "accepted" || !strings.Contains(r.Message, "Could you say that again? I missed what you said.") ||
+		strings.Contains(r.Message, "other table") || strings.Contains(r.Message, "Hello from") {
+		t.Fatal(r)
+	}
+	again := 0
+	for _, e := range c.History() {
+		if e.ActorID == porter && e.Payload.Dialogue.Statement.Intent == "both" {
+			again++
+		}
+	}
+	if again != 2 {
+		t.Fatal(again)
+	}
+	if err := c.bakery.validateNotebooks(c.clock.Tick()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func residentBetween(t *testing.T, overlap bool) *Coordinator {
 	t.Helper()
 	scope := Scope{"bakery", "main"}
 	c, err := (BakerySetup{Practice: true}).NewCoordinator(scope, 42)
@@ -686,7 +728,7 @@ func residentBetween(t *testing.T) *Coordinator {
 	}
 	c.bakery.Entities[customer] = SpatialEntity{Name: "customer", Kind: Actor, Placement: hide}
 	const neighbor = "bakery/neighbor"
-	c.bakery.Entities[neighbor] = SpatialEntity{Name: "neighbor", Kind: Actor, Placement: hide}
+	c.bakery.Entities[neighbor] = SpatialEntity{Name: "neighbor", Kind: Actor, Placement: hide, Seated: overlap}
 	found := false
 	for y := 0; y < bakeryHeight && !found; y++ {
 		for x := 0; x < bakeryWidth; x++ {
